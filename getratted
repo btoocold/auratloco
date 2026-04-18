@@ -607,14 +607,14 @@ function F:AddDropdown(idx,info)
     local iList=Library:MakeLabel({Position=UDim2.fromOffset(7,0);Size=UDim2.new(1,-22,1,0);TextSize=13;Text="--";TextXAlignment=Enum.TextXAlignment.Left;ZIndex=22;Parent=dOuter})
     if type(info.Tooltip)=="string" then Library:AddToolTip(info.Tooltip,dOuter) end
     local MAX=8
-    local listFrame=Library:Create("Frame",{BackgroundColor3=Library.MainColor;BorderSizePixel=0;ZIndex=80;Visible=false;Parent=ScreenGui})
+    local listFrame=Library:Create("Frame",{BackgroundColor3=Library.MainColor;BorderSizePixel=0;ZIndex=200;Visible=false;Parent=ScreenGui})
     Rnd(listFrame,8); MkStroke(listFrame,Library.OutlineColor,1.5); Library:AddToRegistry(listFrame,{BackgroundColor3="MainColor"})
     local function rpos() listFrame.Position=UDim2.fromOffset(dOuter.AbsolutePosition.X, dOuter.AbsolutePosition.Y+dOuter.AbsoluteSize.Y+3) end
     local function rsize(y) listFrame.Size=UDim2.fromOffset(dOuter.AbsoluteSize.X, y or MAX*22+6) end
     rpos(); rsize()
     dOuter:GetPropertyChangedSignal("AbsolutePosition"):Connect(rpos)
     dOuter:GetPropertyChangedSignal("AbsoluteSize"):Connect(function() rpos(); rsize() end)
-    local scroll=Library:Create("ScrollingFrame",{BackgroundTransparency=1;BorderSizePixel=0;CanvasSize=UDim2.new(0,0,0,0);Size=UDim2.fromScale(1,1);ZIndex=81;Parent=listFrame;TopImage="";BottomImage="";ScrollBarThickness=3;ScrollBarImageTransparency=0;ScrollBarImageColor3=Library.AccentColor})
+    local scroll=Library:Create("ScrollingFrame",{BackgroundTransparency=1;BorderSizePixel=0;CanvasSize=UDim2.new(0,0,0,0);Size=UDim2.fromScale(1,1);ZIndex=201;Parent=listFrame;TopImage="";BottomImage="";ScrollBarThickness=3;ScrollBarImageTransparency=0;ScrollBarImageColor3=Library.AccentColor})
     Rnd(scroll,8); Library:AddToRegistry(scroll,{ScrollBarImageColor3="AccentColor"})
     Library:Create("UIListLayout",{FillDirection=Enum.FillDirection.Vertical;SortOrder=Enum.SortOrder.LayoutOrder;Parent=scroll})
     Library:Create("UIPadding",{PaddingTop=UDim.new(0,3);PaddingBottom=UDim.new(0,3);PaddingLeft=UDim.new(0,3);PaddingRight=UDim.new(0,3);Parent=scroll})
@@ -631,9 +631,9 @@ function F:AddDropdown(idx,info)
         for _,e in next,scroll:GetChildren() do if not e:IsA("UIListLayout") and not e:IsA("UIPadding") then e:Destroy() end end
         local Btns,count={},0
         for _,v in next,DD.Values do count=count+1
-            local btn=Library:Create("Frame",{BackgroundColor3=Library.MainColor;BorderSizePixel=0;Size=UDim2.new(1,0,0,22);ZIndex=82;Active=true;Parent=scroll})
+            local btn=Library:Create("Frame",{BackgroundColor3=Library.MainColor;BorderSizePixel=0;Size=UDim2.new(1,0,0,22);ZIndex=202;Active=true;Parent=scroll})
             Rnd(btn,5); Library:AddToRegistry(btn,{BackgroundColor3="MainColor"})
-            local bLbl=Library:MakeLabel({Active=false;Size=UDim2.new(1,-10,1,0);Position=UDim2.fromOffset(7,0);TextSize=13;Text=v;TextXAlignment=Enum.TextXAlignment.Left;ZIndex=84;Parent=btn})
+            local bLbl=Library:MakeLabel({Active=false;Size=UDim2.new(1,-10,1,0);Position=UDim2.fromOffset(7,0);TextSize=13;Text=v;TextXAlignment=Enum.TextXAlignment.Left;ZIndex=204;Parent=btn})
             local Tbl={}; local selected=info.Multi and DD.Value[v] or DD.Value==v
             function Tbl:Update()
                 selected=info.Multi and DD.Value[v] or DD.Value==v
@@ -790,6 +790,11 @@ function Library:CreateWindow(...)
         end
         local leftSide=makeSide(0,ColPad); local rightSide=makeSide(0.5,ColGap/2)
         function Tab:ShowTab()
+            -- Close all open dropdowns/pickers before switching
+            for f in next, Library.OpenedFrames do
+                pcall(function() f.Visible=false end)
+                Library.OpenedFrames[f]=nil
+            end
             for _,t in next,Window.Tabs do t:HideTab() end
             blocker.BackgroundTransparency=0; Tween(tabBtn,{BackgroundColor3=Library.MainColor},0.12)
             Library.RegistryMap[tabBtn].Properties.BackgroundColor3="MainColor"; tabFrame.Visible=true
