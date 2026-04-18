@@ -94,7 +94,7 @@ local Library = {
     MainColor       = Color3.fromRGB(22,  22,  30);
     BackgroundColor = Color3.fromRGB(12,  12,  18);
     AccentColor     = Color3.fromRGB(0,   90,  255);
-    OutlineColor    = Color3.fromRGB(0,  120, 255);
+    OutlineColor    = Color3.fromRGB(0,   60,  180);
     RiskColor       = Color3.fromRGB(255, 55,  55);
     SubtleColor     = Color3.fromRGB(120, 120, 150);
     Black           = Color3.new(0,0,0);
@@ -470,7 +470,7 @@ function F:AddButton(...)
     Parse(Btn,...)
     local function MakeBtn(b)
         local outer=Library:Create("Frame",{BackgroundColor3=Library.MainColor;BorderSizePixel=0;Size=UDim2.new(1,-4,0,22);ZIndex=20})
-        Rnd(outer,6); MkStroke(outer,Color3.fromRGB(0,140,255),1.2)
+        Rnd(outer,6); MkStroke(outer,Library.OutlineColor,1)
         Grad(outer,Color3.fromRGB(30,30,45),Color3.fromRGB(18,18,28),90)
         Library:AddToRegistry(outer,{BackgroundColor3="MainColor"})
         local lbl=Library:MakeLabel({Size=UDim2.fromScale(1,1);TextSize=13;Text=b.Text;ZIndex=21;Parent=outer})
@@ -782,72 +782,40 @@ function Library:CreateWindow(...)
         ClipsDescendants=true
     })
     Rnd(outer,12)
-    -- Layer 1: Thick rainbow outer stroke
     local outerStroke = MkStroke(outer, Color3.fromRGB(0,80,255), 3, 0)
     local outerGlow = Glow(outer, 24)
-    outerGlow.ImageTransparency = 0.25
+    if outerGlow then outerGlow.ImageTransparency = 0.25 end
+
+    local pinkBorder=Library:Create("Frame",{BackgroundTransparency=1;BorderSizePixel=0;Position=UDim2.fromOffset(3,3);Size=UDim2.new(1,-6,1,-6);ZIndex=10;Parent=outer})
+    Rnd(pinkBorder,10)
+    local pinkStroke = MkStroke(pinkBorder, Color3.fromRGB(255, 50, 150), 1.5, 0)
+
+    local cyanBorder=Library:Create("Frame",{BackgroundTransparency=1;BorderSizePixel=0;Position=UDim2.fromOffset(6,6);Size=UDim2.new(1,-12,1,-12);ZIndex=10;Parent=outer})
+    Rnd(cyanBorder,9)
+    local cyanStroke = MkStroke(cyanBorder, Color3.fromRGB(0, 200, 255), 1, 0)
+
     Library:GiveSignal(RunService.RenderStepped:Connect(function()
-        if outerStroke and outerStroke.Parent then
-            outerStroke.Color = Library.CurrentRainbowColor or Color3.fromRGB(0, 80, 255)
-        end
-        if outerGlow and outerGlow.Parent then
-            outerGlow.ImageColor3 = Library.CurrentRainbowColor or Color3.fromRGB(0, 60, 220)
-        end
+        local rc = Library.CurrentRainbowColor or Color3.fromRGB(0, 80, 255)
+        local rh = Library.CurrentRainbowHue or 0
+        if outerStroke and outerStroke.Parent then outerStroke.Color = rc end
+        if outerGlow and outerGlow.Parent then outerGlow.ImageColor3 = rc end
+        if pinkStroke and pinkStroke.Parent then pinkStroke.Color = Color3.fromHSV((rh + 0.55) % 1, 0.85, 1) end
+        if cyanStroke and cyanStroke.Parent then cyanStroke.Color = Color3.fromHSV((rh + 0.15) % 1, 0.7, 1) end
     end))
     Library:MakeDraggable(outer,30)
     Library:AddToRegistry(outer,{BackgroundColor3="BackgroundColor"})
-
-    -- Layer 2: Pink/Magenta border frame
-    local pinkBorder=Library:Create("Frame",{
-        BackgroundColor3=Library.BackgroundColor;
-        BackgroundTransparency=1;
-        BorderSizePixel=0;
-        Position=UDim2.fromOffset(3,3);
-        Size=UDim2.new(1,-6,1,-6);
-        ZIndex=10;
-        Parent=outer;
-    })
-    Rnd(pinkBorder,10)
-    local pinkStroke = MkStroke(pinkBorder, Color3.fromRGB(255, 50, 150), 1.5, 0)
-    -- Animate pink stroke with offset rainbow hue
-    Library:GiveSignal(RunService.RenderStepped:Connect(function()
-        if pinkStroke and pinkStroke.Parent then
-            local h = ((Library.CurrentRainbowHue or 0) + 0.55) % 1
-            pinkStroke.Color = Color3.fromHSV(h, 0.85, 1)
-        end
-    end))
-
-    -- Layer 3: Cyan/Blue border frame
-    local cyanBorder=Library:Create("Frame",{
-        BackgroundColor3=Library.BackgroundColor;
-        BackgroundTransparency=1;
-        BorderSizePixel=0;
-        Position=UDim2.fromOffset(6,6);
-        Size=UDim2.new(1,-12,1,-12);
-        ZIndex=10;
-        Parent=outer;
-    })
-    Rnd(cyanBorder,9)
-    local cyanStroke = MkStroke(cyanBorder, Color3.fromRGB(0, 200, 255), 1, 0)
-    -- Animate cyan stroke with another offset rainbow hue
-    Library:GiveSignal(RunService.RenderStepped:Connect(function()
-        if cyanStroke and cyanStroke.Parent then
-            local h = ((Library.CurrentRainbowHue or 0) + 0.15) % 1
-            cyanStroke.Color = Color3.fromHSV(h, 0.7, 1)
-        end
-    end))
 
     local inner=Library:Create("Frame",{
         BackgroundColor3=Library.MainColor;
         BackgroundTransparency=0.12;
         BorderSizePixel=0;
-        Position=UDim2.fromOffset(3,3);
-        Size=UDim2.new(1,-6,1,-6);
+        Position=UDim2.fromOffset(2,2);
+        Size=UDim2.new(1,-4,1,-4);
         ZIndex=11;
         Parent=outer;
         ClipsDescendants=true
     })
-    Rnd(inner,9); Library:AddToRegistry(inner,{BackgroundColor3="MainColor"})
+    Rnd(inner,10); Library:AddToRegistry(inner,{BackgroundColor3="MainColor"})
 
     local titleBar=Library:Create("Frame",{
         BackgroundColor3=Library.Black;
@@ -949,9 +917,10 @@ function Library:CreateWindow(...)
         local function makeSide(xscale,xoff)
             local s=Library:Create("ScrollingFrame",{BackgroundTransparency=1;BorderSizePixel=0;Position=UDim2.new(xscale,xoff,0,ColPad);Size=UDim2.new(0.5,-ColPad*2-ColGap/2,1,-ColPad*2);CanvasSize=UDim2.new(0,0,0,0);AutomaticCanvasSize=Enum.AutomaticSize.None;BottomImage="";TopImage="";ScrollBarThickness=0;ScrollBarImageTransparency=1;ScrollBarImageColor3=Library.AccentColor;ScrollingDirection=Enum.ScrollingDirection.Y;ClipsDescendants=true;ZIndex=15;Parent=tabFrame})
             Library:Create("UIListLayout",{Padding=UDim.new(0,8);FillDirection=Enum.FillDirection.Vertical;SortOrder=Enum.SortOrder.LayoutOrder;HorizontalAlignment=Enum.HorizontalAlignment.Center;Parent=s})
+            Library:Create("UIPadding",{PaddingLeft=UDim.new(0,2);PaddingRight=UDim.new(0,2);PaddingTop=UDim.new(0,2);PaddingBottom=UDim.new(0,2);Parent=s})
             Library:AddToRegistry(s,{ScrollBarImageColor3="AccentColor"})
             s.UIListLayout:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(function()
-                s.CanvasSize=UDim2.fromOffset(0,s.UIListLayout.AbsoluteContentSize.Y+6) end)
+                s.CanvasSize=UDim2.fromOffset(0,s.UIListLayout.AbsoluteContentSize.Y+10) end)
             return s
         end
         local leftSide=makeSide(0,ColPad); local rightSide=makeSide(0.5,ColGap/2)
@@ -972,16 +941,7 @@ function Library:CreateWindow(...)
         function Tab:AddGroupbox(info)
             local GB={}; local side=info.Side==1 and leftSide or rightSide
             local boxO=Library:Create("Frame",{BackgroundColor3=Library.BackgroundColor;BorderSizePixel=0;Size=UDim2.new(1,0,0,30);ZIndex=15;Parent=side})
-            Rnd(boxO,9)
-            -- Outer groupbox stroke: cyan/blue cycling
-            local gbStroke = MkStroke(boxO,Color3.fromRGB(0,180,255),1.5)
-            Library:GiveSignal(RunService.RenderStepped:Connect(function()
-                if gbStroke and gbStroke.Parent then
-                    local h = ((Library.CurrentRainbowHue or 0) + 0.15) % 1
-                    gbStroke.Color = Color3.fromHSV(h, 0.7, 1)
-                end
-            end))
-            Library:AddToRegistry(boxO,{BackgroundColor3="BackgroundColor"})
+            Rnd(boxO,9); MkStroke(boxO,Color3.fromRGB(0,150,255),1.5); Library:AddToRegistry(boxO,{BackgroundColor3="BackgroundColor"})
             local gbTop=Library:Create("Frame",{BackgroundColor3=Library.AccentColor;BackgroundTransparency=1;BorderSizePixel=0;Size=UDim2.new(1,0,0,2);ZIndex=16;Visible=false;Parent=boxO})
             Library:MakeLabel({Size=UDim2.new(1,-6,0,18);Position=UDim2.fromOffset(7,2);TextSize=12;Font=Library.FontBold;Text=info.Name;TextXAlignment=Enum.TextXAlignment.Left;ZIndex=17;Parent=boxO})
             local cont=Library:Create("Frame",{BackgroundTransparency=1;Position=UDim2.fromOffset(4,22);Size=UDim2.new(1,-4,1,-22);ZIndex=18;Parent=boxO})
@@ -996,15 +956,7 @@ function Library:CreateWindow(...)
         function Tab:AddTabbox(info)
             local Tabbox={Tabs={}}; local side=info.Side==1 and leftSide or rightSide
             local tbO=Library:Create("Frame",{BackgroundColor3=Library.BackgroundColor;BorderSizePixel=0;Size=UDim2.new(1,0,0,0);ZIndex=15;Parent=side})
-            Rnd(tbO,9)
-            local tbStroke = MkStroke(tbO,Color3.fromRGB(0,180,255),1.5)
-            Library:GiveSignal(RunService.RenderStepped:Connect(function()
-                if tbStroke and tbStroke.Parent then
-                    local h = ((Library.CurrentRainbowHue or 0) + 0.15) % 1
-                    tbStroke.Color = Color3.fromHSV(h, 0.7, 1)
-                end
-            end))
-            Library:AddToRegistry(tbO,{BackgroundColor3="BackgroundColor"})
+            Rnd(tbO,9); MkStroke(tbO,Color3.fromRGB(0,150,255),1.5); Library:AddToRegistry(tbO,{BackgroundColor3="BackgroundColor"})
             local tbAcc=Library:Create("Frame",{BackgroundColor3=Library.AccentColor;BackgroundTransparency=1;BorderSizePixel=0;Size=UDim2.new(1,0,0,2);ZIndex=16;Visible=false;Parent=tbO})
             local btnRow=Library:Create("Frame",{BackgroundTransparency=1;Position=UDim2.fromOffset(0,1);Size=UDim2.new(1,0,0,20);ZIndex=16;Parent=tbO})
             Library:Create("UIListLayout",{FillDirection=Enum.FillDirection.Horizontal;SortOrder=Enum.SortOrder.LayoutOrder;Parent=btnRow})
