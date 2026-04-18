@@ -64,7 +64,20 @@ local function MkStroke(parent, color, thick, trans)
     s.Parent = parent; return s
 end
 
-local function Glow(parent, size) end -- disabled: caused overflow outside rounded corners
+local function Glow(parent, size)
+    local g = Instance.new("ImageLabel")
+    g.Name              = "Glow"
+    g.BackgroundTransparency = 1
+    g.Image             = "rbxassetid://6015897843"
+    g.ImageColor3       = Color3.fromRGB(0, 60, 220)
+    g.ImageTransparency = 0.35
+    g.AnchorPoint       = Vector2.new(0.5, 0.5)
+    g.Position          = UDim2.new(0.5, 0, 0.5, 0)
+    g.Size              = UDim2.new(1, size or 28, 1, size or 28)
+    g.ZIndex            = (parent.ZIndex or 1) - 1
+    g.Parent            = parent
+    return g
+end
 
 local function Grad(parent, c0, c1, rot)
     local g = Instance.new("UIGradient")
@@ -755,45 +768,36 @@ function Library:CreateWindow(...)
     else cfg.AnchorPoint=cfg.AnchorPoint or Vector2.zero; cfg.Position=cfg.Position or UDim2.fromOffset(160,50) end
     cfg.Size=cfg.Size or UDim2.fromOffset(560,370)
     local Window={Tabs={}}
-    local outer=Library:Create("Frame",{AnchorPoint=cfg.AnchorPoint;BackgroundColor3=Library.MainColor;BorderSizePixel=0;Position=cfg.Position;Size=cfg.Size;Visible=false;ZIndex=10;Parent=ScreenGui})
+    local outer=Library:Create("Frame",{AnchorPoint=cfg.AnchorPoint;BackgroundColor3=Library.BackgroundColor;BorderSizePixel=0;Position=cfg.Position;Size=cfg.Size;Visible=false;ZIndex=10;Parent=ScreenGui})
     Rnd(outer,12); MkStroke(outer, Color3.fromRGB(0,80,255), 1.5, 0); Glow(outer, 40)
     Library:MakeDraggable(outer,30)
     local topBar=Library:Create("Frame",{BackgroundColor3=Library.AccentColor;BorderSizePixel=0;Size=UDim2.new(1,0,0,2);ZIndex=11;Parent=outer})
-    Library:AddToRegistry(topBar,{BackgroundColor3="AccentColor"})
+    Rnd(topBar,12); Library:AddToRegistry(topBar,{BackgroundColor3="AccentColor"})
     local inner=Library:Create("Frame",{BackgroundColor3=Library.MainColor;BorderSizePixel=0;Position=UDim2.fromOffset(1,1);Size=UDim2.new(1,-2,1,-2);ZIndex=11;Parent=outer})
-    Rnd(inner,11); Library:AddToRegistry(inner,{BackgroundColor3="MainColor"})
+    Rnd(inner,12); Library:AddToRegistry(inner,{BackgroundColor3="MainColor"})
     local titleBar=Library:Create("Frame",{BackgroundColor3=Library.MainColor;BorderSizePixel=0;Size=UDim2.new(1,0,0,28);ZIndex=12;Parent=inner})
-    Grad(titleBar,Color3.fromRGB(28,28,42),Color3.fromRGB(18,18,28),90); Library:AddToRegistry(titleBar,{BackgroundColor3="MainColor"})
+    Rnd(titleBar,12); Grad(titleBar,Color3.fromRGB(28,28,42),Color3.fromRGB(18,18,28),90); Library:AddToRegistry(titleBar,{BackgroundColor3="MainColor"})
     local titleLbl=Library:MakeLabel({Position=UDim2.fromOffset(12,0);Size=UDim2.new(1,-12,1,0);TextSize=14;Font=Library.FontBold;Text=cfg.Title;TextXAlignment=Enum.TextXAlignment.Left;ZIndex=13;Parent=titleBar})
     local sep=Library:Create("Frame",{BackgroundColor3=Library.OutlineColor;BorderSizePixel=0;Position=UDim2.fromOffset(0,28);Size=UDim2.new(1,0,0,1);ZIndex=12;Parent=inner})
     Library:AddToRegistry(sep,{BackgroundColor3="OutlineColor"})
     local mainOuter=Library:Create("Frame",{BackgroundColor3=Library.BackgroundColor;BorderSizePixel=0;Position=UDim2.fromOffset(8,35);Size=UDim2.new(1,-16,1,-43);ZIndex=11;Parent=inner})
-    Rnd(mainOuter,9); Library:AddToRegistry(mainOuter,{BackgroundColor3="BackgroundColor"})
-    local mainInner=Library:Create("Frame",{BackgroundColor3=Library.BackgroundColor;BorderSizePixel=0;Size=UDim2.fromScale(1,1);ZIndex=12;ClipsDescendants=true;Parent=mainOuter})
-    Library:AddToRegistry(mainInner,{BackgroundColor3="BackgroundColor"})
-    -- Tab buttons bar across the top
-    local tabArea=Library:Create("Frame",{BackgroundColor3=Library.MainColor;BorderSizePixel=0;
-        Position=UDim2.fromOffset(0,0);Size=UDim2.new(1,0,0,28);ZIndex=13;Parent=mainInner})
-    Library:AddToRegistry(tabArea,{BackgroundColor3="MainColor"})
-    Library:Create("UIListLayout",{Padding=UDim.new(0,0);FillDirection=Enum.FillDirection.Horizontal;
-        SortOrder=Enum.SortOrder.LayoutOrder;Parent=tabArea})
-    -- Content below tab buttons
-    local tabContainer=Library:Create("Frame",{BackgroundColor3=Library.BackgroundColor;BorderSizePixel=0;
-        Position=UDim2.fromOffset(0,28);Size=UDim2.new(1,0,1,-28);ZIndex=13;Parent=mainInner})
-    Library:AddToRegistry(tabContainer,{BackgroundColor3="BackgroundColor"})
+    Rnd(mainOuter,9); MkStroke(mainOuter,Library.OutlineColor,1); Library:AddToRegistry(mainOuter,{BackgroundColor3="BackgroundColor"})
+    local mainInner=Library:Create("Frame",{BackgroundColor3=Library.BackgroundColor;BorderSizePixel=0;Size=UDim2.fromScale(1,1);ZIndex=12;Parent=mainOuter})
+    Rnd(mainInner,9); Library:AddToRegistry(mainInner,{BackgroundColor3="BackgroundColor"})
+    local tabArea=Library:Create("Frame",{BackgroundTransparency=1;Position=UDim2.fromOffset(8,7);Size=UDim2.new(1,-16,0,22);ZIndex=13;Parent=mainInner})
+    Library:Create("UIListLayout",{Padding=UDim.new(0,cfg.TabPadding);FillDirection=Enum.FillDirection.Horizontal;SortOrder=Enum.SortOrder.LayoutOrder;Parent=tabArea})
+    local tabContainer=Library:Create("Frame",{BackgroundColor3=Library.MainColor;BorderSizePixel=0;ClipsDescendants=true;Position=UDim2.fromOffset(8,31);Size=UDim2.new(1,-16,1,-39);ZIndex=13;Parent=mainInner})
+    Rnd(tabContainer,8); MkStroke(tabContainer,Library.OutlineColor,1); Library:AddToRegistry(tabContainer,{BackgroundColor3="MainColor"})
     function Window:SetWindowTitle(t) titleLbl.Text=t end
 
     function Window:AddTab(name)
         local Tab={Groupboxes={};Tabboxes={}}
         local tw=Library:GetTextBounds(name,Library.FontBold,13)
         local tabBtn=Library:Create("Frame",{BackgroundColor3=Library.BackgroundColor;BorderSizePixel=0;Size=UDim2.new(0,tw+18,1,0);ZIndex=14;Parent=tabArea})
-        Library:AddToRegistry(tabBtn,{BackgroundColor3="BackgroundColor"})
+        Rnd(tabBtn,6); Library:AddToRegistry(tabBtn,{BackgroundColor3="BackgroundColor"})
         Library:MakeLabel({Size=UDim2.fromScale(1,1);Text=name;TextSize=13;Font=Library.FontBold;ZIndex=15;Parent=tabBtn})
-        -- Active indicator: bottom blue line
-        local activeBar=Library:Create("Frame",{BackgroundColor3=Library.AccentColor;BorderSizePixel=0;
-            AnchorPoint=Vector2.new(0,1);Position=UDim2.fromScale(0,1);Size=UDim2.new(1,0,0,2);
-            Visible=false;ZIndex=16;Parent=tabBtn})
-        Library:AddToRegistry(activeBar,{BackgroundColor3="AccentColor"})
+        local blocker=Library:Create("Frame",{BackgroundColor3=Library.MainColor;BorderSizePixel=0;Position=UDim2.new(0,0,1,-1);Size=UDim2.new(1,0,0,2);BackgroundTransparency=1;ZIndex=16;Parent=tabBtn})
+        Library:AddToRegistry(blocker,{BackgroundColor3="MainColor"})
         local tabFrame=Library:Create("Frame",{BackgroundTransparency=1;ClipsDescendants=true;Size=UDim2.fromScale(1,1);Visible=false;ZIndex=14;Parent=tabContainer})
         local ColPad,ColGap=7,6
         local function makeSide(xscale,xoff)
@@ -806,26 +810,25 @@ function Library:CreateWindow(...)
         end
         local leftSide=makeSide(0,ColPad); local rightSide=makeSide(0.5,ColGap/2)
         function Tab:ShowTab()
+            -- Close all open dropdowns/pickers before switching
             for f in next, Library.OpenedFrames do
                 pcall(function() f.Visible=false end)
                 Library.OpenedFrames[f]=nil
             end
             for _,t in next,Window.Tabs do t:HideTab() end
-            activeBar.Visible=true
-            Tween(tabBtn,{BackgroundColor3=Library.MainColor},0.12)
+            blocker.BackgroundTransparency=0; Tween(tabBtn,{BackgroundColor3=Library.MainColor},0.12)
             Library.RegistryMap[tabBtn].Properties.BackgroundColor3="MainColor"; tabFrame.Visible=true
         end
         function Tab:HideTab()
-            activeBar.Visible=false
-            Tween(tabBtn,{BackgroundColor3=Library.BackgroundColor},0.12)
+            blocker.BackgroundTransparency=1; Tween(tabBtn,{BackgroundColor3=Library.BackgroundColor},0.12)
             Library.RegistryMap[tabBtn].Properties.BackgroundColor3="BackgroundColor"; tabFrame.Visible=false
         end
         function Tab:AddGroupbox(info)
             local GB={}; local side=info.Side==1 and leftSide or rightSide
-            local boxO=Library:Create("Frame",{BackgroundColor3=Library.BackgroundColor;BorderSizePixel=0;Size=UDim2.new(1,0,0,30);ZIndex=15;ClipsDescendants=true;Parent=side})
-            Rnd(boxO,9); Library:AddToRegistry(boxO,{BackgroundColor3="BackgroundColor"})
+            local boxO=Library:Create("Frame",{BackgroundColor3=Library.BackgroundColor;BorderSizePixel=0;Size=UDim2.new(1,0,0,30);ZIndex=15;Parent=side})
+            Rnd(boxO,9); MkStroke(boxO,Library.OutlineColor,1); Library:AddToRegistry(boxO,{BackgroundColor3="BackgroundColor"})
             local gbTop=Library:Create("Frame",{BackgroundColor3=Library.AccentColor;BorderSizePixel=0;Size=UDim2.new(1,0,0,2);ZIndex=16;Parent=boxO})
-            Library:AddToRegistry(gbTop,{BackgroundColor3="AccentColor"})
+            Rnd(gbTop,9); Library:AddToRegistry(gbTop,{BackgroundColor3="AccentColor"})
             Library:MakeLabel({Size=UDim2.new(1,-6,0,18);Position=UDim2.fromOffset(7,2);TextSize=12;Font=Library.FontBold;Text=info.Name;TextXAlignment=Enum.TextXAlignment.Left;ZIndex=17;Parent=boxO})
             local cont=Library:Create("Frame",{BackgroundTransparency=1;Position=UDim2.fromOffset(4,22);Size=UDim2.new(1,-4,1,-22);ZIndex=18;Parent=boxO})
             Library:Create("UIListLayout",{FillDirection=Enum.FillDirection.Vertical;SortOrder=Enum.SortOrder.LayoutOrder;Parent=cont})
@@ -838,16 +841,16 @@ function Library:CreateWindow(...)
         function Tab:AddRightGroupbox(n) return Tab:AddGroupbox({Side=2;Name=n}) end
         function Tab:AddTabbox(info)
             local Tabbox={Tabs={}}; local side=info.Side==1 and leftSide or rightSide
-            local tbO=Library:Create("Frame",{BackgroundColor3=Library.BackgroundColor;BorderSizePixel=0;Size=UDim2.new(1,0,0,0);ZIndex=15;ClipsDescendants=true;Parent=side})
-            Rnd(tbO,9); Library:AddToRegistry(tbO,{BackgroundColor3="BackgroundColor"})
+            local tbO=Library:Create("Frame",{BackgroundColor3=Library.BackgroundColor;BorderSizePixel=0;Size=UDim2.new(1,0,0,0);ZIndex=15;Parent=side})
+            Rnd(tbO,9); MkStroke(tbO,Library.OutlineColor,1); Library:AddToRegistry(tbO,{BackgroundColor3="BackgroundColor"})
             local tbAcc=Library:Create("Frame",{BackgroundColor3=Library.AccentColor;BorderSizePixel=0;Size=UDim2.new(1,0,0,2);ZIndex=16;Parent=tbO})
-            Library:AddToRegistry(tbAcc,{BackgroundColor3="AccentColor"})
+            Rnd(tbAcc,9); Library:AddToRegistry(tbAcc,{BackgroundColor3="AccentColor"})
             local btnRow=Library:Create("Frame",{BackgroundTransparency=1;Position=UDim2.fromOffset(0,1);Size=UDim2.new(1,0,0,20);ZIndex=16;Parent=tbO})
             Library:Create("UIListLayout",{FillDirection=Enum.FillDirection.Horizontal;SortOrder=Enum.SortOrder.LayoutOrder;Parent=btnRow})
             function Tabbox:AddTab(name)
                 local T={}
                 local btn=Library:Create("Frame",{BackgroundColor3=Library.MainColor;BorderSizePixel=0;Size=UDim2.new(0.5,0,1,0);ZIndex=17;Parent=btnRow})
-                Library:AddToRegistry(btn,{BackgroundColor3="MainColor"})
+                Rnd(btn,6); Library:AddToRegistry(btn,{BackgroundColor3="MainColor"})
                 Library:MakeLabel({Size=UDim2.fromScale(1,1);TextSize=12;Text=name;ZIndex=18;Parent=btn})
                 local block=Library:Create("Frame",{BackgroundColor3=Library.BackgroundColor;BorderSizePixel=0;Position=UDim2.new(0,0,1,0);Size=UDim2.new(1,0,0,2);Visible=false;ZIndex=19;Parent=btn})
                 Library:AddToRegistry(block,{BackgroundColor3="BackgroundColor"})
