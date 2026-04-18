@@ -72,18 +72,33 @@ local function MkStroke(parent, color, thick, trans)
 end
 
 local function Glow(parent, size)
-    -- Drop-shadow / glow using a blurred ImageLabel behind the frame
+    -- Glow parented to ScreenGui so it sits BEHIND the frame without clipping into it
     local g = Instance.new("ImageLabel")
-    g.Name              = "Glow"
+    g.Name              = "GlowBehind"
     g.BackgroundTransparency = 1
-    g.Image             = "rbxassetid://6015897843"  -- blurred square
+    g.Image             = "rbxassetid://6015897843"
     g.ImageColor3       = Color3.fromRGB(0, 60, 220)
-    g.ImageTransparency = 0.35
+    g.ImageTransparency = 0.45
     g.AnchorPoint       = Vector2.new(0.5, 0.5)
-    g.Position          = UDim2.new(0.5, 0, 0.5, 0)
-    g.Size              = UDim2.new(1, size or 28, 1, size or 28)
     g.ZIndex            = (parent.ZIndex or 1) - 1
-    g.Parent            = parent
+    g.Parent            = ScreenGui
+
+    -- Track parent position/size and keep glow centered on it
+    local function update()
+        if not parent or not parent.Parent then g:Destroy(); return end
+        local ap = parent.AbsolutePosition
+        local as = parent.AbsoluteSize
+        g.Position = UDim2.fromOffset(ap.X + as.X/2, ap.Y + as.Y/2)
+        g.Size     = UDim2.fromOffset(as.X + (size or 28), as.Y + (size or 28))
+    end
+
+    update()
+    parent:GetPropertyChangedSignal("AbsolutePosition"):Connect(update)
+    parent:GetPropertyChangedSignal("AbsoluteSize"):Connect(update)
+    parent:GetPropertyChangedSignal("Visible"):Connect(function()
+        g.Visible = parent.Visible
+    end)
+
     return g
 end
 
@@ -891,21 +906,20 @@ function Library:CreateWindow(...)
     local outer=Library:Create("Frame",{AnchorPoint=cfg.AnchorPoint;BackgroundColor3=Library.BackgroundColor;
         BorderSizePixel=0;Position=cfg.Position;Size=cfg.Size;Visible=false;ZIndex=10;ClipsDescendants=false;Parent=ScreenGui})
     Rnd(outer,12)
-    -- Neon dark-blue outer glow
+    -- outer has NO ClipsDescendants so the glow image behind it isn't clipped
     MkStroke(outer, Color3.fromRGB(0,80,255), 1.5, 0)
     Glow(outer, 40)
     Library:MakeDraggable(outer,30)
 
-    -- Top accent bar — no rounding needed, inner frame clips it
-    local topBar=Library:Create("Frame",{BackgroundColor3=Library.AccentColor;BorderSizePixel=0;Size=UDim2.new(1,0,0,2);ZIndex=11;Parent=outer})
-    Library:AddToRegistry(topBar,{BackgroundColor3="AccentColor"})
-
     local inner=Library:Create("Frame",{BackgroundColor3=Library.MainColor;BorderSizePixel=0;
-        Position=UDim2.fromOffset(1,1);Size=UDim2.new(1,-2,1,-2);ZIndex=11;ClipsDescendants=true;Parent=outer})
+        Position=UDim2.fromOffset(0,0);Size=UDim2.fromScale(1,1);ZIndex=11;ClipsDescendants=true;Parent=outer})
     Rnd(inner,12); Library:AddToRegistry(inner,{BackgroundColor3="MainColor"})
 
+    -- Top accent bar inside inner — ClipsDescendants rounds the top corners cleanly
+    local topBar=Library:Create("Frame",{BackgroundColor3=Library.AccentColor;BorderSizePixel=0;Size=UDim2.new(1,0,0,2);ZIndex=12;Parent=inner})
+    Library:AddToRegistry(topBar,{BackgroundColor3="AccentColor"})
+
     local titleBar=Library:Create("Frame",{BackgroundColor3=Library.MainColor;BorderSizePixel=0;Size=UDim2.new(1,0,0,28);ZIndex=12;Parent=inner})
-    -- No Rnd on titleBar — inner clips it so top corners match, bottom is flat against content
     Grad(titleBar,Color3.fromRGB(28,28,42),Color3.fromRGB(18,18,28),90)
     Library:AddToRegistry(titleBar,{BackgroundColor3="MainColor"})
     local titleLbl=Library:MakeLabel({Position=UDim2.fromOffset(12,0);Size=UDim2.new(1,-12,1,0);TextSize=14;
