@@ -1067,7 +1067,7 @@ function Library:CreateWindow(...)
             local cache=tCache[desc]; if not cache then cache={}; tCache[desc]=cache end
             for _,p in next,props do
                 if not cache[p] then cache[p]=desc[p] end
-                if cache[p]==1 then continue end
+                if cache[p]~=nil and cache[p]==1 then continue end
                 TweenService:Create(desc,TweenInfo.new(ft,Enum.EasingStyle.Quad),{[p]=toggled and cache[p] or 1}):Play()
             end
         end
