@@ -66,17 +66,16 @@ end
 
 local function Glow(parent, size)
     local g = Instance.new("ImageLabel")
-    g.Name = "Glow"
+    g.Name              = "Glow"
     g.BackgroundTransparency = 1
-    g.Image = "rbxassetid://6015897843"
-    g.ImageColor3 = Color3.fromRGB(0, 60, 220)
-    g.ImageTransparency = 0.55
-    g.ScaleType = Enum.ScaleType.Stretch
-    g.AnchorPoint = Vector2.new(0.5, 0.5)
-    g.Position = UDim2.new(0.5, 0, 0.5, 0)
-    g.Size = UDim2.new(1, size or 18, 1, size or 18)
-    g.ZIndex = (parent.ZIndex or 1) - 1
-    g.Parent = parent
+    g.Image             = "rbxassetid://6015897843"
+    g.ImageColor3       = Color3.fromRGB(0, 60, 220)
+    g.ImageTransparency = 0.35
+    g.AnchorPoint       = Vector2.new(0.5, 0.5)
+    g.Position          = UDim2.new(0.5, 0, 0.5, 0)
+    g.Size              = UDim2.new(1, size or 28, 1, size or 28)
+    g.ZIndex            = (parent.ZIndex or 1) - 1
+    g.Parent            = parent
     return g
 end
 
@@ -769,23 +768,29 @@ function Library:CreateWindow(...)
     else cfg.AnchorPoint=cfg.AnchorPoint or Vector2.zero; cfg.Position=cfg.Position or UDim2.fromOffset(160,50) end
     cfg.Size=cfg.Size or UDim2.fromOffset(560,370)
     local Window={Tabs={}}
-    local outer=Library:Create("Frame",{AnchorPoint=cfg.AnchorPoint;BackgroundColor3=Library.BackgroundColor;BorderSizePixel=0;Position=cfg.Position;Size=cfg.Size;Visible=false;ZIndex=10;Parent=ScreenGui;ClipsDescendants=true})
+    local outer=Library:Create("Frame",{AnchorPoint=cfg.AnchorPoint;BackgroundColor3=Library.BackgroundColor;BorderSizePixel=0;Position=cfg.Position;Size=cfg.Size;Visible=false;ZIndex=10;Parent=ScreenGui})
+    outer.ClipsDescendants = true
     Rnd(outer,12); MkStroke(outer, Color3.fromRGB(0,80,255), 1.5, 0); Glow(outer, 18)
     Library:MakeDraggable(outer,30)
-    local topBar=Library:Create("Frame",{BackgroundColor3=Library.AccentColor;BorderSizePixel=0;Size=UDim2.new(1,0,0,2);ZIndex=11;Parent=outer;ClipsDescendants=true})
-    topBar.Size = UDim2.new(1,-2,0,2)
-    topBar.Position = UDim2.fromOffset(1,0)
-    Library:AddToRegistry(topBar,{BackgroundColor3="AccentColor"})
-    local inner=Library:Create("Frame",{BackgroundColor3=Library.MainColor;BorderSizePixel=0;Position=UDim2.fromOffset(1,1);Size=UDim2.new(1,-2,1,-2);ZIndex=11;Parent=outer;ClipsDescendants=true})
+
+    local inner=Library:Create("Frame",{BackgroundColor3=Library.MainColor;BorderSizePixel=0;Position=UDim2.fromOffset(1,1);Size=UDim2.new(1,-2,1,-2);ZIndex=11;Parent=outer})
+    inner.ClipsDescendants = true
     Rnd(inner,12); Library:AddToRegistry(inner,{BackgroundColor3="MainColor"})
-    local titleBar=Library:Create("Frame",{BackgroundColor3=Library.MainColor;BorderSizePixel=0;Size=UDim2.new(1,0,0,28);ZIndex=12;Parent=inner;ClipsDescendants=true})
-    Rnd(titleBar,12); Grad(titleBar,Color3.fromRGB(28,28,42),Color3.fromRGB(18,18,28),90); Library:AddToRegistry(titleBar,{BackgroundColor3="MainColor"})
+
+    local topBar=Library:Create("Frame",{BackgroundColor3=Library.AccentColor;BorderSizePixel=0;Position=UDim2.fromOffset(10,0);Size=UDim2.new(1,-20,0,2);ZIndex=12;Parent=inner})
+    Library:AddToRegistry(topBar,{BackgroundColor3="AccentColor"})
+
+    local titleBar=Library:Create("Frame",{BackgroundColor3=Library.MainColor;BorderSizePixel=0;Position=UDim2.fromOffset(0,0);Size=UDim2.new(1,0,0,28);ZIndex=12;Parent=inner})
+    titleBar.ClipsDescendants = true
+    Grad(titleBar,Color3.fromRGB(28,28,42),Color3.fromRGB(18,18,28),90); Library:AddToRegistry(titleBar,{BackgroundColor3="MainColor"})
     local titleLbl=Library:MakeLabel({Position=UDim2.fromOffset(12,0);Size=UDim2.new(1,-12,1,0);TextSize=14;Font=Library.FontBold;Text=cfg.Title;TextXAlignment=Enum.TextXAlignment.Left;ZIndex=13;Parent=titleBar})
     local sep=Library:Create("Frame",{BackgroundColor3=Library.OutlineColor;BorderSizePixel=0;Position=UDim2.fromOffset(0,28);Size=UDim2.new(1,0,0,1);ZIndex=12;Parent=inner})
     Library:AddToRegistry(sep,{BackgroundColor3="OutlineColor"})
-    local mainOuter=Library:Create("Frame",{BackgroundColor3=Library.BackgroundColor;BorderSizePixel=0;Position=UDim2.fromOffset(8,35);Size=UDim2.new(1,-16,1,-43);ZIndex=11;Parent=inner;ClipsDescendants=true})
+    local mainOuter=Library:Create("Frame",{BackgroundColor3=Library.BackgroundColor;BorderSizePixel=0;Position=UDim2.fromOffset(8,35);Size=UDim2.new(1,-16,1,-43);ZIndex=11;Parent=inner})
+    mainOuter.ClipsDescendants = true
     Rnd(mainOuter,9); MkStroke(mainOuter,Library.OutlineColor,1); Library:AddToRegistry(mainOuter,{BackgroundColor3="BackgroundColor"})
-    local mainInner=Library:Create("Frame",{BackgroundColor3=Library.BackgroundColor;BorderSizePixel=0;Size=UDim2.fromScale(1,1);ZIndex=12;Parent=mainOuter;ClipsDescendants=true})
+    local mainInner=Library:Create("Frame",{BackgroundColor3=Library.BackgroundColor;BorderSizePixel=0;Size=UDim2.fromScale(1,1);ZIndex=12;Parent=mainOuter})
+    mainInner.ClipsDescendants = true
     Rnd(mainInner,9); Library:AddToRegistry(mainInner,{BackgroundColor3="BackgroundColor"})
     local tabArea=Library:Create("Frame",{BackgroundTransparency=1;Position=UDim2.fromOffset(8,7);Size=UDim2.new(1,-16,0,22);ZIndex=13;Parent=mainInner})
     Library:Create("UIListLayout",{Padding=UDim.new(0,cfg.TabPadding);FillDirection=Enum.FillDirection.Horizontal;SortOrder=Enum.SortOrder.LayoutOrder;Parent=tabArea})
