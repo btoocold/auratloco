@@ -813,14 +813,14 @@ function Library:CreateWindow(...)
 
     local topBar=Library:Create("Frame",{
         BackgroundColor3=Library.AccentColor;
-        BackgroundTransparency=0.35;
+        BackgroundTransparency=1;
         BorderSizePixel=0;
         Position=UDim2.fromOffset(10,0);
         Size=UDim2.new(1,-20,0,2);
         ZIndex=13;
+        Visible=false;
         Parent=titleBar
     })
-    Library:AddToRegistry(topBar,{BackgroundColor3="AccentColor"})
 
     local titleLbl=Library:MakeLabel({
         Position=UDim2.fromOffset(12,1);
@@ -835,14 +835,14 @@ function Library:CreateWindow(...)
 
     local sep=Library:Create("Frame",{
         BackgroundColor3=Library.OutlineColor;
-        BackgroundTransparency=0.6;
+        BackgroundTransparency=1;
         BorderSizePixel=0;
         Position=UDim2.fromOffset(8,32);
         Size=UDim2.new(1,-16,0,1);
         ZIndex=12;
+        Visible=false;
         Parent=inner
     })
-    Library:AddToRegistry(sep,{BackgroundColor3="OutlineColor"})
 
     local mainOuter=Library:Create("Frame",{
         BackgroundColor3=Library.BackgroundColor;
@@ -921,8 +921,7 @@ function Library:CreateWindow(...)
             local GB={}; local side=info.Side==1 and leftSide or rightSide
             local boxO=Library:Create("Frame",{BackgroundColor3=Library.BackgroundColor;BorderSizePixel=0;Size=UDim2.new(1,0,0,30);ZIndex=15;Parent=side})
             Rnd(boxO,9); MkStroke(boxO,Library.OutlineColor,1); Library:AddToRegistry(boxO,{BackgroundColor3="BackgroundColor"})
-            local gbTop=Library:Create("Frame",{BackgroundColor3=Library.AccentColor;BorderSizePixel=0;Size=UDim2.new(1,0,0,2);ZIndex=16;Parent=boxO})
-            Rnd(gbTop,9); Library:AddToRegistry(gbTop,{BackgroundColor3="AccentColor"})
+            local gbTop=Library:Create("Frame",{BackgroundColor3=Library.AccentColor;BackgroundTransparency=1;BorderSizePixel=0;Size=UDim2.new(1,0,0,2);ZIndex=16;Visible=false;Parent=boxO})
             Library:MakeLabel({Size=UDim2.new(1,-6,0,18);Position=UDim2.fromOffset(7,2);TextSize=12;Font=Library.FontBold;Text=info.Name;TextXAlignment=Enum.TextXAlignment.Left;ZIndex=17;Parent=boxO})
             local cont=Library:Create("Frame",{BackgroundTransparency=1;Position=UDim2.fromOffset(4,22);Size=UDim2.new(1,-4,1,-22);ZIndex=18;Parent=boxO})
             Library:Create("UIListLayout",{FillDirection=Enum.FillDirection.Vertical;SortOrder=Enum.SortOrder.LayoutOrder;Parent=cont})
@@ -937,8 +936,7 @@ function Library:CreateWindow(...)
             local Tabbox={Tabs={}}; local side=info.Side==1 and leftSide or rightSide
             local tbO=Library:Create("Frame",{BackgroundColor3=Library.BackgroundColor;BorderSizePixel=0;Size=UDim2.new(1,0,0,0);ZIndex=15;Parent=side})
             Rnd(tbO,9); MkStroke(tbO,Library.OutlineColor,1); Library:AddToRegistry(tbO,{BackgroundColor3="BackgroundColor"})
-            local tbAcc=Library:Create("Frame",{BackgroundColor3=Library.AccentColor;BorderSizePixel=0;Size=UDim2.new(1,0,0,2);ZIndex=16;Parent=tbO})
-            Rnd(tbAcc,9); Library:AddToRegistry(tbAcc,{BackgroundColor3="AccentColor"})
+            local tbAcc=Library:Create("Frame",{BackgroundColor3=Library.AccentColor;BackgroundTransparency=1;BorderSizePixel=0;Size=UDim2.new(1,0,0,2);ZIndex=16;Visible=false;Parent=tbO})
             local btnRow=Library:Create("Frame",{BackgroundTransparency=1;Position=UDim2.fromOffset(0,1);Size=UDim2.new(1,0,0,20);ZIndex=16;Parent=tbO})
             Library:Create("UIListLayout",{FillDirection=Enum.FillDirection.Horizontal;SortOrder=Enum.SortOrder.LayoutOrder;Parent=btnRow})
             function Tabbox:AddTab(name)
