@@ -64,20 +64,7 @@ local function MkStroke(parent, color, thick, trans)
     s.Parent = parent; return s
 end
 
-local function Glow(parent, size)
-    local g = Instance.new("ImageLabel")
-    g.Name              = "Glow"
-    g.BackgroundTransparency = 1
-    g.Image             = "rbxassetid://6015897843"
-    g.ImageColor3       = Color3.fromRGB(0, 60, 220)
-    g.ImageTransparency = 0.35
-    g.AnchorPoint       = Vector2.new(0.5, 0.5)
-    g.Position          = UDim2.new(0.5, 0, 0.5, 0)
-    g.Size              = UDim2.new(1, size or 28, 1, size or 28)
-    g.ZIndex            = (parent.ZIndex or 1) - 1
-    g.Parent            = parent
-    return g
-end
+local function Glow(parent, size) end -- disabled: caused overflow outside rounded corners
 
 local function Grad(parent, c0, c1, rot)
     local g = Instance.new("UIGradient")
