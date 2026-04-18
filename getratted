@@ -944,7 +944,7 @@ function Library:CreateWindow(...)
             function Tabbox:AddTab(name)
                 local T={}
                 local btn=Library:Create("Frame",{BackgroundColor3=Library.MainColor;BorderSizePixel=0;Size=UDim2.new(0.5,0,1,0);ZIndex=17;Parent=btnRow})
-                Rnd(btn,6); Library:AddToRegistry(btn,{BackgroundColor3="MainColor"})
+                Library:AddToRegistry(btn,{BackgroundColor3="MainColor"})
                 Library:MakeLabel({Size=UDim2.fromScale(1,1);TextSize=12;Text=name;ZIndex=18;Parent=btn})
                 local block=Library:Create("Frame",{BackgroundColor3=Library.BackgroundColor;BorderSizePixel=0;Position=UDim2.new(0,0,1,0);Size=UDim2.new(1,0,0,2);Visible=false;ZIndex=19;Parent=btn})
                 Library:AddToRegistry(block,{BackgroundColor3="BackgroundColor"})
