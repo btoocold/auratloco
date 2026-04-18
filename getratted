@@ -273,8 +273,18 @@ function F:AddColorPicker(idx, info)
         Size=UDim2.fromOffset(234,258);Visible=false;ZIndex=50;Parent=ScreenGui})
     Rnd(picker,10); MkStroke(picker,Library.OutlineColor,1.5); Glow(picker,22)
     Library:AddToRegistry(picker,{BackgroundColor3="BackgroundColor"})
-    swatch:GetPropertyChangedSignal("AbsolutePosition"):Connect(function()
-        picker.Position=UDim2.fromOffset(swatch.AbsolutePosition.X,swatch.AbsolutePosition.Y+20) end)
+    local function updatePickerPos()
+        local sx = swatch.AbsolutePosition.X
+        local sy = swatch.AbsolutePosition.Y + 20
+        local cam = workspace.CurrentCamera
+        if cam then
+            local vp = cam.ViewportSize
+            if sx + 234 > vp.X then sx = math.max(0, vp.X - 240) end
+            if sy + 258 > vp.Y then sy = math.max(0, swatch.AbsolutePosition.Y - 262) end
+        end
+        picker.Position = UDim2.fromOffset(sx, sy)
+    end
+    swatch:GetPropertyChangedSignal("AbsolutePosition"):Connect(updatePickerPos)
     local pAccent=Library:Create("Frame",{BackgroundColor3=Library.AccentColor;BorderSizePixel=0;Size=UDim2.new(1,0,0,2);ZIndex=51;Parent=picker})
     Rnd(pAccent,10); Library:AddToRegistry(pAccent,{BackgroundColor3="AccentColor"})
     Library:MakeLabel({Position=UDim2.fromOffset(7,5);Size=UDim2.new(1,-10,0,14);TextSize=12;Text=CP.Title;TextXAlignment=Enum.TextXAlignment.Left;ZIndex=51;Parent=picker})
@@ -313,6 +323,7 @@ function F:AddColorPicker(idx, info)
     end
     function CP:Show()
         for f in next,Library.OpenedFrames do if f.Name=="Color" then f.Visible=false;Library.OpenedFrames[f]=nil end end
+        updatePickerPos()
         picker.Visible=true; Library.OpenedFrames[picker]=true
     end
     function CP:Hide() picker.Visible=false; Library.OpenedFrames[picker]=nil end
