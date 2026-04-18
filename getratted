@@ -215,11 +215,24 @@ function Library:MakeDraggable(inst, cutoff)
 end
 
 function Library:IsOverFrame(frame)
-    local p=CursorPos(); local ap,as=frame.AbsolutePosition,frame.AbsoluteSize
+    local p=CursorPos()
+    -- On mobile CursorPos returns 0,0 so also check touch position
+    if p == Vector2.zero and IsMobile() then return false end
+    local ap,as=frame.AbsolutePosition,frame.AbsoluteSize
     return p.X>=ap.X and p.X<=ap.X+as.X and p.Y>=ap.Y and p.Y<=ap.Y+as.Y
 end
 function Library:MouseIsOverOpenedFrame()
-    for f in next, Library.OpenedFrames do if Library:IsOverFrame(f) then return true end end
+    -- If any dropdown/picker is open, only allow clicks inside it
+    -- Clicks outside will be blocked (and the dropdown will be closed by the global InputBegan handler)
+    for f in next, Library.OpenedFrames do
+        if f.Visible then
+            if Library:IsOverFrame(f) then
+                return false -- click is inside the open frame, allow it
+            else
+                return true -- click is outside, block it
+            end
+        end
+    end
 end
 
 function Library:AddToolTip(text, hoverInst)
@@ -666,8 +679,15 @@ function F:AddDropdown(idx,info)
         if IsPress(inp) and not Library:MouseIsOverOpenedFrame() then
             if listFrame.Visible then DD:CloseDropdown() else DD:OpenDropdown() end end end)
     Library:GiveSignal(InputService.InputBegan:Connect(function(inp)
-        if IsPress(inp) then local p=CursorPos(); local ap,as=listFrame.AbsolutePosition,listFrame.AbsoluteSize
-            if p.X<ap.X or p.X>ap.X+as.X or p.Y<(ap.Y-22-1) or p.Y>ap.Y+as.Y then DD:CloseDropdown() end end end))
+        if IsPress(inp) then
+            local p = Vector2.new(inp.Position.X, inp.Position.Y)
+            local ap, as = listFrame.AbsolutePosition, listFrame.AbsoluteSize
+            local dap, das = dOuter.AbsolutePosition, dOuter.AbsoluteSize
+            local insideList = p.X>=ap.X and p.X<=ap.X+as.X and p.Y>=ap.Y and p.Y<=ap.Y+as.Y
+            local insideOuter = p.X>=dap.X and p.X<=dap.X+das.X and p.Y>=dap.Y and p.Y<=dap.Y+das.Y
+            if not insideList and not insideOuter then DD:CloseDropdown() end
+        end
+    end))
     DD:BuildList(); DD:Display()
     local defs={}
     if type(info.Default)=="string" then local i=table.find(DD.Values,info.Default); if i then table.insert(defs,i) end
