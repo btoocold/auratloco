@@ -786,11 +786,7 @@ function Library:CreateWindow(...)
     local outerGlow = Glow(outer, 24)
     if outerGlow then outerGlow.ImageTransparency = 0.25 end
 
-    local pinkBorder=Library:Create("Frame",{BackgroundTransparency=1;BorderSizePixel=0;Position=UDim2.fromOffset(3,3);Size=UDim2.new(1,-6,1,-6);ZIndex=10;Parent=outer})
-    Rnd(pinkBorder,10)
-    local pinkStroke = MkStroke(pinkBorder, Color3.fromRGB(255, 50, 150), 1.5, 0)
-
-    local cyanBorder=Library:Create("Frame",{BackgroundTransparency=1;BorderSizePixel=0;Position=UDim2.fromOffset(6,6);Size=UDim2.new(1,-12,1,-12);ZIndex=10;Parent=outer})
+    local cyanBorder=Library:Create("Frame",{BackgroundTransparency=1;BorderSizePixel=0;Position=UDim2.fromOffset(4,4);Size=UDim2.new(1,-8,1,-8);ZIndex=10;Parent=outer})
     Rnd(cyanBorder,9)
     local cyanStroke = MkStroke(cyanBorder, Color3.fromRGB(0, 200, 255), 1, 0)
 
@@ -799,7 +795,6 @@ function Library:CreateWindow(...)
         local rh = Library.CurrentRainbowHue or 0
         if outerStroke and outerStroke.Parent then outerStroke.Color = rc end
         if outerGlow and outerGlow.Parent then outerGlow.ImageColor3 = rc end
-        if pinkStroke and pinkStroke.Parent then pinkStroke.Color = Color3.fromHSV((rh + 0.55) % 1, 0.85, 1) end
         if cyanStroke and cyanStroke.Parent then cyanStroke.Color = Color3.fromHSV((rh + 0.15) % 1, 0.7, 1) end
     end))
     Library:MakeDraggable(outer,30)
