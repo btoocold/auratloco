@@ -769,12 +769,18 @@ function Library:CreateWindow(...)
     Library:AddToRegistry(sep,{BackgroundColor3="OutlineColor"})
     local mainOuter=Library:Create("Frame",{BackgroundColor3=Library.BackgroundColor;BorderSizePixel=0;Position=UDim2.fromOffset(8,35);Size=UDim2.new(1,-16,1,-43);ZIndex=11;Parent=inner})
     Rnd(mainOuter,9); Library:AddToRegistry(mainOuter,{BackgroundColor3="BackgroundColor"})
-    local mainInner=Library:Create("Frame",{BackgroundColor3=Library.BackgroundColor;BorderSizePixel=0;Size=UDim2.fromScale(1,1);ZIndex=12;Parent=mainOuter})
-    Rnd(mainInner,9); Library:AddToRegistry(mainInner,{BackgroundColor3="BackgroundColor"})
-    local tabArea=Library:Create("Frame",{BackgroundTransparency=1;Position=UDim2.fromOffset(8,7);Size=UDim2.new(1,-16,0,22);ZIndex=13;Parent=mainInner})
-    Library:Create("UIListLayout",{Padding=UDim.new(0,cfg.TabPadding);FillDirection=Enum.FillDirection.Horizontal;SortOrder=Enum.SortOrder.LayoutOrder;Parent=tabArea})
-    local tabContainer=Library:Create("Frame",{BackgroundColor3=Library.MainColor;BorderSizePixel=0;ClipsDescendants=true;Position=UDim2.fromOffset(8,31);Size=UDim2.new(1,-16,1,-39);ZIndex=13;Parent=mainInner})
-    Rnd(tabContainer,8); Library:AddToRegistry(tabContainer,{BackgroundColor3="MainColor"})
+    local mainInner=Library:Create("Frame",{BackgroundColor3=Library.BackgroundColor;BorderSizePixel=0;Size=UDim2.fromScale(1,1);ZIndex=12;ClipsDescendants=true;Parent=mainOuter})
+    Library:AddToRegistry(mainInner,{BackgroundColor3="BackgroundColor"})
+    -- Tab buttons bar across the top
+    local tabArea=Library:Create("Frame",{BackgroundColor3=Library.MainColor;BorderSizePixel=0;
+        Position=UDim2.fromOffset(0,0);Size=UDim2.new(1,0,0,28);ZIndex=13;Parent=mainInner})
+    Library:AddToRegistry(tabArea,{BackgroundColor3="MainColor"})
+    Library:Create("UIListLayout",{Padding=UDim.new(0,0);FillDirection=Enum.FillDirection.Horizontal;
+        SortOrder=Enum.SortOrder.LayoutOrder;Parent=tabArea})
+    -- Content below tab buttons
+    local tabContainer=Library:Create("Frame",{BackgroundColor3=Library.BackgroundColor;BorderSizePixel=0;
+        Position=UDim2.fromOffset(0,28);Size=UDim2.new(1,0,1,-28);ZIndex=13;Parent=mainInner})
+    Library:AddToRegistry(tabContainer,{BackgroundColor3="BackgroundColor"})
     function Window:SetWindowTitle(t) titleLbl.Text=t end
 
     function Window:AddTab(name)
@@ -783,8 +789,11 @@ function Library:CreateWindow(...)
         local tabBtn=Library:Create("Frame",{BackgroundColor3=Library.BackgroundColor;BorderSizePixel=0;Size=UDim2.new(0,tw+18,1,0);ZIndex=14;Parent=tabArea})
         Library:AddToRegistry(tabBtn,{BackgroundColor3="BackgroundColor"})
         Library:MakeLabel({Size=UDim2.fromScale(1,1);Text=name;TextSize=13;Font=Library.FontBold;ZIndex=15;Parent=tabBtn})
-        local blocker=Library:Create("Frame",{BackgroundColor3=Library.MainColor;BorderSizePixel=0;Position=UDim2.new(0,0,1,-1);Size=UDim2.new(1,0,0,2);BackgroundTransparency=1;ZIndex=16;Parent=tabBtn})
-        Library:AddToRegistry(blocker,{BackgroundColor3="MainColor"})
+        -- Active indicator: bottom blue line
+        local activeBar=Library:Create("Frame",{BackgroundColor3=Library.AccentColor;BorderSizePixel=0;
+            AnchorPoint=Vector2.new(0,1);Position=UDim2.fromScale(0,1);Size=UDim2.new(1,0,0,2);
+            Visible=false;ZIndex=16;Parent=tabBtn})
+        Library:AddToRegistry(activeBar,{BackgroundColor3="AccentColor"})
         local tabFrame=Library:Create("Frame",{BackgroundTransparency=1;ClipsDescendants=true;Size=UDim2.fromScale(1,1);Visible=false;ZIndex=14;Parent=tabContainer})
         local ColPad,ColGap=7,6
         local function makeSide(xscale,xoff)
@@ -797,17 +806,18 @@ function Library:CreateWindow(...)
         end
         local leftSide=makeSide(0,ColPad); local rightSide=makeSide(0.5,ColGap/2)
         function Tab:ShowTab()
-            -- Close all open dropdowns/pickers before switching
             for f in next, Library.OpenedFrames do
                 pcall(function() f.Visible=false end)
                 Library.OpenedFrames[f]=nil
             end
             for _,t in next,Window.Tabs do t:HideTab() end
-            blocker.BackgroundTransparency=0; Tween(tabBtn,{BackgroundColor3=Library.MainColor},0.12)
+            activeBar.Visible=true
+            Tween(tabBtn,{BackgroundColor3=Library.MainColor},0.12)
             Library.RegistryMap[tabBtn].Properties.BackgroundColor3="MainColor"; tabFrame.Visible=true
         end
         function Tab:HideTab()
-            blocker.BackgroundTransparency=1; Tween(tabBtn,{BackgroundColor3=Library.BackgroundColor},0.12)
+            activeBar.Visible=false
+            Tween(tabBtn,{BackgroundColor3=Library.BackgroundColor},0.12)
             Library.RegistryMap[tabBtn].Properties.BackgroundColor3="BackgroundColor"; tabFrame.Visible=false
         end
         function Tab:AddGroupbox(info)
