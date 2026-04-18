@@ -266,7 +266,7 @@ function F:AddColorPicker(idx, info)
         Title=type(info.Title)=="string" and info.Title or "Color";Callback=info.Callback or function()end}
     function CP:SetHSV(c) CP.Hue,CP.Sat,CP.Vib=Color3.toHSV(c) end
     CP:SetHSV(CP.Value)
-    local swatch = Library:Create("Frame",{BackgroundColor3=CP.Value;BorderSizePixel=0;Size=UDim2.new(0,24,0,12);ZIndex=6;Parent=TL})
+    local swatch = Library:Create("Frame",{BackgroundColor3=CP.Value;BorderSizePixel=0;Size=UDim2.new(0,24,0,12);ZIndex=21;Parent=TL})
     Rnd(swatch,4); MkStroke(swatch,Library.OutlineColor,1)
     local picker = Library:Create("Frame",{Name="Color";BackgroundColor3=Library.BackgroundColor;BorderSizePixel=0;
         Position=UDim2.fromOffset(swatch.AbsolutePosition.X,swatch.AbsolutePosition.Y+20);
@@ -349,9 +349,9 @@ function F:AddKeyPicker(idx, info)
         Callback=info.Callback or function()end;ChangedCallback=info.ChangedCallback or function()end;
         SyncToggleState=info.SyncToggleState or false}
     if KP.SyncToggleState then info.Modes={"Toggle"};info.Mode="Toggle" end
-    local kOuter=Library:Create("Frame",{BackgroundColor3=Library.MainColor;BorderSizePixel=0;Size=UDim2.new(0,30,0,14);ZIndex=6;Parent=TL})
+    local kOuter=Library:Create("Frame",{BackgroundColor3=Library.MainColor;BorderSizePixel=0;Size=UDim2.new(0,30,0,14);ZIndex=21;Parent=TL})
     Rnd(kOuter,4); MkStroke(kOuter,Library.OutlineColor,1); Library:AddToRegistry(kOuter,{BackgroundColor3="MainColor"})
-    local kLbl=Library:MakeLabel({Size=UDim2.fromScale(1,1);TextSize=11;Text=info.Default;ZIndex=7;Parent=kOuter})
+    local kLbl=Library:MakeLabel({Size=UDim2.fromScale(1,1);TextSize=11;Text=info.Default;ZIndex=22;Parent=kOuter})
     local mOuter=Library:Create("Frame",{BackgroundColor3=Library.BackgroundColor;BorderSizePixel=0;Size=UDim2.fromOffset(68,52);Visible=false;ZIndex=60;Parent=ScreenGui})
     Rnd(mOuter,7); MkStroke(mOuter,Library.OutlineColor,1.5); Library:AddToRegistry(mOuter,{BackgroundColor3="BackgroundColor"})
     TL:GetPropertyChangedSignal("AbsolutePosition"):Connect(function()
