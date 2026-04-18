@@ -266,8 +266,8 @@ function F:AddColorPicker(idx, info)
         Title=type(info.Title)=="string" and info.Title or "Color";Callback=info.Callback or function()end}
     function CP:SetHSV(c) CP.Hue,CP.Sat,CP.Vib=Color3.toHSV(c) end
     CP:SetHSV(CP.Value)
-    local swatch = Library:Create("Frame",{BackgroundColor3=CP.Value;BorderSizePixel=0;Size=UDim2.new(0,24,0,12);ZIndex=21;Parent=TL})
-    Rnd(swatch,4); MkStroke(swatch,Library.OutlineColor,1)
+    local swatch = Library:Create("Frame",{BackgroundColor3=CP.Value;BorderSizePixel=0;Size=UDim2.new(0,28,0,14);ZIndex=21;Parent=TL})
+    Rnd(swatch,4); MkStroke(swatch,Color3.fromRGB(255,255,255),1)
     local picker = Library:Create("Frame",{Name="Color";BackgroundColor3=Library.BackgroundColor;BorderSizePixel=0;
         Position=UDim2.fromOffset(swatch.AbsolutePosition.X,swatch.AbsolutePosition.Y+20);
         Size=UDim2.fromOffset(234,258);Visible=false;ZIndex=50;Parent=ScreenGui})
@@ -551,9 +551,9 @@ function F:AddToggle(idx,info)
     Library:AddToRegistry(pill,{BackgroundColor3=T.Value and "AccentColor" or "MainColor"})
     local knob=Library:Create("Frame",{BackgroundColor3=Color3.new(1,1,1);BorderSizePixel=0;AnchorPoint=Vector2.new(0,0.5);Position=T.Value and UDim2.new(1,-14,0.5,0) or UDim2.new(0,2,0.5,0);Size=UDim2.fromOffset(12,12);ZIndex=21;Parent=pill})
     Rnd(knob,6)
-    local tLbl=Library:MakeLabel({Size=UDim2.new(0,190,1,0);Position=UDim2.new(1,8,0,0);TextSize=13;Text=info.Text;TextXAlignment=Enum.TextXAlignment.Left;ZIndex=21;Parent=pill})
+    local tLbl=Library:MakeLabel({Size=UDim2.new(0,170,1,0);Position=UDim2.new(1,8,0,0);TextSize=13;Text=info.Text;TextXAlignment=Enum.TextXAlignment.Left;ZIndex=21;Parent=pill})
     Library:Create("UIListLayout",{Padding=UDim.new(0,4);FillDirection=Enum.FillDirection.Horizontal;HorizontalAlignment=Enum.HorizontalAlignment.Right;SortOrder=Enum.SortOrder.LayoutOrder;Parent=tLbl})
-    local region=Library:Create("Frame",{BackgroundTransparency=1;Size=UDim2.new(0,194,1,0);ZIndex=23;Parent=pill})
+    local region=Library:Create("Frame",{BackgroundTransparency=1;Size=UDim2.new(0,174,1,0);ZIndex=23;Parent=pill})
     if type(info.Tooltip)=="string" then Library:AddToolTip(info.Tooltip,region) end
     function T:Display()
         Tween(pill,{BackgroundColor3=T.Value and Library.AccentColor or Library.MainColor},0.12)
