@@ -1045,7 +1045,7 @@ function Library:CreateWindow(...)
 
     -- Mobile toggle button
     local mobileBtn=nil
-    if InputService:GetTouchEnabled() then
+    if InputService.TouchEnabled then
         mobileBtn=Library:Create("TextButton",{BackgroundColor3=Library.AccentColor;BorderSizePixel=0;
             Position=UDim2.fromOffset(8,8);Size=UDim2.fromOffset(56,26);Text="☰ UI";
             TextColor3=Color3.new(1,1,1);Font=Library.FontBold;TextSize=12;ZIndex=600;Parent=ScreenGui})
