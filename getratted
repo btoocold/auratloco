@@ -781,7 +781,14 @@ function Library:CreateWindow(...)
         Parent=ScreenGui;
         ClipsDescendants=true
     })
-    Rnd(outer,12); MkStroke(outer, Color3.fromRGB(0,80,255), 1.5, 0.15); Glow(outer, 14)
+    Rnd(outer,12)
+    local outerStroke = MkStroke(outer, Color3.fromRGB(0,80,255), 1.5, 0.15)
+    Glow(outer, 14)
+    Library:GiveSignal(RunService.RenderStepped:Connect(function()
+        if outerStroke and outerStroke.Parent then
+            outerStroke.Color = Library.CurrentRainbowColor or Color3.fromRGB(0, 80, 255)
+        end
+    end))
     Library:MakeDraggable(outer,30)
     Library:AddToRegistry(outer,{BackgroundColor3="BackgroundColor"})
 
@@ -937,19 +944,19 @@ function Library:CreateWindow(...)
             local tbO=Library:Create("Frame",{BackgroundColor3=Library.BackgroundColor;BorderSizePixel=0;Size=UDim2.new(1,0,0,0);ZIndex=15;Parent=side})
             Rnd(tbO,9); MkStroke(tbO,Library.OutlineColor,1); Library:AddToRegistry(tbO,{BackgroundColor3="BackgroundColor"})
             local tbAcc=Library:Create("Frame",{BackgroundColor3=Library.AccentColor;BackgroundTransparency=1;BorderSizePixel=0;Size=UDim2.new(1,0,0,2);ZIndex=16;Visible=false;Parent=tbO})
-            local btnRow=Library:Create("Frame",{BackgroundTransparency=1;Position=UDim2.fromOffset(6,6);Size=UDim2.new(1,-12,0,22);ZIndex=16;Parent=tbO})
-            Library:Create("UIListLayout",{FillDirection=Enum.FillDirection.Horizontal;SortOrder=Enum.SortOrder.LayoutOrder;Padding=UDim.new(0,4);Parent=btnRow})
+            local btnRow=Library:Create("Frame",{BackgroundTransparency=1;Position=UDim2.fromOffset(0,1);Size=UDim2.new(1,0,0,20);ZIndex=16;Parent=tbO})
+            Library:Create("UIListLayout",{FillDirection=Enum.FillDirection.Horizontal;SortOrder=Enum.SortOrder.LayoutOrder;Parent=btnRow})
             function Tabbox:AddTab(name)
                 local T={}
                 local btn=Library:Create("Frame",{BackgroundColor3=Library.MainColor;BorderSizePixel=0;Size=UDim2.new(0.5,0,1,0);ZIndex=17;Parent=btnRow})
-                Rnd(btn,6)
                 Library:AddToRegistry(btn,{BackgroundColor3="MainColor"})
                 Library:MakeLabel({Size=UDim2.fromScale(1,1);TextSize=12;Text=name;ZIndex=18;Parent=btn})
-                local block=Library:Create("Frame",{BackgroundColor3=Library.BackgroundColor;BackgroundTransparency=1;BorderSizePixel=0;Position=UDim2.new(0,0,1,0);Size=UDim2.new(1,0,0,2);Visible=false;ZIndex=19;Parent=btn})
-                local tCont=Library:Create("Frame",{BackgroundTransparency=1;Position=UDim2.fromOffset(4,30);Size=UDim2.new(1,-8,1,-30);ZIndex=18;Visible=false;Parent=tbO})
+                local block=Library:Create("Frame",{BackgroundColor3=Library.BackgroundColor;BorderSizePixel=0;Position=UDim2.new(0,0,1,0);Size=UDim2.new(1,0,0,2);Visible=false;ZIndex=19;Parent=btn})
+                Library:AddToRegistry(block,{BackgroundColor3="BackgroundColor"})
+                local tCont=Library:Create("Frame",{BackgroundTransparency=1;Position=UDim2.fromOffset(4,22);Size=UDim2.new(1,-4,1,-22);ZIndex=18;Visible=false;Parent=tbO})
                 Library:Create("UIListLayout",{FillDirection=Enum.FillDirection.Vertical;SortOrder=Enum.SortOrder.LayoutOrder;Parent=tCont})
                 function T:Show()
-                    for _,tb in next,Tabbox.Tabs do tb:Hide() end; tCont.Visible=true; block.Visible=false
+                    for _,tb in next,Tabbox.Tabs do tb:Hide() end; tCont.Visible=true; block.Visible=true
                     Tween(btn,{BackgroundColor3=Library.BackgroundColor},0.1); Library.RegistryMap[btn].Properties.BackgroundColor3="BackgroundColor"; T:Resize()
                 end
                 function T:Hide()
@@ -958,12 +965,10 @@ function Library:CreateWindow(...)
                 end
                 function T:Resize()
                     local cnt=0; for _ in next,Tabbox.Tabs do cnt=cnt+1 end
-                    local gap=4
-                    local totalGap=math.max(0,(cnt-1)*gap)
-                    for _,b in next,btnRow:GetChildren() do if not b:IsA("UIListLayout") then b.Size=UDim2.new(1/cnt, -(totalGap/cnt), 1, 0) end end
+                    for _,b in next,btnRow:GetChildren() do if not b:IsA("UIListLayout") then b.Size=UDim2.new(1/cnt,0,1,0) end end
                     if not tCont.Visible then return end
                     local h=0; for _,e in next,T.Container:GetChildren() do if not e:IsA("UIListLayout") and e.Visible then h=h+e.Size.Y.Offset end end
-                    tbO.Size=UDim2.new(1,0,0,30+h+6) end
+                    tbO.Size=UDim2.new(1,0,0,22+h+4) end
                 btn.InputBegan:Connect(function(inp)
                     if IsPress(inp) and not Library:MouseIsOverOpenedFrame() then T:Show(); T:Resize() end end)
                 T.Container=tCont; Tabbox.Tabs[name]=T; setmetatable(T,BaseGroupbox); T:AddBlank(3); T:Resize()
