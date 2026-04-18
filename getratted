@@ -425,12 +425,12 @@ local BaseGroupbox = {}
 do local F = {}
 
 function F:AddBlank(h)
-    Library:Create("Frame",{BackgroundTransparency=1;Size=UDim2.new(1,0,0,h);ZIndex=1;Parent=self.Container}) end
+    Library:Create("Frame",{BackgroundTransparency=1;Size=UDim2.new(1,0,0,h);ZIndex=20;Parent=self.Container}) end
 
 function F:AddLabel(text,wrap)
     local Label={}
     local tl=Library:MakeLabel({Size=UDim2.new(1,-4,0,14);TextSize=13;Text=text;TextWrapped=wrap or false;
-        TextXAlignment=Enum.TextXAlignment.Left;ZIndex=5;Parent=self.Container})
+        TextXAlignment=Enum.TextXAlignment.Left;ZIndex=20;Parent=self.Container})
     if wrap then local _,y=Library:GetTextBounds(text,Library.Font,13,Vector2.new(tl.AbsoluteSize.X,math.huge)); tl.Size=UDim2.new(1,-4,0,y)
     else Library:Create("UIListLayout",{Padding=UDim.new(0,4);FillDirection=Enum.FillDirection.Horizontal;
         HorizontalAlignment=Enum.HorizontalAlignment.Right;SortOrder=Enum.SortOrder.LayoutOrder;Parent=tl}) end
@@ -444,7 +444,7 @@ end
 
 function F:AddDivider()
     self:AddBlank(4)
-    local d=Library:Create("Frame",{BackgroundColor3=Library.OutlineColor;BorderSizePixel=0;Size=UDim2.new(1,-8,0,1);ZIndex=5;Parent=self.Container})
+    local d=Library:Create("Frame",{BackgroundColor3=Library.OutlineColor;BorderSizePixel=0;Size=UDim2.new(1,-8,0,1);ZIndex=20;Parent=self.Container})
     Library:AddToRegistry(d,{BackgroundColor3="OutlineColor"}); self:AddBlank(6); self:Resize()
 end
 
@@ -456,11 +456,11 @@ function F:AddButton(...)
         assert(type(obj.Func)=="function","AddButton: Func missing") end
     Parse(Btn,...)
     local function MakeBtn(b)
-        local outer=Library:Create("Frame",{BackgroundColor3=Library.MainColor;BorderSizePixel=0;Size=UDim2.new(1,-4,0,22);ZIndex=5})
+        local outer=Library:Create("Frame",{BackgroundColor3=Library.MainColor;BorderSizePixel=0;Size=UDim2.new(1,-4,0,22);ZIndex=20})
         Rnd(outer,6); MkStroke(outer,Library.OutlineColor,1)
         Grad(outer,Color3.fromRGB(30,30,45),Color3.fromRGB(18,18,28),90)
         Library:AddToRegistry(outer,{BackgroundColor3="MainColor"})
-        local lbl=Library:MakeLabel({Size=UDim2.fromScale(1,1);TextSize=13;Text=b.Text;ZIndex=6;Parent=outer})
+        local lbl=Library:MakeLabel({Size=UDim2.fromScale(1,1);TextSize=13;Text=b.Text;ZIndex=21;Parent=outer})
         outer.InputBegan:Connect(function(inp) if IsPress(inp) then Tween(outer,{BackgroundColor3=Library.AccentColor},0.1) end end)
         outer.InputEnded:Connect(function(inp) if IsPress(inp) then Tween(outer,{BackgroundColor3=Library.MainColor},0.15) end end)
         return outer,nil,lbl
@@ -499,12 +499,12 @@ end
 function F:AddInput(idx,info)
     assert(info.Text,"AddInput: Missing Text")
     local TB={Value=info.Default or "";Numeric=info.Numeric or false;Finished=info.Finished or false;Type="Input";Callback=info.Callback or function()end}
-    Library:MakeLabel({Size=UDim2.new(1,0,0,13);TextSize=12;Text=info.Text;TextXAlignment=Enum.TextXAlignment.Left;ZIndex=5;Parent=self.Container})
+    Library:MakeLabel({Size=UDim2.new(1,0,0,13);TextSize=12;Text=info.Text;TextXAlignment=Enum.TextXAlignment.Left;ZIndex=20;Parent=self.Container})
     self:AddBlank(2)
-    local outer=Library:Create("Frame",{BackgroundColor3=Library.MainColor;BorderSizePixel=0;Size=UDim2.new(1,-4,0,22);ZIndex=5;Parent=self.Container})
+    local outer=Library:Create("Frame",{BackgroundColor3=Library.MainColor;BorderSizePixel=0;Size=UDim2.new(1,-4,0,22);ZIndex=20;Parent=self.Container})
     Rnd(outer,6); local st=MkStroke(outer,Library.OutlineColor,1); Library:AddToRegistry(outer,{BackgroundColor3="MainColor"})
-    local clip=Library:Create("Frame",{BackgroundTransparency=1;ClipsDescendants=true;Position=UDim2.fromOffset(7,0);Size=UDim2.new(1,-7,1,0);ZIndex=7;Parent=outer})
-    local box=Library:Create("TextBox",{BackgroundTransparency=1;Size=UDim2.fromScale(4,1);Font=Library.Font;PlaceholderColor3=Library.SubtleColor;PlaceholderText=info.Placeholder or "";Text=info.Default or "";TextColor3=Library.FontColor;TextSize=13;TextXAlignment=Enum.TextXAlignment.Left;ZIndex=7;Parent=clip;ClearTextOnFocus=false})
+    local clip=Library:Create("Frame",{BackgroundTransparency=1;ClipsDescendants=true;Position=UDim2.fromOffset(7,0);Size=UDim2.new(1,-7,1,0);ZIndex=22;Parent=outer})
+    local box=Library:Create("TextBox",{BackgroundTransparency=1;Size=UDim2.fromScale(4,1);Font=Library.Font;PlaceholderColor3=Library.SubtleColor;PlaceholderText=info.Placeholder or "";Text=info.Default or "";TextColor3=Library.FontColor;TextSize=13;TextXAlignment=Enum.TextXAlignment.Left;ZIndex=22;Parent=clip;ClearTextOnFocus=false})
     Library:AddToRegistry(box,{TextColor3="FontColor"})
     box.Focused:Connect(function() if st then st.Color=Library.AccentColor end end)
     box.FocusLost:Connect(function() if st then st.Color=Library.OutlineColor end end)
@@ -522,14 +522,14 @@ end
 function F:AddToggle(idx,info)
     assert(info.Text,"AddToggle: Missing Text")
     local T={Value=info.Default or false;Type="Toggle";Callback=info.Callback or function()end;Addons={};Risky=info.Risky}
-    local pill=Library:Create("Frame",{BackgroundColor3=T.Value and Library.AccentColor or Library.MainColor;BorderSizePixel=0;Size=UDim2.new(0,32,0,16);ZIndex=5;Parent=self.Container})
+    local pill=Library:Create("Frame",{BackgroundColor3=T.Value and Library.AccentColor or Library.MainColor;BorderSizePixel=0;Size=UDim2.new(0,32,0,16);ZIndex=20;Parent=self.Container})
     Rnd(pill,8); local pst=MkStroke(pill,T.Value and Library.AccentColorDark or Library.OutlineColor,1)
     Library:AddToRegistry(pill,{BackgroundColor3=T.Value and "AccentColor" or "MainColor"})
-    local knob=Library:Create("Frame",{BackgroundColor3=Color3.new(1,1,1);BorderSizePixel=0;AnchorPoint=Vector2.new(0,0.5);Position=T.Value and UDim2.new(1,-14,0.5,0) or UDim2.new(0,2,0.5,0);Size=UDim2.fromOffset(12,12);ZIndex=6;Parent=pill})
+    local knob=Library:Create("Frame",{BackgroundColor3=Color3.new(1,1,1);BorderSizePixel=0;AnchorPoint=Vector2.new(0,0.5);Position=T.Value and UDim2.new(1,-14,0.5,0) or UDim2.new(0,2,0.5,0);Size=UDim2.fromOffset(12,12);ZIndex=21;Parent=pill})
     Rnd(knob,6)
-    local tLbl=Library:MakeLabel({Size=UDim2.new(0,216,1,0);Position=UDim2.new(1,8,0,0);TextSize=13;Text=info.Text;TextXAlignment=Enum.TextXAlignment.Left;ZIndex=6;Parent=pill})
+    local tLbl=Library:MakeLabel({Size=UDim2.new(0,216,1,0);Position=UDim2.new(1,8,0,0);TextSize=13;Text=info.Text;TextXAlignment=Enum.TextXAlignment.Left;ZIndex=21;Parent=pill})
     Library:Create("UIListLayout",{Padding=UDim.new(0,4);FillDirection=Enum.FillDirection.Horizontal;HorizontalAlignment=Enum.HorizontalAlignment.Right;SortOrder=Enum.SortOrder.LayoutOrder;Parent=tLbl})
-    local region=Library:Create("Frame",{BackgroundTransparency=1;Size=UDim2.new(0,220,1,0);ZIndex=8;Parent=pill})
+    local region=Library:Create("Frame",{BackgroundTransparency=1;Size=UDim2.new(0,220,1,0);ZIndex=23;Parent=pill})
     if type(info.Tooltip)=="string" then Library:AddToolTip(info.Tooltip,region) end
     function T:Display()
         Tween(pill,{BackgroundColor3=T.Value and Library.AccentColor or Library.MainColor},0.12)
@@ -556,12 +556,12 @@ function F:AddSlider(idx,info)
     assert(info.Min~=nil,"AddSlider: min"); assert(info.Max,"AddSlider: max"); assert(info.Rounding~=nil,"AddSlider: rounding")
     local S={Value=info.Default;Min=info.Min;Max=info.Max;Rounding=info.Rounding;MaxSize=230;Type="Slider";Callback=info.Callback or function()end}
     if not info.Compact then
-        Library:MakeLabel({Size=UDim2.new(1,0,0,13);TextSize=12;Text=info.Text;TextXAlignment=Enum.TextXAlignment.Left;TextYAlignment=Enum.TextYAlignment.Bottom;ZIndex=5;Parent=self.Container}); self:AddBlank(3) end
-    local track=Library:Create("Frame",{BackgroundColor3=Library.MainColor;BorderSizePixel=0;Size=UDim2.new(1,-4,0,16);ZIndex=5;Parent=self.Container})
+        Library:MakeLabel({Size=UDim2.new(1,0,0,13);TextSize=12;Text=info.Text;TextXAlignment=Enum.TextXAlignment.Left;TextYAlignment=Enum.TextYAlignment.Bottom;ZIndex=20;Parent=self.Container}); self:AddBlank(3) end
+    local track=Library:Create("Frame",{BackgroundColor3=Library.MainColor;BorderSizePixel=0;Size=UDim2.new(1,-4,0,16);ZIndex=20;Parent=self.Container})
     Rnd(track,8); local tst=MkStroke(track,Library.OutlineColor,1); Library:AddToRegistry(track,{BackgroundColor3="MainColor"})
-    local fill=Library:Create("Frame",{BackgroundColor3=Library.AccentColor;BorderSizePixel=0;Size=UDim2.new(0,0,1,0);ZIndex=7;Parent=track})
+    local fill=Library:Create("Frame",{BackgroundColor3=Library.AccentColor;BorderSizePixel=0;Size=UDim2.new(0,0,1,0);ZIndex=22;Parent=track})
     Rnd(fill,8); Grad(fill,Library.AccentColorLight,Library.AccentColor,0); Library:AddToRegistry(fill,{BackgroundColor3="AccentColor"})
-    local vLbl=Library:MakeLabel({Size=UDim2.fromScale(1,1);TextSize=12;ZIndex=9;Parent=track})
+    local vLbl=Library:MakeLabel({Size=UDim2.fromScale(1,1);TextSize=12;ZIndex=24;Parent=track})
     if type(info.Tooltip)=="string" then Library:AddToolTip(info.Tooltip,track) end
     local function Rnd2(v) if S.Rounding==0 then return math.floor(v) end return tonumber(string.format("%."..S.Rounding.."f",v)) end
     function S:Display()
@@ -600,10 +600,10 @@ function F:AddDropdown(idx,info)
     if not info.Text then info.Compact=true end
     local DD={Values=info.Values;Value=info.Multi and {};Multi=info.Multi;Type="Dropdown";SpecialType=info.SpecialType;Callback=info.Callback or function()end}
     if not info.Compact then
-        Library:MakeLabel({Size=UDim2.new(1,0,0,13);TextSize=12;Text=info.Text;TextXAlignment=Enum.TextXAlignment.Left;TextYAlignment=Enum.TextYAlignment.Bottom;ZIndex=5;Parent=self.Container}); self:AddBlank(3) end
-    local dOuter=Library:Create("Frame",{BackgroundColor3=Library.MainColor;BorderSizePixel=0;Size=UDim2.new(1,-4,0,22);ZIndex=5;Parent=self.Container})
+        Library:MakeLabel({Size=UDim2.new(1,0,0,13);TextSize=12;Text=info.Text;TextXAlignment=Enum.TextXAlignment.Left;TextYAlignment=Enum.TextYAlignment.Bottom;ZIndex=20;Parent=self.Container}); self:AddBlank(3) end
+    local dOuter=Library:Create("Frame",{BackgroundColor3=Library.MainColor;BorderSizePixel=0;Size=UDim2.new(1,-4,0,22);ZIndex=20;Parent=self.Container})
     Rnd(dOuter,6); local dst=MkStroke(dOuter,Library.OutlineColor,1); Library:AddToRegistry(dOuter,{BackgroundColor3="MainColor"})
-    local arrow=Library:Create("ImageLabel",{AnchorPoint=Vector2.new(0,0.5);BackgroundTransparency=1;Position=UDim2.new(1,-16,0.5,0);Size=UDim2.fromOffset(10,10);Image="rbxassetid://6282522798";ZIndex=8;Parent=dOuter})
+    local arrow=Library:Create("ImageLabel",{AnchorPoint=Vector2.new(0,0.5);BackgroundTransparency=1;Position=UDim2.new(1,-16,0.5,0);Size=UDim2.fromOffset(10,10);Image="rbxassetid://6282522798";ZIndex=23;Parent=dOuter})
     local iList=Library:MakeLabel({Position=UDim2.fromOffset(7,0);Size=UDim2.new(1,-22,1,0);TextSize=13;Text="--";TextXAlignment=Enum.TextXAlignment.Left;ZIndex=7;Parent=dOuter})
     if type(info.Tooltip)=="string" then Library:AddToolTip(info.Tooltip,dOuter) end
     local MAX=8
