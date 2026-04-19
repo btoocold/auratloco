@@ -59,8 +59,7 @@ local function OnTap(guiObject, callback)
             inp.Changed:Connect(function()
                 if inp.UserInputState == Enum.UserInputState.End then
                     local endPos = inp.Position
-                    local touchVec = Vector2.new(endPos.X, endPos.Y)
-                    local dist = (touchVec - Vector2.new(startPos.X, startPos.Y)).Magnitude
+                    local dist = (Vector2.new(endPos.X, endPos.Y) - Vector2.new(startPos.X, startPos.Y)).Magnitude
                     if dist < TAP_THRESHOLD then
                         callback(inp)
                     end
@@ -243,18 +242,19 @@ function Library:MakeDraggable(inst, cutoff)
     end))
 end
 
-function Library:IsOverFrame(frame, pos)
-    local p = pos or CursorPos()
-    if (p == Vector2.zero or (p.X == 0 and p.Y == 0)) and IsMobile() then return false end
+function Library:IsOverFrame(frame)
+    local p=CursorPos()
+    -- On mobile CursorPos returns 0,0 so also check touch position
+    if p == Vector2.zero and IsMobile() then return false end
     local ap,as=frame.AbsolutePosition,frame.AbsoluteSize
     return p.X>=ap.X and p.X<=ap.X+as.X and p.Y>=ap.Y and p.Y<=ap.Y+as.Y
 end
-function Library:MouseIsOverOpenedFrame(touchPos)
+function Library:MouseIsOverOpenedFrame()
     -- If any dropdown/picker is open, only allow clicks inside it
     -- Clicks outside will be blocked (and the dropdown will be closed by the global InputBegan handler)
     for f in next, Library.OpenedFrames do
         if f.Visible then
-            if Library:IsOverFrame(f, touchPos) then
+            if Library:IsOverFrame(f) then
                 return false -- click is inside the open frame, allow it
             else
                 return true -- click is outside, block it
@@ -524,8 +524,7 @@ function F:AddButton(...)
             return bind.Event:Wait()
         end
         OnTap(b.Outer, function(inp)
-            local _tp = inp and Vector2.new(inp.Position.X, inp.Position.Y) or nil
-            if Library:MouseIsOverOpenedFrame(_tp) or b.Locked then return end
+            if Library:MouseIsOverOpenedFrame() or b.Locked then return end
             if b.DoubleClick then
                 b.Label.TextColor3=Library.AccentColor; b.Label.Text="Sure?"; b.Locked=true
                 local ok=waitClick(b.Outer.InputBegan,0.6)
@@ -596,8 +595,7 @@ function F:AddToggle(idx,info)
         Library:SafeCallback(T.Callback,T.Value); Library:SafeCallback(T.Changed,T.Value); Library:UpdateDependencyBoxes()
     end
     OnTap(region, function(inp)
-        local _tp = inp and Vector2.new(inp.Position.X, inp.Position.Y) or nil
-        if not Library:MouseIsOverOpenedFrame(_tp) then T:SetValue(not T.Value); Library:AttemptSave() end end)
+        if not Library:MouseIsOverOpenedFrame() then T:SetValue(not T.Value); Library:AttemptSave() end end)
     if T.Risky then Library:RemoveFromRegistry(tLbl); tLbl.TextColor3=Library.RiskColor; Library:AddToRegistry(tLbl,{TextColor3="RiskColor"}) end
     T:Display(); self:AddBlank(info.BlankSize or 7); self:Resize()
     T.TextLabel=tLbl; T.Container=self.Container; setmetatable(T,BaseAddons); Toggles[idx]=T; Library:UpdateDependencyBoxes(); return T
@@ -714,8 +712,7 @@ function F:AddDropdown(idx,info)
         DD:BuildList(); Library:SafeCallback(DD.Callback,DD.Value); Library:SafeCallback(DD.Changed,DD.Value)
     end
     OnTap(dOuter, function(inp)
-        local _tp = inp and Vector2.new(inp.Position.X, inp.Position.Y) or nil
-        if not Library:MouseIsOverOpenedFrame(_tp) then
+        if not Library:MouseIsOverOpenedFrame() then
             if listFrame.Visible then DD:CloseDropdown() else DD:OpenDropdown() end end end)
     Library:GiveSignal(InputService.InputBegan:Connect(function(inp)
         if IsPress(inp) then
@@ -724,7 +721,7 @@ function F:AddDropdown(idx,info)
             local dap, das = dOuter.AbsolutePosition, dOuter.AbsoluteSize
             local insideList = p.X>=ap.X and p.X<=ap.X+as.X and p.Y>=ap.Y and p.Y<=ap.Y+as.Y
             local insideOuter = p.X>=dap.X and p.X<=dap.X+das.X and p.Y>=dap.Y and p.Y<=dap.Y+das.Y
-            if not insideList and not insideOuter then DD:CloseDropdown() end
+            if not insideList and not insideOuter then task.defer(function() DD:CloseDropdown() end) end
         end
     end))
     DD:BuildList(); DD:Display()
