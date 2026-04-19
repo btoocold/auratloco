@@ -117,7 +117,7 @@ Library.AccentColorLight = Color3.fromRGB(60, 140, 255)
 local rHue = 0
 Library.RainbowStrokes = {}
 table.insert(Library.Signals, RunService.RenderStepped:Connect(function(dt)
-    rHue = (rHue + dt / 5) % 1
+    rHue = (rHue + dt / 8) % 1
     Library.CurrentRainbowHue   = rHue
     Library.CurrentRainbowColor = Color3.fromHSV(rHue, 0.8, 1)
     for i = #Library.RainbowStrokes, 1, -1 do
@@ -820,20 +820,29 @@ function Library:CreateWindow(...)
         ClipsDescendants=true
     })
     Rnd(outer,12)
-    local outerStroke = MkStroke(outer, Color3.fromRGB(0,80,255), 3, 0)
-    local outerGlow = Glow(outer, 24)
-    if outerGlow then outerGlow.ImageTransparency = 0.25 end
+    -- Multi-layer rainbow border: each layer cycles at a different hue offset
+    -- Layer 1: Outer rainbow (thickest)
+    local outerStroke = MkStroke(outer, Color3.fromRGB(0,255,0), 3.5, 0)
+    local outerGlow = Glow(outer, 28)
+    if outerGlow then outerGlow.ImageTransparency = 0.2 end
 
-    local cyanBorder=Library:Create("Frame",{BackgroundTransparency=1;BorderSizePixel=0;Position=UDim2.fromOffset(4,4);Size=UDim2.new(1,-8,1,-8);ZIndex=10;Parent=outer})
-    Rnd(cyanBorder,9)
-    local cyanStroke = MkStroke(cyanBorder, Color3.fromRGB(0, 200, 255), 1, 0)
+    -- Layer 2: Warm offset (pink/orange)
+    local warmBorder=Library:Create("Frame",{BackgroundTransparency=1;BorderSizePixel=0;Position=UDim2.fromOffset(4,4);Size=UDim2.new(1,-8,1,-8);ZIndex=10;Parent=outer})
+    Rnd(warmBorder,10)
+    local warmStroke = MkStroke(warmBorder, Color3.fromRGB(255,50,150), 2, 0)
+
+    -- Layer 3: Cool offset (cyan/blue)
+    local coolBorder=Library:Create("Frame",{BackgroundTransparency=1;BorderSizePixel=0;Position=UDim2.fromOffset(7,7);Size=UDim2.new(1,-14,1,-14);ZIndex=10;Parent=outer})
+    Rnd(coolBorder,9)
+    local coolStroke = MkStroke(coolBorder, Color3.fromRGB(0,200,255), 1.5, 0)
 
     Library:GiveSignal(RunService.RenderStepped:Connect(function()
-        local rc = Library.CurrentRainbowColor or Color3.fromRGB(0, 80, 255)
         local rh = Library.CurrentRainbowHue or 0
-        if outerStroke and outerStroke.Parent then outerStroke.Color = rc end
-        if outerGlow and outerGlow.Parent then outerGlow.ImageColor3 = rc end
-        if cyanStroke and cyanStroke.Parent then cyanStroke.Color = Color3.fromHSV((rh + 0.15) % 1, 0.7, 1) end
+        -- Each layer is offset by ~0.33 hue so you see 3 distinct colors at once
+        if outerStroke and outerStroke.Parent then outerStroke.Color = Color3.fromHSV(rh, 0.9, 1) end
+        if outerGlow and outerGlow.Parent then outerGlow.ImageColor3 = Color3.fromHSV(rh, 0.7, 1) end
+        if warmStroke and warmStroke.Parent then warmStroke.Color = Color3.fromHSV((rh + 0.33) % 1, 0.9, 1) end
+        if coolStroke and coolStroke.Parent then coolStroke.Color = Color3.fromHSV((rh + 0.66) % 1, 0.85, 1) end
     end))
     Library:MakeDraggable(outer,30)
     Library:AddToRegistry(outer,{BackgroundColor3="BackgroundColor"})
