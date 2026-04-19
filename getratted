@@ -1,5 +1,5 @@
 --[[
-    Grimrat
+    GrimLib — Premium Roblox UI Library
     Fixed: GetTouchEnabled -> TouchEnabled
     Fixed: Toggle fade removed (caused invisible text)
     Fixed: AddSlider Min=0 assert fixed
@@ -209,7 +209,7 @@ end))
 
 function Library:MakeLabel(props, isHud)
     local lbl = Library:Create("TextLabel", {
-        BackgroundTransparency=0.08; Font=Library.Font;
+        BackgroundTransparency=1; Font=Library.Font;
         TextColor3=Library.FontColor; TextSize=13;
         TextStrokeTransparency=1;
     })
@@ -738,7 +738,7 @@ end
 
 function F:AddDependencyBox()
     local Dep={Dependencies={}}
-    local holder=Library:Create("Frame",{BackgroundTransparency=1;Size=UDim2.new(1,0,0,18);Visible=false;Parent=self.Container})
+    local holder=Library:Create("Frame",{BackgroundTransparency=1;Size=UDim2.new(1,0,0,0);Visible=false;Parent=self.Container})
     local frame=Library:Create("Frame",{BackgroundTransparency=1;Size=UDim2.fromScale(1,1);Parent=holder})
     local layout=Library:Create("UIListLayout",{FillDirection=Enum.FillDirection.Vertical;SortOrder=Enum.SortOrder.LayoutOrder;Parent=frame})
     function Dep:Resize() holder.Size=UDim2.new(1,0,0,layout.AbsoluteContentSize.Y) end
@@ -873,10 +873,10 @@ function Library:CreateWindow(...)
 
     local titleBar=Library:Create("Frame",{
         BackgroundColor3=Library.Black;
-        BackgroundTransparency=1;
+        BackgroundTransparency=0.08;
         BorderSizePixel=0;
         Position=UDim2.fromOffset(0,0);
-        Size=UDim2.new(1,0,0,0);
+        Size=UDim2.new(1,0,0,20);
         ZIndex=12;
         Parent=inner;
         ClipsDescendants=true
@@ -949,8 +949,8 @@ function Library:CreateWindow(...)
         Image = "rbxassetid://137411018638431";
         ImageTransparency = 0.06;
         ScaleType = Enum.ScaleType.Crop;
-        Position = UDim2.new(0,0,0.03,0);
-        Size = UDim2.new(1,0,1.08,0);
+        Position = UDim2.new(0,0,0.02,0);
+        Size = UDim2.new(1,0,1.06,0);
         ZIndex = 11;
         Parent = inner
     })
@@ -968,7 +968,7 @@ function Library:CreateWindow(...)
     })
     Rnd(bodyShade,10)
 
-    local tabArea=Library:Create("Frame",{BackgroundTransparency=1;Position=UDim2.fromOffset(8,6);Size=UDim2.new(1,-16,0,22);ZIndex=13;Parent=mainInner})
+    local tabArea=Library:Create("Frame",{BackgroundTransparency=1;Position=UDim2.fromOffset(8,8);Size=UDim2.new(1,-16,0,22);ZIndex=13;Parent=mainInner})
     Library:Create("UIListLayout",{Padding=UDim.new(0,cfg.TabPadding);FillDirection=Enum.FillDirection.Horizontal;SortOrder=Enum.SortOrder.LayoutOrder;Parent=tabArea})
 
     local tabContainer=Library:Create("Frame",{
@@ -976,8 +976,8 @@ function Library:CreateWindow(...)
         BackgroundTransparency=1;
         BorderSizePixel=0;
         ClipsDescendants=true;
-        Position=UDim2.fromOffset(8,30);
-        Size=UDim2.new(1,-16,1,-36);
+        Position=UDim2.fromOffset(8,34);
+        Size=UDim2.new(1,-16,1,-42);
         ZIndex=13;
         Parent=mainInner
     })
