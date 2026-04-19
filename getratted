@@ -54,6 +54,8 @@ local TAP_THRESHOLD = 10
 local function OnTap(guiObject, callback)
     guiObject.InputBegan:Connect(function(inp)
         if not IsPress(inp) then return end
+        local touchPos = Vector2.new(inp.Position.X, inp.Position.Y)
+        if Library:MouseIsOverOpenedFrame(touchPos) then return end
         if inp.UserInputType == Enum.UserInputType.Touch then
             local startPos = inp.Position
             inp.Changed:Connect(function()
@@ -242,19 +244,18 @@ function Library:MakeDraggable(inst, cutoff)
     end))
 end
 
-function Library:IsOverFrame(frame)
-    local p=CursorPos()
-    -- On mobile CursorPos returns 0,0 so also check touch position
-    if p == Vector2.zero and IsMobile() then return false end
+function Library:IsOverFrame(frame, inputPos)
+    local p = inputPos or CursorPos()
+    if p == Vector2.zero then return false end
     local ap,as=frame.AbsolutePosition,frame.AbsoluteSize
     return p.X>=ap.X and p.X<=ap.X+as.X and p.Y>=ap.Y and p.Y<=ap.Y+as.Y
 end
-function Library:MouseIsOverOpenedFrame()
+function Library:MouseIsOverOpenedFrame(inputPos)
     -- If any dropdown/picker is open, only allow clicks inside it
     -- Clicks outside will be blocked (and the dropdown will be closed by the global InputBegan handler)
     for f in next, Library.OpenedFrames do
         if f.Visible then
-            if Library:IsOverFrame(f) then
+            if Library:IsOverFrame(f, inputPos) then
                 return false -- click is inside the open frame, allow it
             else
                 return true -- click is outside, block it
