@@ -946,11 +946,11 @@ function Library:CreateWindow(...)
         Name = "BodyBackground";
         BackgroundTransparency = 1;
         BorderSizePixel = 0;
-        Image = "rbxassetid://137411018638431";
+        Image = "rbxassetid://97875520239510";
         ImageTransparency = 0.06;
         ScaleType = Enum.ScaleType.Crop;
-        Position = UDim2.new(0,0,0,0);
-        Size = UDim2.new(1,0,1,0);
+        Position = UDim2.new(0,0,-0.08,0);
+        Size = UDim2.new(1,0,1.16,0);
         ZIndex = 11;
         Parent = inner
     })
@@ -968,7 +968,7 @@ function Library:CreateWindow(...)
     })
     Rnd(bodyShade,9)
 
-    local tabArea=Library:Create("Frame",{BackgroundTransparency=1;Position=UDim2.fromOffset(4,6);Size=UDim2.new(1,-20,0,22);ZIndex=13;Parent=mainInner})
+    local tabArea=Library:Create("Frame",{BackgroundTransparency=1;Position=UDim2.fromOffset(0,6);Size=UDim2.new(1,-20,0,22);ZIndex=13;Parent=mainInner})
     Library:Create("UIListLayout",{Padding=UDim.new(0,cfg.TabPadding);FillDirection=Enum.FillDirection.Horizontal;SortOrder=Enum.SortOrder.LayoutOrder;Parent=tabArea})
 
     local tabContainer=Library:Create("Frame",{
@@ -976,7 +976,7 @@ function Library:CreateWindow(...)
         BackgroundTransparency=1;
         BorderSizePixel=0;
         ClipsDescendants=true;
-        Position=UDim2.fromOffset(4,30);
+        Position=UDim2.fromOffset(0,30);
         Size=UDim2.new(1,-20,1,-36);
         ZIndex=13;
         Parent=mainInner
