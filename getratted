@@ -64,16 +64,6 @@ local function MkStroke(parent, color, thick, trans)
     s.Parent = parent; return s
 end
 
-local function MkRainbowStroke(parent, thick, trans)
-    local s = MkStroke(parent, Color3.fromRGB(0, 80, 255), thick, trans)
-    task.defer(function()
-        if Library and Library.RainbowStrokes then
-            table.insert(Library.RainbowStrokes, s)
-        end
-    end)
-    return s
-end
-
 local function Glow(parent, size)
     local g = Instance.new("ImageLabel")
     g.Name              = "Glow"
@@ -115,19 +105,10 @@ Library.AccentColorDark  = Color3.fromRGB(0, 45, 160)
 Library.AccentColorLight = Color3.fromRGB(60, 140, 255)
 
 local rHue = 0
-Library.RainbowStrokes = {}
 table.insert(Library.Signals, RunService.RenderStepped:Connect(function(dt)
     rHue = (rHue + dt / 5) % 1
     Library.CurrentRainbowHue   = rHue
     Library.CurrentRainbowColor = Color3.fromHSV(rHue, 0.8, 1)
-    for i = #Library.RainbowStrokes, 1, -1 do
-        local s = Library.RainbowStrokes[i]
-        if s and s.Parent then
-            s.Color = Library.CurrentRainbowColor
-        else
-            table.remove(Library.RainbowStrokes, i)
-        end
-    end
 end))
 
 local function GetPlayers()
@@ -261,7 +242,7 @@ function Library:AddToolTip(text, hoverInst)
         BackgroundColor3=Library.MainColor; BorderSizePixel=0;
         Size=UDim2.fromOffset(X+14,Y+8); ZIndex=300; Visible=false; Parent=ScreenGui;
     })
-    Rnd(tip, 5); MkRainbowStroke(tip, 1)
+    Rnd(tip, 5); MkStroke(tip, Library.OutlineColor, 1)
     Library:MakeLabel({Position=UDim2.fromOffset(7,3);Size=UDim2.fromOffset(X,Y);TextSize=12;
         Text=text;TextXAlignment=Enum.TextXAlignment.Left;ZIndex=301;Parent=tip})
     Library:AddToRegistry(tip, {BackgroundColor3="MainColor"})
@@ -286,11 +267,11 @@ function F:AddColorPicker(idx, info)
     function CP:SetHSV(c) CP.Hue,CP.Sat,CP.Vib=Color3.toHSV(c) end
     CP:SetHSV(CP.Value)
     local swatch = Library:Create("Frame",{BackgroundColor3=CP.Value;BorderSizePixel=0;Size=UDim2.new(0,28,0,14);ZIndex=21;Parent=TL})
-    Rnd(swatch,4); MkRainbowStroke(swatch,1)
+    Rnd(swatch,4); MkStroke(swatch,Color3.fromRGB(255,255,255),1)
     local picker = Library:Create("Frame",{Name="Color";BackgroundColor3=Library.BackgroundColor;BorderSizePixel=0;
         Position=UDim2.fromOffset(swatch.AbsolutePosition.X,swatch.AbsolutePosition.Y+20);
         Size=UDim2.fromOffset(234,258);Visible=false;ZIndex=50;Parent=ScreenGui})
-    Rnd(picker,10); MkRainbowStroke(picker,1.5); Glow(picker,22)
+    Rnd(picker,10); MkStroke(picker,Library.OutlineColor,1.5); Glow(picker,22)
     Library:AddToRegistry(picker,{BackgroundColor3="BackgroundColor"})
     local function updatePickerPos()
         local sx = swatch.AbsolutePosition.X
@@ -308,13 +289,13 @@ function F:AddColorPicker(idx, info)
     Rnd(pAccent,10); Library:AddToRegistry(pAccent,{BackgroundColor3="AccentColor"})
     Library:MakeLabel({Position=UDim2.fromOffset(7,5);Size=UDim2.new(1,-10,0,14);TextSize=12;Text=CP.Title;TextXAlignment=Enum.TextXAlignment.Left;ZIndex=51;Parent=picker})
     local svOuter=Library:Create("Frame",{BorderSizePixel=0;BackgroundColor3=Color3.new(0,0,0);Position=UDim2.fromOffset(7,26);Size=UDim2.fromOffset(196,196);ZIndex=51;Parent=picker})
-    Rnd(svOuter,6); MkRainbowStroke(svOuter,1)
+    Rnd(svOuter,6); MkStroke(svOuter,Library.OutlineColor,1)
     local svMap=Library:Create("ImageLabel",{BorderSizePixel=0;Size=UDim2.fromScale(1,1);ZIndex=52;Image="rbxassetid://4155801252";Parent=svOuter})
     Rnd(svMap,6)
     local cur=Library:Create("Frame",{AnchorPoint=Vector2.new(0.5,0.5);BackgroundColor3=Color3.new(1,1,1);BorderSizePixel=0;Size=UDim2.fromOffset(10,10);ZIndex=53;Parent=svMap})
     Rnd(cur,5); MkStroke(cur,Color3.new(0,0,0),1.5)
     local hueOuter=Library:Create("Frame",{BorderSizePixel=0;BackgroundColor3=Color3.new(0,0,0);Position=UDim2.fromOffset(207,26);Size=UDim2.fromOffset(14,196);ZIndex=51;Parent=picker})
-    Rnd(hueOuter,5); MkRainbowStroke(hueOuter,1)
+    Rnd(hueOuter,5); MkStroke(hueOuter,Library.OutlineColor,1)
     local hueBar=Library:Create("Frame",{BackgroundColor3=Color3.new(1,1,1);BorderSizePixel=0;Size=UDim2.fromScale(1,1);ZIndex=52;Parent=hueOuter})
     Rnd(hueBar,5)
     local hSeq={}; for h=0,1,1/12 do table.insert(hSeq,ColorSequenceKeypoint.new(math.min(h,1),Color3.fromHSV(math.min(h,1),1,1))) end
@@ -322,11 +303,11 @@ function F:AddColorPicker(idx, info)
     local hueCur=Library:Create("Frame",{AnchorPoint=Vector2.new(0.5,0.5);BackgroundColor3=Color3.new(1,1,1);BorderSizePixel=0;Size=UDim2.new(1,4,0,4);ZIndex=53;Parent=hueOuter})
     Rnd(hueCur,2); MkStroke(hueCur,Color3.new(0,0,0),1)
     local hexOuter=Library:Create("Frame",{BackgroundColor3=Library.MainColor;BorderSizePixel=0;Position=UDim2.fromOffset(7,228);Size=UDim2.fromOffset(106,20);ZIndex=51;Parent=picker})
-    Rnd(hexOuter,5); MkRainbowStroke(hexOuter,1); Library:AddToRegistry(hexOuter,{BackgroundColor3="MainColor"})
+    Rnd(hexOuter,5); MkStroke(hexOuter,Library.OutlineColor,1); Library:AddToRegistry(hexOuter,{BackgroundColor3="MainColor"})
     local hexBox=Library:Create("TextBox",{BackgroundTransparency=1;Position=UDim2.fromOffset(5,0);Size=UDim2.new(1,-5,1,0);Font=Library.Font;PlaceholderColor3=Library.SubtleColor;PlaceholderText="#HEX";Text="#FFFFFF";TextColor3=Library.FontColor;TextSize=12;TextXAlignment=Enum.TextXAlignment.Left;ZIndex=52;Parent=hexOuter;ClearTextOnFocus=false})
     Library:AddToRegistry(hexBox,{TextColor3="FontColor"})
     local rgbOuter=Library:Create("Frame",{BackgroundColor3=Library.MainColor;BorderSizePixel=0;Position=UDim2.fromOffset(117,228);Size=UDim2.fromOffset(110,20);ZIndex=51;Parent=picker})
-    Rnd(rgbOuter,5); MkRainbowStroke(rgbOuter,1); Library:AddToRegistry(rgbOuter,{BackgroundColor3="MainColor"})
+    Rnd(rgbOuter,5); MkStroke(rgbOuter,Library.OutlineColor,1); Library:AddToRegistry(rgbOuter,{BackgroundColor3="MainColor"})
     local rgbBox=Library:Create("TextBox",{BackgroundTransparency=1;Position=UDim2.fromOffset(5,0);Size=UDim2.new(1,-5,1,0);Font=Library.Font;PlaceholderColor3=Library.SubtleColor;PlaceholderText="R,G,B";Text="255,255,255";TextColor3=Library.FontColor;TextSize=12;TextXAlignment=Enum.TextXAlignment.Left;ZIndex=52;Parent=rgbOuter;ClearTextOnFocus=false})
     Library:AddToRegistry(rgbBox,{TextColor3="FontColor"})
     Library:AddToRegistry(picker,{BackgroundColor3="BackgroundColor"})
@@ -380,10 +361,10 @@ function F:AddKeyPicker(idx, info)
         SyncToggleState=info.SyncToggleState or false}
     if KP.SyncToggleState then info.Modes={"Toggle"};info.Mode="Toggle" end
     local kOuter=Library:Create("Frame",{BackgroundColor3=Library.MainColor;BorderSizePixel=0;Size=UDim2.new(0,30,0,14);ZIndex=21;Parent=TL})
-    Rnd(kOuter,4); MkRainbowStroke(kOuter,1); Library:AddToRegistry(kOuter,{BackgroundColor3="MainColor"})
+    Rnd(kOuter,4); MkStroke(kOuter,Library.OutlineColor,1); Library:AddToRegistry(kOuter,{BackgroundColor3="MainColor"})
     local kLbl=Library:MakeLabel({Size=UDim2.fromScale(1,1);TextSize=11;Text=info.Default;ZIndex=22;Parent=kOuter})
     local mOuter=Library:Create("Frame",{BackgroundColor3=Library.BackgroundColor;BorderSizePixel=0;Size=UDim2.fromOffset(68,52);Visible=false;ZIndex=60;Parent=ScreenGui})
-    Rnd(mOuter,7); MkRainbowStroke(mOuter,1.5); Library:AddToRegistry(mOuter,{BackgroundColor3="BackgroundColor"})
+    Rnd(mOuter,7); MkStroke(mOuter,Library.OutlineColor,1.5); Library:AddToRegistry(mOuter,{BackgroundColor3="BackgroundColor"})
     TL:GetPropertyChangedSignal("AbsolutePosition"):Connect(function()
         mOuter.Position=UDim2.fromOffset(TL.AbsolutePosition.X+TL.AbsoluteSize.X+4,TL.AbsolutePosition.Y) end)
     Library:Create("UIListLayout",{FillDirection=Enum.FillDirection.Vertical;SortOrder=Enum.SortOrder.LayoutOrder;Padding=UDim.new(0,2);Parent=mOuter})
@@ -500,7 +481,7 @@ function F:AddButton(...)
     Parse(Btn,...)
     local function MakeBtn(b)
         local outer=Library:Create("Frame",{BackgroundColor3=Library.MainColor;BorderSizePixel=0;Size=UDim2.new(1,-4,0,22);ZIndex=20})
-        Rnd(outer,6); MkRainbowStroke(outer,1)
+        Rnd(outer,6); MkStroke(outer,Library.OutlineColor,1)
         Grad(outer,Color3.fromRGB(30,30,45),Color3.fromRGB(18,18,28),90)
         Library:AddToRegistry(outer,{BackgroundColor3="MainColor"})
         local lbl=Library:MakeLabel({Size=UDim2.fromScale(1,1);TextSize=13;Text=b.Text;ZIndex=21;Parent=outer})
@@ -545,12 +526,12 @@ function F:AddInput(idx,info)
     Library:MakeLabel({Size=UDim2.new(1,0,0,13);TextSize=12;Text=info.Text;TextXAlignment=Enum.TextXAlignment.Left;ZIndex=20;Parent=self.Container})
     self:AddBlank(2)
     local outer=Library:Create("Frame",{BackgroundColor3=Library.MainColor;BorderSizePixel=0;Size=UDim2.new(1,-4,0,22);ZIndex=20;Parent=self.Container})
-    Rnd(outer,6); local st=MkRainbowStroke(outer,1); Library:AddToRegistry(outer,{BackgroundColor3="MainColor"})
+    Rnd(outer,6); local st=MkStroke(outer,Library.OutlineColor,1); Library:AddToRegistry(outer,{BackgroundColor3="MainColor"})
     local clip=Library:Create("Frame",{BackgroundTransparency=1;ClipsDescendants=true;Position=UDim2.fromOffset(7,0);Size=UDim2.new(1,-7,1,0);ZIndex=22;Parent=outer})
     local box=Library:Create("TextBox",{BackgroundTransparency=1;Size=UDim2.fromScale(4,1);Font=Library.Font;PlaceholderColor3=Library.SubtleColor;PlaceholderText=info.Placeholder or "";Text=info.Default or "";TextColor3=Library.FontColor;TextSize=13;TextXAlignment=Enum.TextXAlignment.Left;ZIndex=22;Parent=clip;ClearTextOnFocus=false})
     Library:AddToRegistry(box,{TextColor3="FontColor"})
-    box.Focused:Connect(function() if st then for i=#Library.RainbowStrokes,1,-1 do if Library.RainbowStrokes[i]==st then table.remove(Library.RainbowStrokes,i) end end; st.Color=Library.AccentColor end end)
-    box.FocusLost:Connect(function() if st then table.insert(Library.RainbowStrokes, st) end end)
+    box.Focused:Connect(function() if st then st.Color=Library.AccentColor end end)
+    box.FocusLost:Connect(function() if st then st.Color=Library.OutlineColor end end)
     if type(info.Tooltip)=="string" then Library:AddToolTip(info.Tooltip,outer) end
     function TB:SetValue(t)
         if info.MaxLength and #t>info.MaxLength then t=t:sub(1,info.MaxLength) end
@@ -566,8 +547,7 @@ function F:AddToggle(idx,info)
     assert(info.Text,"AddToggle: Missing Text")
     local T={Value=info.Default or false;Type="Toggle";Callback=info.Callback or function()end;Addons={};Risky=info.Risky}
     local pill=Library:Create("Frame",{BackgroundColor3=T.Value and Library.AccentColor or Library.MainColor;BorderSizePixel=0;Size=UDim2.new(0,32,0,16);ZIndex=20;Parent=self.Container})
-    Rnd(pill,8); local pst=MkStroke(pill,T.Value and Library.AccentColorDark or Color3.fromRGB(0,80,255),1)
-    if not T.Value then task.defer(function() if Library.RainbowStrokes then table.insert(Library.RainbowStrokes, pst) end end) end
+    Rnd(pill,8); local pst=MkStroke(pill,T.Value and Library.AccentColorDark or Library.OutlineColor,1)
     Library:AddToRegistry(pill,{BackgroundColor3=T.Value and "AccentColor" or "MainColor"})
     local knob=Library:Create("Frame",{BackgroundColor3=Color3.new(1,1,1);BorderSizePixel=0;AnchorPoint=Vector2.new(0,0.5);Position=T.Value and UDim2.new(1,-14,0.5,0) or UDim2.new(0,2,0.5,0);Size=UDim2.fromOffset(12,12);ZIndex=21;Parent=pill})
     Rnd(knob,6)
@@ -578,14 +558,7 @@ function F:AddToggle(idx,info)
     function T:Display()
         Tween(pill,{BackgroundColor3=T.Value and Library.AccentColor or Library.MainColor},0.12)
         Tween(knob,{Position=T.Value and UDim2.new(1,-14,0.5,0) or UDim2.new(0,2,0.5,0)},0.12)
-        if pst then
-            if T.Value then
-                pst.Color = Library.AccentColorDark
-                for i=#Library.RainbowStrokes,1,-1 do if Library.RainbowStrokes[i]==pst then table.remove(Library.RainbowStrokes,i) end end
-            else
-                table.insert(Library.RainbowStrokes, pst)
-            end
-        end
+        if pst then pst.Color=T.Value and Library.AccentColorDark or Library.OutlineColor end
         Library.RegistryMap[pill].Properties.BackgroundColor3=T.Value and "AccentColor" or "MainColor"
     end
     function T:UpdateColors() T:Display() end
@@ -609,7 +582,7 @@ function F:AddSlider(idx,info)
     if not info.Compact then
         Library:MakeLabel({Size=UDim2.new(1,0,0,13);TextSize=12;Text=info.Text;TextXAlignment=Enum.TextXAlignment.Left;TextYAlignment=Enum.TextYAlignment.Bottom;ZIndex=20;Parent=self.Container}); self:AddBlank(3) end
     local track=Library:Create("Frame",{BackgroundColor3=Library.MainColor;BorderSizePixel=0;Size=UDim2.new(1,-4,0,16);ZIndex=20;Parent=self.Container})
-    Rnd(track,8); local tst=MkRainbowStroke(track,1); Library:AddToRegistry(track,{BackgroundColor3="MainColor"})
+    Rnd(track,8); local tst=MkStroke(track,Library.OutlineColor,1); Library:AddToRegistry(track,{BackgroundColor3="MainColor"})
     local fill=Library:Create("Frame",{BackgroundColor3=Library.AccentColor;BorderSizePixel=0;Size=UDim2.new(0,0,1,0);ZIndex=22;Parent=track})
     Rnd(fill,8); Grad(fill,Library.AccentColorLight,Library.AccentColor,0); Library:AddToRegistry(fill,{BackgroundColor3="AccentColor"})
     local vLbl=Library:MakeLabel({Size=UDim2.fromScale(1,1);TextSize=12;ZIndex=24;Parent=track})
@@ -629,13 +602,13 @@ function F:AddSlider(idx,info)
         Library:SafeCallback(S.Callback,S.Value); Library:SafeCallback(S.Changed,S.Value) end
     track.InputBegan:Connect(function(inp)
         if not IsPress(inp) or Library:MouseIsOverOpenedFrame() then return end
-        if tst then for i=#Library.RainbowStrokes,1,-1 do if Library.RainbowStrokes[i]==tst then table.remove(Library.RainbowStrokes,i) end end; tst.Color=Library.AccentColor end
+        if tst then tst.Color=Library.AccentColor end
         local active=true; local startP=CursorPos(); local startF=fill.Size.X.Offset
         local diff=startP.X-(fill.AbsolutePosition.X+startF); local tr=inp
         local conn; conn=InputService.InputEnded:Connect(function(i2)
             if IsPress(i2) and (i2.UserInputType~=Enum.UserInputType.Touch or i2==tr) then
                 active=false; conn:Disconnect(); Library:AttemptSave()
-                if tst then table.insert(Library.RainbowStrokes, tst) end end end)
+                if tst then tst.Color=Library.OutlineColor end end end)
         while active do RunService.Heartbeat:Wait()
             local nx=math.clamp(startF+(CursorPos().X-startP.X)+diff,0,S.MaxSize)
             local nv=Rnd2(Library:MapValue(nx,0,S.MaxSize,S.Min,S.Max))
@@ -653,13 +626,13 @@ function F:AddDropdown(idx,info)
     if not info.Compact then
         Library:MakeLabel({Size=UDim2.new(1,0,0,13);TextSize=12;Text=info.Text;TextXAlignment=Enum.TextXAlignment.Left;TextYAlignment=Enum.TextYAlignment.Bottom;ZIndex=20;Parent=self.Container}); self:AddBlank(3) end
     local dOuter=Library:Create("Frame",{BackgroundColor3=Library.MainColor;BorderSizePixel=0;Size=UDim2.new(1,-4,0,22);ZIndex=20;Parent=self.Container})
-    Rnd(dOuter,6); local dst=MkRainbowStroke(dOuter,1); Library:AddToRegistry(dOuter,{BackgroundColor3="MainColor"})
+    Rnd(dOuter,6); local dst=MkStroke(dOuter,Library.OutlineColor,1); Library:AddToRegistry(dOuter,{BackgroundColor3="MainColor"})
     local arrow=Library:Create("ImageLabel",{AnchorPoint=Vector2.new(0,0.5);BackgroundTransparency=1;Position=UDim2.new(1,-16,0.5,0);Size=UDim2.fromOffset(10,10);Image="rbxassetid://6282522798";ZIndex=23;Parent=dOuter})
     local iList=Library:MakeLabel({Position=UDim2.fromOffset(7,0);Size=UDim2.new(1,-22,1,0);TextSize=13;Text="--";TextXAlignment=Enum.TextXAlignment.Left;ZIndex=22;Parent=dOuter})
     if type(info.Tooltip)=="string" then Library:AddToolTip(info.Tooltip,dOuter) end
     local MAX=8
     local listFrame=Library:Create("Frame",{BackgroundColor3=Library.MainColor;BorderSizePixel=0;ZIndex=200;Visible=false;Parent=ScreenGui})
-    Rnd(listFrame,8); MkRainbowStroke(listFrame,1.5); Library:AddToRegistry(listFrame,{BackgroundColor3="MainColor"})
+    Rnd(listFrame,8); MkStroke(listFrame,Library.OutlineColor,1.5); Library:AddToRegistry(listFrame,{BackgroundColor3="MainColor"})
     local function rpos() listFrame.Position=UDim2.fromOffset(dOuter.AbsolutePosition.X, dOuter.AbsolutePosition.Y+dOuter.AbsoluteSize.Y+3) end
     local function rsize(y) listFrame.Size=UDim2.fromOffset(dOuter.AbsoluteSize.X, y or MAX*22+6) end
     rpos(); rsize()
@@ -705,8 +678,8 @@ function F:AddDropdown(idx,info)
         scroll.CanvasSize=UDim2.fromOffset(0,count*22+6); rsize(math.clamp(count*22,0,MAX*22)+6)
     end
     function DD:SetValues(nv) if nv then DD.Values=nv end; DD:BuildList() end
-    function DD:OpenDropdown() rpos(); listFrame.Visible=true; Library.OpenedFrames[listFrame]=true; Tween(arrow,{Rotation=180},0.15); if dst then for i=#Library.RainbowStrokes,1,-1 do if Library.RainbowStrokes[i]==dst then table.remove(Library.RainbowStrokes,i) end end; dst.Color=Library.AccentColor end end
-    function DD:CloseDropdown() listFrame.Visible=false; Library.OpenedFrames[listFrame]=nil; Tween(arrow,{Rotation=0},0.15); if dst then table.insert(Library.RainbowStrokes, dst) end end
+    function DD:OpenDropdown() rpos(); listFrame.Visible=true; Library.OpenedFrames[listFrame]=true; Tween(arrow,{Rotation=180},0.15); if dst then dst.Color=Library.AccentColor end end
+    function DD:CloseDropdown() listFrame.Visible=false; Library.OpenedFrames[listFrame]=nil; Tween(arrow,{Rotation=0},0.15); if dst then dst.Color=Library.OutlineColor end end
     function DD:OnChanged(f) DD.Changed=f; f(DD.Value) end
     function DD:SetValue(v)
         if DD.Multi then local t={}; for val in next,v do if table.find(DD.Values,val) then t[val]=true end end; DD.Value=t
@@ -762,13 +735,13 @@ do
     Library.NotificationArea=Library:Create("Frame",{BackgroundTransparency=1;Position=UDim2.fromOffset(8,40);Size=UDim2.fromOffset(300,400);ZIndex=500;Parent=ScreenGui})
     Library:Create("UIListLayout",{Padding=UDim.new(0,5);FillDirection=Enum.FillDirection.Vertical;SortOrder=Enum.SortOrder.LayoutOrder;Parent=Library.NotificationArea})
     local wO=Library:Create("Frame",{BackgroundColor3=Library.MainColor;BorderSizePixel=0;Position=UDim2.fromOffset(8,8);Size=UDim2.fromOffset(220,24);Visible=false;ZIndex=400;Parent=ScreenGui})
-    Rnd(wO,8); MkRainbowStroke(wO,1.5); Glow(wO,16); Library:AddToRegistry(wO,{BackgroundColor3="MainColor"})
+    Rnd(wO,8); MkStroke(wO,Library.OutlineColor,1.5); Glow(wO,16); Library:AddToRegistry(wO,{BackgroundColor3="MainColor"})
     local wAcc=Library:Create("Frame",{BackgroundColor3=Library.AccentColor;BorderSizePixel=0;Size=UDim2.new(1,0,0,2);ZIndex=401;Parent=wO})
     Rnd(wAcc,8); Library:AddToRegistry(wAcc,{BackgroundColor3="AccentColor"})
     local wLbl=Library:MakeLabel({Position=UDim2.fromOffset(8,0);Size=UDim2.new(1,-10,1,0);TextSize=12;TextXAlignment=Enum.TextXAlignment.Left;ZIndex=402;Parent=wO})
     Library.Watermark=wO; Library.WatermarkText=wLbl; Library:MakeDraggable(wO)
     local kO=Library:Create("Frame",{BackgroundColor3=Library.MainColor;BorderSizePixel=0;Position=UDim2.fromOffset(8,38);Size=UDim2.fromOffset(200,26);Visible=false;ZIndex=400;Parent=ScreenGui})
-    Rnd(kO,8); MkRainbowStroke(kO,1.5); Library:AddToRegistry(kO,{BackgroundColor3="MainColor"})
+    Rnd(kO,8); MkStroke(kO,Library.OutlineColor,1.5); Library:AddToRegistry(kO,{BackgroundColor3="MainColor"})
     local kAcc=Library:Create("Frame",{BackgroundColor3=Library.AccentColor;BorderSizePixel=0;Size=UDim2.new(1,0,0,2);ZIndex=401;Parent=kO})
     Rnd(kAcc,8); Library:AddToRegistry(kAcc,{BackgroundColor3="AccentColor"})
     Library:MakeLabel({Size=UDim2.new(1,0,0,22);Position=UDim2.fromOffset(8,3);TextXAlignment=Enum.TextXAlignment.Left;TextSize=12;Text="Keybinds";ZIndex=402;Parent=kO})
@@ -788,7 +761,7 @@ end
 function Library:Notify(text,time)
     local x,y=Library:GetTextBounds(text,Library.Font,12); y=y+12
     local n=Library:Create("Frame",{BackgroundColor3=Library.MainColor;BorderSizePixel=0;Size=UDim2.fromOffset(0,y);ClipsDescendants=true;ZIndex=500;Parent=Library.NotificationArea})
-    Rnd(n,8); MkRainbowStroke(n,1); Library:AddToRegistry(n,{BackgroundColor3="MainColor"})
+    Rnd(n,8); MkStroke(n,Library.OutlineColor,1); Library:AddToRegistry(n,{BackgroundColor3="MainColor"})
     local strip=Library:Create("Frame",{BackgroundColor3=Library.AccentColor;BorderSizePixel=0;Size=UDim2.fromOffset(3,y);ZIndex=502;Parent=n})
     Rnd(strip,2); Library:AddToRegistry(strip,{BackgroundColor3="AccentColor"})
     Library:MakeLabel({Position=UDim2.fromOffset(10,0);Size=UDim2.new(1,-14,1,0);Text=text;TextXAlignment=Enum.TextXAlignment.Left;TextSize=12;ZIndex=501;Parent=n})
@@ -820,14 +793,20 @@ function Library:CreateWindow(...)
         ClipsDescendants=true
     })
     Rnd(outer,12)
-    local outerStroke = MkStroke(outer, Color3.fromRGB(0,80,255), 2.5, 0)
-    local outerGlow = Glow(outer, 20)
-    if outerGlow then outerGlow.ImageTransparency = 0.3 end
+    local outerStroke = MkStroke(outer, Color3.fromRGB(0,80,255), 3, 0)
+    local outerGlow = Glow(outer, 24)
+    if outerGlow then outerGlow.ImageTransparency = 0.25 end
+
+    local cyanBorder=Library:Create("Frame",{BackgroundTransparency=1;BorderSizePixel=0;Position=UDim2.fromOffset(4,4);Size=UDim2.new(1,-8,1,-8);ZIndex=10;Parent=outer})
+    Rnd(cyanBorder,9)
+    local cyanStroke = MkStroke(cyanBorder, Color3.fromRGB(0, 200, 255), 1, 0)
 
     Library:GiveSignal(RunService.RenderStepped:Connect(function()
         local rc = Library.CurrentRainbowColor or Color3.fromRGB(0, 80, 255)
+        local rh = Library.CurrentRainbowHue or 0
         if outerStroke and outerStroke.Parent then outerStroke.Color = rc end
         if outerGlow and outerGlow.Parent then outerGlow.ImageColor3 = rc end
+        if cyanStroke and cyanStroke.Parent then cyanStroke.Color = Color3.fromHSV((rh + 0.15) % 1, 0.7, 1) end
     end))
     Library:MakeDraggable(outer,30)
     Library:AddToRegistry(outer,{BackgroundColor3="BackgroundColor"})
@@ -901,7 +880,7 @@ function Library:CreateWindow(...)
         Parent=inner;
         ClipsDescendants=true
     })
-    Rnd(mainOuter,9); MkRainbowStroke(mainOuter,1,0.1); Library:AddToRegistry(mainOuter,{BackgroundColor3="BackgroundColor"})
+    Rnd(mainOuter,9); MkStroke(mainOuter,Library.OutlineColor,1,0.1); Library:AddToRegistry(mainOuter,{BackgroundColor3="BackgroundColor"})
 
     local mainInner=Library:Create("Frame",{
         BackgroundColor3=Library.BackgroundColor;
@@ -927,7 +906,7 @@ function Library:CreateWindow(...)
         ZIndex=13;
         Parent=mainInner
     })
-    Rnd(tabContainer,8); MkRainbowStroke(tabContainer,1,0.1); Library:AddToRegistry(tabContainer,{BackgroundColor3="MainColor"})
+    Rnd(tabContainer,8); MkStroke(tabContainer,Library.OutlineColor,1,0.1); Library:AddToRegistry(tabContainer,{BackgroundColor3="MainColor"})
 
     function Window:SetWindowTitle(t) titleLbl.Text=t end
 
@@ -968,7 +947,7 @@ function Library:CreateWindow(...)
         function Tab:AddGroupbox(info)
             local GB={}; local side=info.Side==1 and leftSide or rightSide
             local boxO=Library:Create("Frame",{BackgroundColor3=Library.BackgroundColor;BorderSizePixel=0;Size=UDim2.new(1,0,0,30);ZIndex=15;Parent=side})
-            Rnd(boxO,9); MkRainbowStroke(boxO,1.5); Library:AddToRegistry(boxO,{BackgroundColor3="BackgroundColor"})
+            Rnd(boxO,9); MkStroke(boxO,Color3.fromRGB(0,150,255),1.5); Library:AddToRegistry(boxO,{BackgroundColor3="BackgroundColor"})
             local gbTop=Library:Create("Frame",{BackgroundColor3=Library.AccentColor;BackgroundTransparency=1;BorderSizePixel=0;Size=UDim2.new(1,0,0,2);ZIndex=16;Visible=false;Parent=boxO})
             Library:MakeLabel({Size=UDim2.new(1,-6,0,18);Position=UDim2.fromOffset(7,2);TextSize=12;Font=Library.FontBold;Text=info.Name;TextXAlignment=Enum.TextXAlignment.Left;ZIndex=17;Parent=boxO})
             local cont=Library:Create("Frame",{BackgroundTransparency=1;Position=UDim2.fromOffset(4,22);Size=UDim2.new(1,-4,1,-22);ZIndex=18;Parent=boxO})
@@ -983,7 +962,7 @@ function Library:CreateWindow(...)
         function Tab:AddTabbox(info)
             local Tabbox={Tabs={}}; local side=info.Side==1 and leftSide or rightSide
             local tbO=Library:Create("Frame",{BackgroundColor3=Library.BackgroundColor;BorderSizePixel=0;Size=UDim2.new(1,0,0,0);ZIndex=15;Parent=side})
-            Rnd(tbO,9); MkRainbowStroke(tbO,1.5); Library:AddToRegistry(tbO,{BackgroundColor3="BackgroundColor"})
+            Rnd(tbO,9); MkStroke(tbO,Color3.fromRGB(0,150,255),1.5); Library:AddToRegistry(tbO,{BackgroundColor3="BackgroundColor"})
             local tbAcc=Library:Create("Frame",{BackgroundColor3=Library.AccentColor;BackgroundTransparency=1;BorderSizePixel=0;Size=UDim2.new(1,0,0,2);ZIndex=16;Visible=false;Parent=tbO})
             local btnRow=Library:Create("Frame",{BackgroundTransparency=1;Position=UDim2.fromOffset(0,1);Size=UDim2.new(1,0,0,20);ZIndex=16;ClipsDescendants=true;Parent=tbO})
             Library:Create("UIListLayout",{FillDirection=Enum.FillDirection.Horizontal;SortOrder=Enum.SortOrder.LayoutOrder;Parent=btnRow})
