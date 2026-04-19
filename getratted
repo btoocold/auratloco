@@ -122,7 +122,7 @@ local Library = {
     MainColor       = Color3.fromRGB(22,  22,  30);
     BackgroundColor = Color3.fromRGB(12,  12,  18);
     AccentColor     = Color3.fromRGB(0,   90,  255);
-    OutlineColor    = Color3.fromRGB(0,   60,  180);
+    OutlineColor    = Color3.fromRGB(185, 185, 195);
     RiskColor       = Color3.fromRGB(255, 55,  55);
     SubtleColor     = Color3.fromRGB(120, 120, 150);
     Black           = Color3.new(0,0,0);
@@ -840,17 +840,12 @@ function Library:CreateWindow(...)
         uiScale.Parent = outer
     end
     Rnd(outer,12)
-    local outerStroke = MkStroke(outer, Color3.fromRGB(0,80,255), 3, 0)
+    local outerStroke = MkStroke(outer, Color3.fromRGB(55, 55, 60), 2.5, 0)
     local outerGlow = Glow(outer, 24)
-    if outerGlow then outerGlow.ImageTransparency = 1 end
-
-    
-    Library:GiveSignal(RunService.RenderStepped:Connect(function()
-        local rc = Library.CurrentRainbowColor or Color3.fromRGB(0, 80, 255)
-        local rh = Library.CurrentRainbowHue or 0
-        if outerStroke and outerStroke.Parent then outerStroke.Color = rc end
-        if outerGlow and outerGlow.Parent then outerGlow.ImageColor3 = rc end
-    end))
+    if outerGlow then
+        outerGlow.ImageColor3 = Color3.fromRGB(40, 40, 45)
+        outerGlow.ImageTransparency = 0.78
+    end
     Library:MakeDraggable(outer,30)
     Library:AddToRegistry(outer,{BackgroundColor3="BackgroundColor"})
 
@@ -924,7 +919,7 @@ function Library:CreateWindow(...)
         Parent=inner;
         ClipsDescendants=true
     })
-    Rnd(mainOuter,9); MkStroke(mainOuter,Library.OutlineColor,1,0.1); Library:AddToRegistry(mainOuter,{BackgroundColor3="BackgroundColor"})
+    Rnd(mainOuter,9); MkStroke(mainOuter,Library.OutlineColor,1,0.45); Library:AddToRegistry(mainOuter,{BackgroundColor3="BackgroundColor"})
 
     local mainInner=Library:Create("Frame",{
         BackgroundColor3=Library.BackgroundColor;
