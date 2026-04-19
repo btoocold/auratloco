@@ -776,31 +776,23 @@ function Library:CreateWindow(...)
     cfg.TabPadding   = type(cfg.TabPadding)=="number"  and cfg.TabPadding   or 2
     cfg.MenuFadeTime = type(cfg.MenuFadeTime)=="number" and cfg.MenuFadeTime or 0.2
     
-    -- Auto-size for mobile
+    -- Auto-size for mobile — small compact box
     local _mobile = IsMobile()
-    if _mobile and not cfg.Size then
-        local cam = workspace.CurrentCamera
-        local vp = cam and cam.ViewportSize or Vector2.new(1280,720)
-        local w = math.clamp(vp.X * 0.92, 320, 560)
-        local h = math.clamp(vp.Y * 0.55, 250, 370)
-        cfg.Size = UDim2.fromOffset(w, h)
-        cfg.TabPadding = math.clamp(cfg.TabPadding, 1, 4)
-    end
     
     if cfg.Center then cfg.AnchorPoint=Vector2.new(0.5,0.5); cfg.Position=UDim2.fromScale(0.5,0.5)
     else cfg.AnchorPoint=cfg.AnchorPoint or Vector2.zero; cfg.Position=cfg.Position or UDim2.fromOffset(160,50) end
     cfg.Size=cfg.Size or UDim2.fromOffset(560,370)
-    -- Clamp size on mobile even if main script hardcodes it
+    -- Force smaller size on mobile
     if _mobile then
         local cam = workspace.CurrentCamera
         local vp = cam and cam.ViewportSize or Vector2.new(1280,720)
-        local maxW = math.floor(vp.X * 0.92)
-        local maxH = math.floor(vp.Y * 0.55)
-        local curW = cfg.Size.X.Offset
-        local curH = cfg.Size.Y.Offset
-        if curW > maxW or curH > maxH then
-            cfg.Size = UDim2.fromOffset(math.min(curW, maxW), math.min(curH, maxH))
-        end
+        local w = math.clamp(vp.X * 0.6, 300, 420)
+        local h = math.clamp(vp.Y * 0.45, 240, 340)
+        cfg.Size = UDim2.fromOffset(w, h)
+        cfg.TabPadding = 2
+        cfg.Center = true
+        cfg.AnchorPoint = Vector2.new(0.5, 0.5)
+        cfg.Position = UDim2.fromScale(0.5, 0.5)
     end
     local Window={Tabs={}}
 
@@ -936,10 +928,11 @@ function Library:CreateWindow(...)
 
     function Window:AddTab(name)
         local Tab={Groupboxes={};Tabboxes={}}
-        local tw=Library:GetTextBounds(name,Library.FontBold,13)
-        local tabBtn=Library:Create("Frame",{BackgroundColor3=Library.BackgroundColor;BorderSizePixel=0;Size=UDim2.new(0,tw+18,1,0);ZIndex=14;Parent=tabArea})
+        local _tabTextSize = _mobile and 11 or 13
+        local tw=Library:GetTextBounds(name,Library.FontBold,_tabTextSize)
+        local tabBtn=Library:Create("Frame",{BackgroundColor3=Library.BackgroundColor;BorderSizePixel=0;Size=UDim2.new(0,tw+(_mobile and 10 or 18),1,0);ZIndex=14;Parent=tabArea})
         Rnd(tabBtn,6); Library:AddToRegistry(tabBtn,{BackgroundColor3="BackgroundColor"})
-        Library:MakeLabel({Size=UDim2.fromScale(1,1);Text=name;TextSize=13;Font=Library.FontBold;ZIndex=15;Parent=tabBtn})
+        Library:MakeLabel({Size=UDim2.fromScale(1,1);Text=name;TextSize=_tabTextSize;Font=Library.FontBold;ZIndex=15;Parent=tabBtn})
         local blocker=Library:Create("Frame",{BackgroundColor3=Library.MainColor;BorderSizePixel=0;Position=UDim2.new(0,0,1,-1);Size=UDim2.new(1,0,0,2);BackgroundTransparency=1;ZIndex=16;Parent=tabBtn})
         Library:AddToRegistry(blocker,{BackgroundColor3="MainColor"})
         local tabFrame=Library:Create("Frame",{BackgroundTransparency=1;ClipsDescendants=true;Size=UDim2.fromScale(1,1);Visible=false;ZIndex=14;Parent=tabContainer})
