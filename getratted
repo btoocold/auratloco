@@ -819,7 +819,7 @@ function Library:CreateWindow(...)
     local outer=Library:Create("Frame",{
         AnchorPoint=cfg.AnchorPoint;
         BackgroundColor3=Library.BackgroundColor;
-        BackgroundTransparency=0.22;
+        BackgroundTransparency=0.12;
         BorderSizePixel=0;
         Position=cfg.Position;
         Size=cfg.Size;
@@ -841,21 +841,6 @@ function Library:CreateWindow(...)
         uiScale.Parent = outer
     end
     Rnd(outer,12)
-
-    local bg = Library:Create("ImageLabel",{
-        Name = "UIBackground";
-        BackgroundTransparency = 1;
-        BorderSizePixel = 0;
-        Image = "rbxassetid://97875520239510";
-        ImageTransparency = 0.18;
-        ScaleType = Enum.ScaleType.Crop;
-        Position = UDim2.new(0,0,0,0);
-        Size = UDim2.new(1,0,1,0);
-        ZIndex = 9;
-        Parent = outer;
-    })
-    Rnd(bg,12)
-
     local outerStroke = MkStroke(outer, Color3.fromRGB(0,80,255), 3, 0)
     local outerGlow = Glow(outer, 24)
     if outerGlow then outerGlow.ImageTransparency = 0.25 end
@@ -876,7 +861,7 @@ function Library:CreateWindow(...)
 
     local inner=Library:Create("Frame",{
         BackgroundColor3=Library.MainColor;
-        BackgroundTransparency=0.35;
+        BackgroundTransparency=0.55;
         BorderSizePixel=0;
         Position=UDim2.fromOffset(2,2);
         Size=UDim2.new(1,-4,1,-4);
@@ -935,7 +920,7 @@ function Library:CreateWindow(...)
 
     local mainOuter=Library:Create("Frame",{
         BackgroundColor3=Library.BackgroundColor;
-        BackgroundTransparency=0.50;
+        BackgroundTransparency=0.6;
         BorderSizePixel=0;
         Position=UDim2.fromOffset(8,40);
         Size=UDim2.new(1,-16,1,-48);
@@ -961,7 +946,7 @@ function Library:CreateWindow(...)
 
     local tabContainer=Library:Create("Frame",{
         BackgroundColor3=Library.MainColor;
-        BackgroundTransparency=0.55;
+        BackgroundTransparency=1;
         BorderSizePixel=0;
         ClipsDescendants=true;
         Position=UDim2.fromOffset(8,31);
@@ -970,6 +955,32 @@ function Library:CreateWindow(...)
         Parent=mainInner
     })
     Rnd(tabContainer,8); MkStroke(tabContainer,Library.OutlineColor,1,0.1); Library:AddToRegistry(tabContainer,{BackgroundColor3="MainColor"})
+
+    local tabBg = Library:Create("ImageLabel",{
+        Name = "TabBackground";
+        BackgroundTransparency = 1;
+        BorderSizePixel = 0;
+        Image = "rbxassetid://97875520239510";
+        ImageTransparency = 0.02;
+        ScaleType = Enum.ScaleType.Crop;
+        Position = UDim2.new(0,0,0,0);
+        Size = UDim2.new(1,0,1,0);
+        ZIndex = 13;
+        Parent = tabContainer
+    })
+    Rnd(tabBg,8)
+
+    local tabBgShade = Library:Create("Frame",{
+        Name = "TabBackgroundShade";
+        BackgroundColor3 = Color3.fromRGB(0,0,0);
+        BackgroundTransparency = 0.72;
+        BorderSizePixel = 0;
+        Position = UDim2.new(0,0,0,0);
+        Size = UDim2.new(1,0,1,0);
+        ZIndex = 13;
+        Parent = tabContainer
+    })
+    Rnd(tabBgShade,8)
 
     function Window:SetWindowTitle(t) titleLbl.Text=t end
 
@@ -1054,7 +1065,7 @@ function Library:CreateWindow(...)
         end
         function Tab:AddGroupbox(info)
             local GB={}; local side=info.Side==1 and leftSide or rightSide
-            local boxO=Library:Create("Frame",{BackgroundColor3=Library.BackgroundColor;BackgroundTransparency=0.50;BorderSizePixel=0;Size=UDim2.new(1,0,0,30);ZIndex=15;Parent=side})
+            local boxO=Library:Create("Frame",{BackgroundColor3=Library.BackgroundColor;BackgroundTransparency=0.38;BorderSizePixel=0;Size=UDim2.new(1,0,0,30);ZIndex=15;Parent=side})
             Rnd(boxO,9); MkStroke(boxO,Color3.fromRGB(0,150,255),1.5); Library:AddToRegistry(boxO,{BackgroundColor3="BackgroundColor"})
             local gbTop=Library:Create("Frame",{BackgroundColor3=Library.AccentColor;BackgroundTransparency=1;BorderSizePixel=0;Size=UDim2.new(1,0,0,2);ZIndex=16;Visible=false;Parent=boxO})
             Library:MakeLabel({Size=UDim2.new(1,-6,0,18);Position=UDim2.fromOffset(7,2);TextSize=12;Font=Library.FontBold;Text=info.Name;TextXAlignment=Enum.TextXAlignment.Left;ZIndex=17;Parent=boxO})
