@@ -941,12 +941,38 @@ function Library:CreateWindow(...)
     })
     Rnd(mainInner,9); Library:AddToRegistry(mainInner,{BackgroundColor3="BackgroundColor"})
 
+    local bodyBg = Library:Create("ImageLabel",{
+        Name = "BodyBackground";
+        BackgroundTransparency = 1;
+        BorderSizePixel = 0;
+        Image = "rbxassetid://97875520239510";
+        ImageTransparency = 0.10;
+        ScaleType = Enum.ScaleType.Crop;
+        Position = UDim2.new(0,0,0,0);
+        Size = UDim2.new(1,0,1,0);
+        ZIndex = 12;
+        Parent = mainInner
+    })
+    Rnd(bodyBg,9)
+
+    local bodyShade = Library:Create("Frame",{
+        Name = "BodyBackgroundShade";
+        BackgroundColor3 = Color3.fromRGB(0,0,0);
+        BackgroundTransparency = 0.82;
+        BorderSizePixel = 0;
+        Position = UDim2.new(0,0,0,0);
+        Size = UDim2.new(1,0,1,0);
+        ZIndex = 12;
+        Parent = mainInner
+    })
+    Rnd(bodyShade,9)
+
     local tabArea=Library:Create("Frame",{BackgroundTransparency=1;Position=UDim2.fromOffset(8,7);Size=UDim2.new(1,-16,0,22);ZIndex=13;Parent=mainInner})
     Library:Create("UIListLayout",{Padding=UDim.new(0,cfg.TabPadding);FillDirection=Enum.FillDirection.Horizontal;SortOrder=Enum.SortOrder.LayoutOrder;Parent=tabArea})
 
     local tabContainer=Library:Create("Frame",{
         BackgroundColor3=Library.MainColor;
-        BackgroundTransparency=1;
+        BackgroundTransparency=0.82;
         BorderSizePixel=0;
         ClipsDescendants=true;
         Position=UDim2.fromOffset(8,31);
@@ -955,32 +981,6 @@ function Library:CreateWindow(...)
         Parent=mainInner
     })
     Rnd(tabContainer,8); MkStroke(tabContainer,Library.OutlineColor,1,0.1); Library:AddToRegistry(tabContainer,{BackgroundColor3="MainColor"})
-
-    local tabBg = Library:Create("ImageLabel",{
-        Name = "TabBackground";
-        BackgroundTransparency = 1;
-        BorderSizePixel = 0;
-        Image = "rbxassetid://97875520239510";
-        ImageTransparency = 0.02;
-        ScaleType = Enum.ScaleType.Crop;
-        Position = UDim2.new(0,0,0,0);
-        Size = UDim2.new(1,0,1,0);
-        ZIndex = 13;
-        Parent = tabContainer
-    })
-    Rnd(tabBg,8)
-
-    local tabBgShade = Library:Create("Frame",{
-        Name = "TabBackgroundShade";
-        BackgroundColor3 = Color3.fromRGB(0,0,0);
-        BackgroundTransparency = 0.72;
-        BorderSizePixel = 0;
-        Position = UDim2.new(0,0,0,0);
-        Size = UDim2.new(1,0,1,0);
-        ZIndex = 13;
-        Parent = tabContainer
-    })
-    Rnd(tabBgShade,8)
 
     function Window:SetWindowTitle(t) titleLbl.Text=t end
 
@@ -1065,7 +1065,7 @@ function Library:CreateWindow(...)
         end
         function Tab:AddGroupbox(info)
             local GB={}; local side=info.Side==1 and leftSide or rightSide
-            local boxO=Library:Create("Frame",{BackgroundColor3=Library.BackgroundColor;BackgroundTransparency=0.38;BorderSizePixel=0;Size=UDim2.new(1,0,0,30);ZIndex=15;Parent=side})
+            local boxO=Library:Create("Frame",{BackgroundColor3=Library.BackgroundColor;BackgroundTransparency=0.46;BorderSizePixel=0;Size=UDim2.new(1,0,0,30);ZIndex=15;Parent=side})
             Rnd(boxO,9); MkStroke(boxO,Color3.fromRGB(0,150,255),1.5); Library:AddToRegistry(boxO,{BackgroundColor3="BackgroundColor"})
             local gbTop=Library:Create("Frame",{BackgroundColor3=Library.AccentColor;BackgroundTransparency=1;BorderSizePixel=0;Size=UDim2.new(1,0,0,2);ZIndex=16;Visible=false;Parent=boxO})
             Library:MakeLabel({Size=UDim2.new(1,-6,0,18);Position=UDim2.fromOffset(7,2);TextSize=12;Font=Library.FontBold;Text=info.Name;TextXAlignment=Enum.TextXAlignment.Left;ZIndex=17;Parent=boxO})
