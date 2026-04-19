@@ -964,7 +964,7 @@ function Library:CreateWindow(...)
     })
     Rnd(bodyShade,10)
 
-    local tabArea=Library:Create("Frame",{BackgroundTransparency=1;Position=UDim2.fromOffset(8,8);Size=UDim2.new(1,-16,0,22);ZIndex=13;Parent=mainInner})
+    local tabArea=Library:Create("Frame",{BackgroundTransparency=1;Position=UDim2.fromOffset(12,8);Size=UDim2.new(1,-24,0,22);ZIndex=13;Parent=mainInner})
     Library:Create("UIListLayout",{Padding=UDim.new(0,cfg.TabPadding);FillDirection=Enum.FillDirection.Horizontal;SortOrder=Enum.SortOrder.LayoutOrder;Parent=tabArea})
 
     local tabContainer=Library:Create("Frame",{
@@ -972,8 +972,8 @@ function Library:CreateWindow(...)
         BackgroundTransparency=1;
         BorderSizePixel=0;
         ClipsDescendants=true;
-        Position=UDim2.fromOffset(8,34);
-        Size=UDim2.new(1,-16,1,-42);
+        Position=UDim2.fromOffset(12,34);
+        Size=UDim2.new(1,-24,1,-42);
         ZIndex=13;
         Parent=mainInner
     })
