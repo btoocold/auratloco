@@ -776,20 +776,15 @@ function Library:CreateWindow(...)
     cfg.TabPadding   = type(cfg.TabPadding)=="number"  and cfg.TabPadding   or 2
     cfg.MenuFadeTime = type(cfg.MenuFadeTime)=="number" and cfg.MenuFadeTime or 0.2
     
-    -- Auto-size for mobile — small compact box
     local _mobile = IsMobile()
     
     if cfg.Center then cfg.AnchorPoint=Vector2.new(0.5,0.5); cfg.Position=UDim2.fromScale(0.5,0.5)
     else cfg.AnchorPoint=cfg.AnchorPoint or Vector2.zero; cfg.Position=cfg.Position or UDim2.fromOffset(160,50) end
     cfg.Size=cfg.Size or UDim2.fromOffset(560,370)
-    -- Force smaller size on mobile
+    -- Force small compact box on mobile
     if _mobile then
-        local cam = workspace.CurrentCamera
-        local vp = cam and cam.ViewportSize or Vector2.new(1280,720)
-        local w = math.clamp(vp.X * 0.6, 300, 420)
-        local h = math.clamp(vp.Y * 0.45, 240, 340)
-        cfg.Size = UDim2.fromOffset(w, h)
-        cfg.TabPadding = 2
+        cfg.Size = UDim2.fromOffset(350, 280)
+        cfg.TabPadding = 1
         cfg.Center = true
         cfg.AnchorPoint = Vector2.new(0.5, 0.5)
         cfg.Position = UDim2.fromScale(0.5, 0.5)
