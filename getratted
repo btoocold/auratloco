@@ -1,5 +1,5 @@
 --[[
-    GrimLib — Premium Roblox UI Library
+    Grimfrat
     Fixed: GetTouchEnabled -> TouchEnabled
     Fixed: Toggle fade removed (caused invisible text)
     Fixed: AddSlider Min=0 assert fixed
@@ -946,11 +946,11 @@ function Library:CreateWindow(...)
         Name = "BodyBackground";
         BackgroundTransparency = 1;
         BorderSizePixel = 0;
-        Image = "rbxassetid://137411018638431";
+        Image = "rbxassetid://108910308499788";
         ImageTransparency = 0.06;
         ScaleType = Enum.ScaleType.Crop;
-        Position = UDim2.new(0,0,0.02,0);
-        Size = UDim2.new(1,0,1.06,0);
+        Position = UDim2.new(0,4,0,6);
+        Size = UDim2.new(1,-8,1,-10);
         ZIndex = 11;
         Parent = inner
     })
