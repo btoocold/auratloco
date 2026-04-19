@@ -1,5 +1,5 @@
 --[[
-    GrimLib — Premium Roblox UI Library
+    Grimratted — 
     Fixed: GetTouchEnabled -> TouchEnabled
     Fixed: Toggle fade removed (caused invisible text)
     Fixed: AddSlider Min=0 assert fixed
@@ -806,10 +806,10 @@ function Library:CreateWindow(...)
     if _mobile then
         local cam = workspace.CurrentCamera
         local vp = cam and cam.ViewportSize or Vector2.new(1280,720)
-        local scaleX = (vp.X * 0.48) / cfg.Size.X.Offset
-        local scaleY = (vp.Y * 0.58) / cfg.Size.Y.Offset
-        local s = math.min(scaleX, scaleY, 0.75)
-        s = math.clamp(s, 0.4, 0.7)
+        local scaleX = (vp.X * 0.40) / cfg.Size.X.Offset
+        local scaleY = (vp.Y * 0.50) / cfg.Size.Y.Offset
+        local s = math.min(scaleX, scaleY, 0.62)
+        s = math.clamp(s, 0.35, 0.6)
         local uiScale = Instance.new("UIScale")
         uiScale.Scale = s
         uiScale.Parent = outer
