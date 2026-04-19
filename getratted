@@ -841,6 +841,20 @@ function Library:CreateWindow(...)
         uiScale.Parent = outer
     end
     Rnd(outer,12)
+
+    local bg = Library:Create("ImageLabel",{
+        Name = "UIBackground";
+        BackgroundTransparency = 1;
+        BorderSizePixel = 0;
+        Image = "rbxassetid://97875520239510";
+        ImageTransparency = 0.38;
+        ScaleType = Enum.ScaleType.Crop;
+        Position = UDim2.new(0,0,0,0);
+        Size = UDim2.new(1,0,1,0);
+        ZIndex = 9;
+        Parent = outer
+    })
+    Rnd(bg,12)
     local outerStroke = MkStroke(outer, Color3.fromRGB(0,80,255), 3, 0)
     local outerGlow = Glow(outer, 24)
     if outerGlow then outerGlow.ImageTransparency = 0.25 end
@@ -861,7 +875,7 @@ function Library:CreateWindow(...)
 
     local inner=Library:Create("Frame",{
         BackgroundColor3=Library.MainColor;
-        BackgroundTransparency=0.12;
+        BackgroundTransparency=0.22;
         BorderSizePixel=0;
         Position=UDim2.fromOffset(2,2);
         Size=UDim2.new(1,-4,1,-4);
@@ -920,7 +934,7 @@ function Library:CreateWindow(...)
 
     local mainOuter=Library:Create("Frame",{
         BackgroundColor3=Library.BackgroundColor;
-        BackgroundTransparency=0.18;
+        BackgroundTransparency=0.30;
         BorderSizePixel=0;
         Position=UDim2.fromOffset(8,40);
         Size=UDim2.new(1,-16,1,-48);
@@ -932,7 +946,7 @@ function Library:CreateWindow(...)
 
     local mainInner=Library:Create("Frame",{
         BackgroundColor3=Library.BackgroundColor;
-        BackgroundTransparency=0.32;
+        BackgroundTransparency=0.42;
         BorderSizePixel=0;
         Size=UDim2.fromScale(1,1);
         ZIndex=12;
@@ -941,38 +955,12 @@ function Library:CreateWindow(...)
     })
     Rnd(mainInner,9); Library:AddToRegistry(mainInner,{BackgroundColor3="BackgroundColor"})
 
-    local bg = Library:Create("ImageLabel", {
-        Name = "UIBackground";
-        BackgroundTransparency = 1;
-        BorderSizePixel = 0;
-        Image = "rbxassetid://97875520239510";
-        ImageTransparency = 0.45;
-        ScaleType = Enum.ScaleType.Crop;
-        Position = UDim2.new(0, 0, 0, 0);
-        Size = UDim2.new(1, 0, 1, 0);
-        ZIndex = 11;
-        Parent = mainInner;
-    })
-    Rnd(bg, 9)
-
-    local bgOverlay = Library:Create("Frame", {
-        Name = "UIBackgroundOverlay";
-        BackgroundColor3 = Color3.fromRGB(0, 0, 0);
-        BackgroundTransparency = 0.45;
-        BorderSizePixel = 0;
-        Position = UDim2.new(0, 0, 0, 0);
-        Size = UDim2.new(1, 0, 1, 0);
-        ZIndex = 12;
-        Parent = mainInner;
-    })
-    Rnd(bgOverlay, 9)
-
     local tabArea=Library:Create("Frame",{BackgroundTransparency=1;Position=UDim2.fromOffset(8,7);Size=UDim2.new(1,-16,0,22);ZIndex=13;Parent=mainInner})
     Library:Create("UIListLayout",{Padding=UDim.new(0,cfg.TabPadding);FillDirection=Enum.FillDirection.Horizontal;SortOrder=Enum.SortOrder.LayoutOrder;Parent=tabArea})
 
     local tabContainer=Library:Create("Frame",{
         BackgroundColor3=Library.MainColor;
-        BackgroundTransparency=0.10;
+        BackgroundTransparency=0.22;
         BorderSizePixel=0;
         ClipsDescendants=true;
         Position=UDim2.fromOffset(8,31);
@@ -1065,7 +1053,7 @@ function Library:CreateWindow(...)
         end
         function Tab:AddGroupbox(info)
             local GB={}; local side=info.Side==1 and leftSide or rightSide
-            local boxO=Library:Create("Frame",{BackgroundColor3=Library.BackgroundColor;BorderSizePixel=0;Size=UDim2.new(1,0,0,30);ZIndex=15;Parent=side})
+            local boxO=Library:Create("Frame",{BackgroundColor3=Library.BackgroundColor;BackgroundTransparency=0.18;BorderSizePixel=0;Size=UDim2.new(1,0,0,30);ZIndex=15;Parent=side})
             Rnd(boxO,9); MkStroke(boxO,Color3.fromRGB(0,150,255),1.5); Library:AddToRegistry(boxO,{BackgroundColor3="BackgroundColor"})
             local gbTop=Library:Create("Frame",{BackgroundColor3=Library.AccentColor;BackgroundTransparency=1;BorderSizePixel=0;Size=UDim2.new(1,0,0,2);ZIndex=16;Visible=false;Parent=boxO})
             Library:MakeLabel({Size=UDim2.new(1,-6,0,18);Position=UDim2.fromOffset(7,2);TextSize=12;Font=Library.FontBold;Text=info.Name;TextXAlignment=Enum.TextXAlignment.Left;ZIndex=17;Parent=boxO})
