@@ -638,7 +638,7 @@ function F:AddDropdown(idx,info)
     rpos(); rsize()
     dOuter:GetPropertyChangedSignal("AbsolutePosition"):Connect(rpos)
     dOuter:GetPropertyChangedSignal("AbsoluteSize"):Connect(function() rpos(); rsize() end)
-    local scroll=Library:Create("ScrollingFrame",{BackgroundTransparency=1;BorderSizePixel=0;CanvasSize=UDim2.new(0,0,0,0);Size=UDim2.fromScale(1,1);ZIndex=201;Parent=listFrame;TopImage="";BottomImage="";ScrollBarThickness=3;ScrollBarImageTransparency=0;ScrollBarImageColor3=Library.AccentColor})
+    local scroll=Library:Create("ScrollingFrame",{BackgroundTransparency=1;BorderSizePixel=0;CanvasSize=UDim2.new(0,0,0,0);Size=UDim2.fromScale(1,1);ZIndex=201;Parent=listFrame;TopImage="";BottomImage="";ScrollBarThickness=IsMobile() and 8 or 3;ScrollBarImageTransparency=0;ScrollBarImageColor3=Library.AccentColor;ElasticBehavior=Enum.ElasticBehavior.Always})
     Rnd(scroll,8); Library:AddToRegistry(scroll,{ScrollBarImageColor3="AccentColor"})
     Library:Create("UIListLayout",{FillDirection=Enum.FillDirection.Vertical;SortOrder=Enum.SortOrder.LayoutOrder;Parent=scroll})
     Library:Create("UIPadding",{PaddingTop=UDim.new(0,3);PaddingBottom=UDim.new(0,3);PaddingLeft=UDim.new(0,3);PaddingRight=UDim.new(0,3);Parent=scroll})
@@ -775,9 +775,33 @@ function Library:CreateWindow(...)
     cfg.Title        = type(cfg.Title)=="string"       and cfg.Title        or "Menu"
     cfg.TabPadding   = type(cfg.TabPadding)=="number"  and cfg.TabPadding   or 2
     cfg.MenuFadeTime = type(cfg.MenuFadeTime)=="number" and cfg.MenuFadeTime or 0.2
+    
+    -- Auto-size for mobile
+    local _mobile = IsMobile()
+    if _mobile and not cfg.Size then
+        local cam = workspace.CurrentCamera
+        local vp = cam and cam.ViewportSize or Vector2.new(1280,720)
+        local w = math.clamp(vp.X * 0.92, 320, 560)
+        local h = math.clamp(vp.Y * 0.55, 250, 370)
+        cfg.Size = UDim2.fromOffset(w, h)
+        cfg.TabPadding = math.clamp(cfg.TabPadding, 1, 4)
+    end
+    
     if cfg.Center then cfg.AnchorPoint=Vector2.new(0.5,0.5); cfg.Position=UDim2.fromScale(0.5,0.5)
     else cfg.AnchorPoint=cfg.AnchorPoint or Vector2.zero; cfg.Position=cfg.Position or UDim2.fromOffset(160,50) end
     cfg.Size=cfg.Size or UDim2.fromOffset(560,370)
+    -- Clamp size on mobile even if main script hardcodes it
+    if _mobile then
+        local cam = workspace.CurrentCamera
+        local vp = cam and cam.ViewportSize or Vector2.new(1280,720)
+        local maxW = math.floor(vp.X * 0.92)
+        local maxH = math.floor(vp.Y * 0.55)
+        local curW = cfg.Size.X.Offset
+        local curH = cfg.Size.Y.Offset
+        if curW > maxW or curH > maxH then
+            cfg.Size = UDim2.fromOffset(math.min(curW, maxW), math.min(curH, maxH))
+        end
+    end
     local Window={Tabs={}}
 
     local outer=Library:Create("Frame",{
@@ -920,8 +944,9 @@ function Library:CreateWindow(...)
         Library:AddToRegistry(blocker,{BackgroundColor3="MainColor"})
         local tabFrame=Library:Create("Frame",{BackgroundTransparency=1;ClipsDescendants=true;Size=UDim2.fromScale(1,1);Visible=false;ZIndex=14;Parent=tabContainer})
         local ColPad,ColGap=7,6
+        local _isMobile = IsMobile()
         local function makeSide(xscale,xoff)
-            local s=Library:Create("ScrollingFrame",{BackgroundTransparency=1;BorderSizePixel=0;Position=UDim2.new(xscale,xoff,0,ColPad);Size=UDim2.new(0.5,-ColPad*2-ColGap/2,1,-ColPad*2);CanvasSize=UDim2.new(0,0,0,0);AutomaticCanvasSize=Enum.AutomaticSize.None;BottomImage="";TopImage="";ScrollBarThickness=0;ScrollBarImageTransparency=1;ScrollBarImageColor3=Library.AccentColor;ScrollingDirection=Enum.ScrollingDirection.Y;ClipsDescendants=true;ZIndex=15;Parent=tabFrame})
+            local s=Library:Create("ScrollingFrame",{BackgroundTransparency=1;BorderSizePixel=0;Position=UDim2.new(xscale,xoff,0,ColPad);Size=UDim2.new(0.5,-ColPad*2-ColGap/2,1,-ColPad*2);CanvasSize=UDim2.new(0,0,0,0);AutomaticCanvasSize=Enum.AutomaticSize.None;BottomImage="";TopImage="";ScrollBarThickness=_isMobile and 6 or 0;ScrollBarImageTransparency=_isMobile and 0.3 or 1;ScrollBarImageColor3=Library.AccentColor;ScrollingDirection=Enum.ScrollingDirection.Y;ClipsDescendants=true;ZIndex=15;Parent=tabFrame;ElasticBehavior=Enum.ElasticBehavior.Always;ScrollingEnabled=true})
             Library:Create("UIListLayout",{Padding=UDim.new(0,8);FillDirection=Enum.FillDirection.Vertical;SortOrder=Enum.SortOrder.LayoutOrder;HorizontalAlignment=Enum.HorizontalAlignment.Center;Parent=s})
             Library:Create("UIPadding",{PaddingLeft=UDim.new(0,2);PaddingRight=UDim.new(0,2);PaddingTop=UDim.new(0,2);PaddingBottom=UDim.new(0,2);Parent=s})
             Library:AddToRegistry(s,{ScrollBarImageColor3="AccentColor"})
@@ -1007,7 +1032,7 @@ function Library:CreateWindow(...)
     -- Mobile toggle button
     local mobileBtn=nil
     if InputService.TouchEnabled then
-        mobileBtn=Library:Create("TextButton",{BackgroundColor3=Library.AccentColor;BorderSizePixel=0;Position=UDim2.fromOffset(8,8);Size=UDim2.fromOffset(56,26);Text="☰ UI";TextColor3=Color3.new(1,1,1);Font=Library.FontBold;TextSize=12;ZIndex=600;Parent=ScreenGui})
+        mobileBtn=Library:Create("TextButton",{BackgroundColor3=Library.AccentColor;BorderSizePixel=0;Position=UDim2.fromOffset(8,8);Size=UDim2.fromOffset(70,34);Text="☰ UI";TextColor3=Color3.new(1,1,1);Font=Library.FontBold;TextSize=14;ZIndex=600;Parent=ScreenGui})
         Rnd(mobileBtn,7); MkStroke(mobileBtn,Library:GetDarkerColor(Library.AccentColor),1)
         Library:MakeDraggable(mobileBtn)
     end
