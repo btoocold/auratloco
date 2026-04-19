@@ -54,8 +54,6 @@ local TAP_THRESHOLD = 10
 local function OnTap(guiObject, callback)
     guiObject.InputBegan:Connect(function(inp)
         if not IsPress(inp) then return end
-        local touchPos = Vector2.new(inp.Position.X, inp.Position.Y)
-        if Library:MouseIsOverOpenedFrame(touchPos) then return end
         if inp.UserInputType == Enum.UserInputType.Touch then
             local startPos = inp.Position
             inp.Changed:Connect(function()
@@ -244,18 +242,19 @@ function Library:MakeDraggable(inst, cutoff)
     end))
 end
 
-function Library:IsOverFrame(frame, inputPos)
-    local p = inputPos or CursorPos()
-    if p == Vector2.zero then return false end
+function Library:IsOverFrame(frame)
+    local p=CursorPos()
+    -- On mobile CursorPos returns 0,0 so also check touch position
+    if p == Vector2.zero and IsMobile() then return false end
     local ap,as=frame.AbsolutePosition,frame.AbsoluteSize
     return p.X>=ap.X and p.X<=ap.X+as.X and p.Y>=ap.Y and p.Y<=ap.Y+as.Y
 end
-function Library:MouseIsOverOpenedFrame(inputPos)
+function Library:MouseIsOverOpenedFrame()
     -- If any dropdown/picker is open, only allow clicks inside it
     -- Clicks outside will be blocked (and the dropdown will be closed by the global InputBegan handler)
     for f in next, Library.OpenedFrames do
         if f.Visible then
-            if Library:IsOverFrame(f, inputPos) then
+            if Library:IsOverFrame(f) then
                 return false -- click is inside the open frame, allow it
             else
                 return true -- click is outside, block it
@@ -692,7 +691,7 @@ function F:AddDropdown(idx,info)
                 Library.RegistryMap[bLbl].Properties.TextColor3=selected and "AccentColor" or "FontColor"
                 btn.BackgroundColor3=selected and Color3.fromRGB(15,25,55) or Library.MainColor
             end
-            OnTap(bLbl, function(inp)
+            OnTap(btn, function(inp)
                     local try=not selected
                     if DD:GetActiveValues()==1 and not try and not info.AllowNull then return end
                     if info.Multi then selected=try; if selected then DD.Value[v]=true else DD.Value[v]=nil end
