@@ -1,5 +1,5 @@
 --[[
-    Grimratted — 
+    GrimLib — Premium Roblox UI Library
     Fixed: GetTouchEnabled -> TouchEnabled
     Fixed: Toggle fade removed (caused invisible text)
     Fixed: AddSlider Min=0 assert fixed
@@ -1027,13 +1027,8 @@ function Library:CreateWindow(...)
         Window.Tabs[name]=Tab; return Tab
     end
 
-    -- Mobile toggle button
+    -- Mobile toggle button (disabled — main script provides its own)
     local mobileBtn=nil
-    if InputService.TouchEnabled then
-        mobileBtn=Library:Create("TextButton",{BackgroundColor3=Library.AccentColor;BorderSizePixel=0;Position=UDim2.fromOffset(8,8);Size=UDim2.fromOffset(70,34);Text="☰ UI";TextColor3=Color3.new(1,1,1);Font=Library.FontBold;TextSize=14;ZIndex=600;Parent=ScreenGui})
-        Rnd(mobileBtn,7); MkStroke(mobileBtn,Library:GetDarkerColor(Library.AccentColor),1)
-        Library:MakeDraggable(mobileBtn)
-    end
 
     -- ── FIXED Toggle: no fade, just show/hide directly ─────────
     local toggled=false; local fading=false
