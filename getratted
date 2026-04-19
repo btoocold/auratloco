@@ -40,7 +40,35 @@ local function CursorPos()
     return ok and p or Vector2.zero
 end
 local function IsMobile()
-    return InputService.TouchEnabled and not InputService.KeyboardEnabled
+    if not InputService.TouchEnabled then return false end
+    local cam = workspace.CurrentCamera
+    local vp = cam and cam.ViewportSize or Vector2.new(1920, 1080)
+    if vp.Y < 800 then return true end
+    if not InputService.KeyboardEnabled then return true end
+    if vp.X < 1400 then return true end
+    return false
+end
+
+-- Scroll-safe tap: on mobile, only fires callback if finger didn't drag (not a scroll)
+local TAP_THRESHOLD = 10
+local function OnTap(guiObject, callback)
+    guiObject.InputBegan:Connect(function(inp)
+        if not IsPress(inp) then return end
+        if inp.UserInputType == Enum.UserInputType.Touch then
+            local startPos = inp.Position
+            inp.Changed:Connect(function()
+                if inp.UserInputState == Enum.UserInputState.End then
+                    local endPos = inp.Position
+                    local dist = (Vector2.new(endPos.X, endPos.Y) - Vector2.new(startPos.X, startPos.Y)).Magnitude
+                    if dist < TAP_THRESHOLD then
+                        callback(inp)
+                    end
+                end
+            end)
+        else
+            callback(inp)
+        end
+    end)
 end
 
 local function Tween(inst, props, t, sty, dir)
@@ -490,15 +518,14 @@ function F:AddButton(...)
         return outer,nil,lbl
     end
     local function InitEvents(b)
-        local function valid(inp) return IsPress(inp) and not Library:MouseIsOverOpenedFrame() end
         local function waitClick(ev,timeout)
             local bind=Instance.new("BindableEvent")
-            local conn=ev:Once(function(i) bind:Fire(valid(i)) end)
+            local conn=ev:Once(function(i) bind:Fire(IsPress(i) and not Library:MouseIsOverOpenedFrame()) end)
             task.delay(timeout,function() conn:Disconnect(); bind:Fire(false) end)
             return bind.Event:Wait()
         end
-        b.Outer.InputBegan:Connect(function(inp)
-            if not valid(inp) or b.Locked then return end
+        OnTap(b.Outer, function(inp)
+            if Library:MouseIsOverOpenedFrame() or b.Locked then return end
             if b.DoubleClick then
                 b.Label.TextColor3=Library.AccentColor; b.Label.Text="Sure?"; b.Locked=true
                 local ok=waitClick(b.Outer.InputBegan,0.6)
@@ -568,8 +595,8 @@ function F:AddToggle(idx,info)
         for _,a in next,T.Addons do if a.Type=="KeyPicker" and a.SyncToggleState then a.Toggled=b; a:Update() end end
         Library:SafeCallback(T.Callback,T.Value); Library:SafeCallback(T.Changed,T.Value); Library:UpdateDependencyBoxes()
     end
-    region.InputBegan:Connect(function(inp)
-        if IsPress(inp) and not Library:MouseIsOverOpenedFrame() then T:SetValue(not T.Value); Library:AttemptSave() end end)
+    OnTap(region, function(inp)
+        if not Library:MouseIsOverOpenedFrame() then T:SetValue(not T.Value); Library:AttemptSave() end end)
     if T.Risky then Library:RemoveFromRegistry(tLbl); tLbl.TextColor3=Library.RiskColor; Library:AddToRegistry(tLbl,{TextColor3="RiskColor"}) end
     T:Display(); self:AddBlank(info.BlankSize or 7); self:Resize()
     T.TextLabel=tLbl; T.Container=self.Container; setmetatable(T,BaseAddons); Toggles[idx]=T; Library:UpdateDependencyBoxes(); return T
@@ -665,14 +692,13 @@ function F:AddDropdown(idx,info)
                 Library.RegistryMap[bLbl].Properties.TextColor3=selected and "AccentColor" or "FontColor"
                 btn.BackgroundColor3=selected and Color3.fromRGB(15,25,55) or Library.MainColor
             end
-            bLbl.InputBegan:Connect(function(inp)
-                if IsPress(inp) then
+            OnTap(bLbl, function(inp)
                     local try=not selected
                     if DD:GetActiveValues()==1 and not try and not info.AllowNull then return end
                     if info.Multi then selected=try; if selected then DD.Value[v]=true else DD.Value[v]=nil end
                     else selected=try; DD.Value=selected and v or nil; for _,b in next,Btns do b:Update() end end
                     Tbl:Update(); DD:Display(); Library:SafeCallback(DD.Callback,DD.Value); Library:SafeCallback(DD.Changed,DD.Value); Library:AttemptSave()
-                end end)
+                end)
             Tbl:Update(); DD:Display(); Btns[btn]=Tbl
         end
         scroll.CanvasSize=UDim2.fromOffset(0,count*22+6); rsize(math.clamp(count*22,0,MAX*22)+6)
@@ -686,8 +712,8 @@ function F:AddDropdown(idx,info)
         else DD.Value=v and table.find(DD.Values,v) and v or nil end
         DD:BuildList(); Library:SafeCallback(DD.Callback,DD.Value); Library:SafeCallback(DD.Changed,DD.Value)
     end
-    dOuter.InputBegan:Connect(function(inp)
-        if IsPress(inp) and not Library:MouseIsOverOpenedFrame() then
+    OnTap(dOuter, function(inp)
+        if not Library:MouseIsOverOpenedFrame() then
             if listFrame.Visible then DD:CloseDropdown() else DD:OpenDropdown() end end end)
     Library:GiveSignal(InputService.InputBegan:Connect(function(inp)
         if IsPress(inp) then
