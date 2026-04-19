@@ -845,16 +845,12 @@ function Library:CreateWindow(...)
     local outerGlow = Glow(outer, 24)
     if outerGlow then outerGlow.ImageTransparency = 1 end
 
-    local cyanBorder=Library:Create("Frame",{BackgroundTransparency=1;BorderSizePixel=0;Position=UDim2.fromOffset(0,0);Size=UDim2.new(1,0,1,0);ZIndex=10;Parent=outer})
-    Rnd(cyanBorder,9)
-    local cyanStroke = MkStroke(cyanBorder, Color3.fromRGB(0, 200, 255), 1, 1)
-
+    
     Library:GiveSignal(RunService.RenderStepped:Connect(function()
         local rc = Library.CurrentRainbowColor or Color3.fromRGB(0, 80, 255)
         local rh = Library.CurrentRainbowHue or 0
         if outerStroke and outerStroke.Parent then outerStroke.Color = rc end
         if outerGlow and outerGlow.Parent then outerGlow.ImageColor3 = rc end
-        if cyanStroke and cyanStroke.Parent then cyanStroke.Color = Color3.fromHSV((rh + 0.15) % 1, 0.7, 1) end
     end))
     Library:MakeDraggable(outer,30)
     Library:AddToRegistry(outer,{BackgroundColor3="BackgroundColor"})
@@ -949,8 +945,8 @@ function Library:CreateWindow(...)
         Image = "rbxassetid://108910308499788";
         ImageTransparency = 0.06;
         ScaleType = Enum.ScaleType.Crop;
-        Position = UDim2.new(0,0,0,2);
-        Size = UDim2.new(1,0,1,-4);
+        Position = UDim2.new(0,0,0,0);
+        Size = UDim2.new(1,0,1,0);
         ZIndex = 11;
         Parent = inner
     })
