@@ -990,7 +990,7 @@ function Library:CreateWindow(...)
         local blocker=Library:Create("Frame",{BackgroundColor3=Library.MainColor;BorderSizePixel=0;Position=UDim2.new(0,0,1,-1);Size=UDim2.new(1,0,0,2);BackgroundTransparency=1;ZIndex=16;Parent=tabBtn})
         Library:AddToRegistry(blocker,{BackgroundColor3="MainColor"})
         local tabFrame=Library:Create("Frame",{BackgroundTransparency=1;ClipsDescendants=true;Size=UDim2.fromScale(1,1);Visible=false;ZIndex=14;Parent=tabContainer})
-        local ColPad,ColGap=7,6
+        local ColPad,ColGap=7,14
         local _isMobile = IsMobile()
         local function addSmoothTouchScroll(scrollFrame)
             if not _isMobile then return end
