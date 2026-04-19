@@ -819,7 +819,7 @@ function Library:CreateWindow(...)
     local outer=Library:Create("Frame",{
         AnchorPoint=cfg.AnchorPoint;
         BackgroundColor3=Library.BackgroundColor;
-        BackgroundTransparency=0.12;
+        BackgroundTransparency=1;
         BorderSizePixel=0;
         Position=cfg.Position;
         Size=cfg.Size;
@@ -843,11 +843,11 @@ function Library:CreateWindow(...)
     Rnd(outer,12)
     local outerStroke = MkStroke(outer, Color3.fromRGB(0,80,255), 3, 0)
     local outerGlow = Glow(outer, 24)
-    if outerGlow then outerGlow.ImageTransparency = 0.25 end
+    if outerGlow then outerGlow.ImageTransparency = 1 end
 
     local cyanBorder=Library:Create("Frame",{BackgroundTransparency=1;BorderSizePixel=0;Position=UDim2.fromOffset(4,4);Size=UDim2.new(1,-8,1,-8);ZIndex=10;Parent=outer})
     Rnd(cyanBorder,9)
-    local cyanStroke = MkStroke(cyanBorder, Color3.fromRGB(0, 200, 255), 1, 0)
+    local cyanStroke = MkStroke(cyanBorder, Color3.fromRGB(0, 200, 255), 1, 1)
 
     Library:GiveSignal(RunService.RenderStepped:Connect(function()
         local rc = Library.CurrentRainbowColor or Color3.fromRGB(0, 80, 255)
@@ -861,7 +861,7 @@ function Library:CreateWindow(...)
 
     local inner=Library:Create("Frame",{
         BackgroundColor3=Library.MainColor;
-        BackgroundTransparency=0.55;
+        BackgroundTransparency=1;
         BorderSizePixel=0;
         Position=UDim2.fromOffset(2,2);
         Size=UDim2.new(1,-4,1,-4);
@@ -873,7 +873,7 @@ function Library:CreateWindow(...)
 
     local titleBar=Library:Create("Frame",{
         BackgroundColor3=Library.Black;
-        BackgroundTransparency=0.18;
+        BackgroundTransparency=1;
         BorderSizePixel=0;
         Position=UDim2.fromOffset(0,0);
         Size=UDim2.new(1,0,0,32);
@@ -920,7 +920,7 @@ function Library:CreateWindow(...)
 
     local mainOuter=Library:Create("Frame",{
         BackgroundColor3=Library.BackgroundColor;
-        BackgroundTransparency=0.6;
+        BackgroundTransparency=1;
         BorderSizePixel=0;
         Position=UDim2.fromOffset(8,40);
         Size=UDim2.new(1,-16,1,-48);
@@ -932,7 +932,7 @@ function Library:CreateWindow(...)
 
     local mainInner=Library:Create("Frame",{
         BackgroundColor3=Library.BackgroundColor;
-        BackgroundTransparency=0.75;
+        BackgroundTransparency=1;
         BorderSizePixel=0;
         Size=UDim2.fromScale(1,1);
         ZIndex=12;
@@ -946,24 +946,24 @@ function Library:CreateWindow(...)
         BackgroundTransparency = 1;
         BorderSizePixel = 0;
         Image = "rbxassetid://97875520239510";
-        ImageTransparency = 0.10;
+        ImageTransparency = 0.06;
         ScaleType = Enum.ScaleType.Crop;
         Position = UDim2.new(0,0,0,0);
         Size = UDim2.new(1,0,1,0);
-        ZIndex = 12;
-        Parent = mainInner
+        ZIndex = 11;
+        Parent = inner
     })
     Rnd(bodyBg,9)
 
     local bodyShade = Library:Create("Frame",{
         Name = "BodyBackgroundShade";
         BackgroundColor3 = Color3.fromRGB(0,0,0);
-        BackgroundTransparency = 0.82;
+        BackgroundTransparency = 0.9;
         BorderSizePixel = 0;
         Position = UDim2.new(0,0,0,0);
         Size = UDim2.new(1,0,1,0);
-        ZIndex = 12;
-        Parent = mainInner
+        ZIndex = 11;
+        Parent = inner
     })
     Rnd(bodyShade,9)
 
@@ -972,7 +972,7 @@ function Library:CreateWindow(...)
 
     local tabContainer=Library:Create("Frame",{
         BackgroundColor3=Library.MainColor;
-        BackgroundTransparency=0.82;
+        BackgroundTransparency=1;
         BorderSizePixel=0;
         ClipsDescendants=true;
         Position=UDim2.fromOffset(8,31);
@@ -1065,7 +1065,7 @@ function Library:CreateWindow(...)
         end
         function Tab:AddGroupbox(info)
             local GB={}; local side=info.Side==1 and leftSide or rightSide
-            local boxO=Library:Create("Frame",{BackgroundColor3=Library.BackgroundColor;BackgroundTransparency=0.46;BorderSizePixel=0;Size=UDim2.new(1,0,0,30);ZIndex=15;Parent=side})
+            local boxO=Library:Create("Frame",{BackgroundColor3=Library.BackgroundColor;BackgroundTransparency=0.28;BorderSizePixel=0;Size=UDim2.new(1,0,0,30);ZIndex=15;Parent=side})
             Rnd(boxO,9); MkStroke(boxO,Color3.fromRGB(0,150,255),1.5); Library:AddToRegistry(boxO,{BackgroundColor3="BackgroundColor"})
             local gbTop=Library:Create("Frame",{BackgroundColor3=Library.AccentColor;BackgroundTransparency=1;BorderSizePixel=0;Size=UDim2.new(1,0,0,2);ZIndex=16;Visible=false;Parent=boxO})
             Library:MakeLabel({Size=UDim2.new(1,-6,0,18);Position=UDim2.fromOffset(7,2);TextSize=12;Font=Library.FontBold;Text=info.Name;TextXAlignment=Enum.TextXAlignment.Left;ZIndex=17;Parent=boxO})
@@ -1080,7 +1080,7 @@ function Library:CreateWindow(...)
         function Tab:AddRightGroupbox(n) return Tab:AddGroupbox({Side=2;Name=n}) end
         function Tab:AddTabbox(info)
             local Tabbox={Tabs={}}; local side=info.Side==1 and leftSide or rightSide
-            local tbO=Library:Create("Frame",{BackgroundColor3=Library.BackgroundColor;BorderSizePixel=0;Size=UDim2.new(1,0,0,0);ZIndex=15;Parent=side})
+            local tbO=Library:Create("Frame",{BackgroundColor3=Library.BackgroundColor;BackgroundTransparency=0.28;BorderSizePixel=0;Size=UDim2.new(1,0,0,0);ZIndex=15;Parent=side})
             Rnd(tbO,9); MkStroke(tbO,Color3.fromRGB(0,150,255),1.5); Library:AddToRegistry(tbO,{BackgroundColor3="BackgroundColor"})
             local tbAcc=Library:Create("Frame",{BackgroundColor3=Library.AccentColor;BackgroundTransparency=1;BorderSizePixel=0;Size=UDim2.new(1,0,0,2);ZIndex=16;Visible=false;Parent=tbO})
             local btnRow=Library:Create("Frame",{BackgroundTransparency=1;Position=UDim2.fromOffset(0,1);Size=UDim2.new(1,0,0,20);ZIndex=16;ClipsDescendants=true;Parent=tbO})
