@@ -758,7 +758,7 @@ BaseGroupbox.__namecall=function(t,k,...) return F[k](...) end
 end
 
 do
-    Library.NotificationArea=Library:Create("Frame",{BackgroundTransparency=1;Position=UDim2.fromOffset(8,40);Size=UDim2.fromOffset(300,400);ZIndex=500;Parent=ScreenGui})
+    Library.NotificationArea=Library:Create("Frame",{BackgroundTransparency=1;Position=UDim2.fromOffset(0,0);Size=UDim2.fromOffset(300,400);ZIndex=500;Parent=ScreenGui})
     Library:Create("UIListLayout",{Padding=UDim.new(0,5);FillDirection=Enum.FillDirection.Vertical;SortOrder=Enum.SortOrder.LayoutOrder;Parent=Library.NotificationArea})
     local wO=Library:Create("Frame",{BackgroundColor3=Library.MainColor;BorderSizePixel=0;Position=UDim2.fromOffset(8,8);Size=UDim2.fromOffset(220,24);Visible=false;ZIndex=400;Parent=ScreenGui})
     Rnd(wO,8); MkStroke(wO,Library.OutlineColor,1.5); Glow(wO,16); Library:AddToRegistry(wO,{BackgroundColor3="MainColor"})
@@ -845,7 +845,7 @@ function Library:CreateWindow(...)
     local outerGlow = Glow(outer, 24)
     if outerGlow then outerGlow.ImageTransparency = 1 end
 
-    local cyanBorder=Library:Create("Frame",{BackgroundTransparency=1;BorderSizePixel=0;Position=UDim2.fromOffset(4,4);Size=UDim2.new(1,-8,1,-8);ZIndex=10;Parent=outer})
+    local cyanBorder=Library:Create("Frame",{BackgroundTransparency=1;BorderSizePixel=0;Position=UDim2.fromOffset(0,0);Size=UDim2.new(1,0,1,0);ZIndex=10;Parent=outer})
     Rnd(cyanBorder,9)
     local cyanStroke = MkStroke(cyanBorder, Color3.fromRGB(0, 200, 255), 1, 1)
 
@@ -863,8 +863,8 @@ function Library:CreateWindow(...)
         BackgroundColor3=Library.MainColor;
         BackgroundTransparency=1;
         BorderSizePixel=0;
-        Position=UDim2.fromOffset(2,2);
-        Size=UDim2.new(1,-4,1,-4);
+        Position=UDim2.fromOffset(0,0);
+        Size=UDim2.new(1,0,1,0);
         ZIndex=11;
         Parent=outer;
         ClipsDescendants=true
@@ -876,7 +876,7 @@ function Library:CreateWindow(...)
         BackgroundTransparency=1;
         BorderSizePixel=0;
         Position=UDim2.fromOffset(0,0);
-        Size=UDim2.new(1,0,0,32);
+        Size=UDim2.new(1,0,0,0);
         ZIndex=12;
         Parent=inner;
         ClipsDescendants=true
@@ -902,6 +902,7 @@ function Library:CreateWindow(...)
         TextSize=14;
         Font=Library.FontBold;
         Text=cfg.Title;
+        Visible=false;
         TextXAlignment=Enum.TextXAlignment.Left;
         ZIndex=14;
         Parent=titleBar
@@ -922,8 +923,8 @@ function Library:CreateWindow(...)
         BackgroundColor3=Library.BackgroundColor;
         BackgroundTransparency=1;
         BorderSizePixel=0;
-        Position=UDim2.fromOffset(8,40);
-        Size=UDim2.new(1,-16,1,-48);
+        Position=UDim2.fromOffset(8,8);
+        Size=UDim2.new(1,0,1,0);
         ZIndex=11;
         Parent=inner;
         ClipsDescendants=true
@@ -967,7 +968,7 @@ function Library:CreateWindow(...)
     })
     Rnd(bodyShade,9)
 
-    local tabArea=Library:Create("Frame",{BackgroundTransparency=1;Position=UDim2.fromOffset(8,7);Size=UDim2.new(1,-16,0,22);ZIndex=13;Parent=mainInner})
+    local tabArea=Library:Create("Frame",{BackgroundTransparency=1;Position=UDim2.fromOffset(6,6);Size=UDim2.new(1,-12,0,22);ZIndex=13;Parent=mainInner})
     Library:Create("UIListLayout",{Padding=UDim.new(0,cfg.TabPadding);FillDirection=Enum.FillDirection.Horizontal;SortOrder=Enum.SortOrder.LayoutOrder;Parent=tabArea})
 
     local tabContainer=Library:Create("Frame",{
@@ -975,8 +976,8 @@ function Library:CreateWindow(...)
         BackgroundTransparency=1;
         BorderSizePixel=0;
         ClipsDescendants=true;
-        Position=UDim2.fromOffset(8,31);
-        Size=UDim2.new(1,-16,1,-39);
+        Position=UDim2.fromOffset(6,30);
+        Size=UDim2.new(1,-12,1,-36);
         ZIndex=13;
         Parent=mainInner
     })
