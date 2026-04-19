@@ -60,7 +60,7 @@ local function OnTap(guiObject, callback)
                 if inp.UserInputState == Enum.UserInputState.End then
                     local endPos = inp.Position
                     local dist = (Vector2.new(endPos.X, endPos.Y) - Vector2.new(startPos.X, startPos.Y)).Magnitude
-                    if dist < TAP_THRESHOLD then
+                    if dist < TAP_THRESHOLD and not Library.IsScrolling then
                         callback(inp)
                     end
                 end
@@ -992,12 +992,16 @@ function Library:CreateWindow(...)
             local lastY = 0
             local velocity = 0
             local touchRef = nil
+            local startY = 0
+            local totalDrag = 0
 
             scrollFrame.InputBegan:Connect(function(inp)
                 if inp.UserInputType == Enum.UserInputType.Touch then
                     dragging = true
                     touchRef = inp
                     lastY = inp.Position.Y
+                    startY = inp.Position.Y
+                    totalDrag = 0
                     velocity = 0
                 end
             end)
@@ -1007,6 +1011,10 @@ function Library:CreateWindow(...)
                 if inp.UserInputType == Enum.UserInputType.Touch and inp == touchRef then
                     local delta = lastY - inp.Position.Y
                     lastY = inp.Position.Y
+                    totalDrag = totalDrag + math.abs(delta)
+                    if totalDrag > 6 then
+                        Library.IsScrolling = true
+                    end
                     velocity = delta
                     local newPos = scrollFrame.CanvasPosition.Y + delta
                     scrollFrame.CanvasPosition = Vector2.new(0, math.clamp(newPos, 0, math.max(0, scrollFrame.CanvasSize.Y.Offset - scrollFrame.AbsoluteSize.Y)))
@@ -1017,6 +1025,7 @@ function Library:CreateWindow(...)
                 if inp.UserInputType == Enum.UserInputType.Touch and inp == touchRef then
                     dragging = false
                     touchRef = nil
+                    task.defer(function() Library.IsScrolling = false end)
                     -- Momentum coast
                     task.spawn(function()
                         while math.abs(velocity) > 0.5 do
