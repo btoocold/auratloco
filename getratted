@@ -1,5 +1,5 @@
 --[[
-    GrimRat
+    GrimLib — Premium Roblox UI Library
     Fixed: GetTouchEnabled -> TouchEnabled
     Fixed: Toggle fade removed (caused invisible text)
     Fixed: AddSlider Min=0 assert fixed
@@ -657,43 +657,14 @@ function F:AddDropdown(idx,info)
     local iList=Library:MakeLabel({Position=UDim2.fromOffset(7,0);Size=UDim2.new(1,-22,1,0);TextSize=13;Text="--";TextXAlignment=Enum.TextXAlignment.Left;ZIndex=22;Parent=dOuter})
     if type(info.Tooltip)=="string" then Library:AddToolTip(info.Tooltip,dOuter) end
     local MAX=8
-    local listBlocker=Library:Create("TextButton",{
-        BackgroundTransparency=1;
-        AutoButtonColor=false;
-        BorderSizePixel=0;
-        Modal=true;
-        Text="";
-        Visible=false;
-        Active=true;
-        Size=UDim2.fromScale(1,1);
-        ZIndex=199;
-        Parent=ScreenGui
-    })
-    local listFrame=Library:Create("Frame",{BackgroundColor3=Library.MainColor;BorderSizePixel=0;Active=true;ZIndex=200;Visible=false;Parent=ScreenGui})
+    local listFrame=Library:Create("Frame",{BackgroundColor3=Library.MainColor;BorderSizePixel=0;ZIndex=200;Visible=false;Parent=ScreenGui})
     Rnd(listFrame,8); MkStroke(listFrame,Library.OutlineColor,1.5); Library:AddToRegistry(listFrame,{BackgroundColor3="MainColor"})
     local function rpos() listFrame.Position=UDim2.fromOffset(dOuter.AbsolutePosition.X, dOuter.AbsolutePosition.Y+dOuter.AbsoluteSize.Y+3) end
     local function rsize(y) listFrame.Size=UDim2.fromOffset(dOuter.AbsoluteSize.X, y or MAX*22+6) end
     rpos(); rsize()
     dOuter:GetPropertyChangedSignal("AbsolutePosition"):Connect(rpos)
     dOuter:GetPropertyChangedSignal("AbsoluteSize"):Connect(function() rpos(); rsize() end)
-    local scroll=Library:Create("ScrollingFrame",{
-        BackgroundTransparency=1;
-        BorderSizePixel=0;
-        Active=true;
-        ScrollingDirection=Enum.ScrollingDirection.Y;
-        ScrollingEnabled=true;
-        ElasticBehavior=Enum.ElasticBehavior.WhenScrollable;
-        ScrollingSensitivity=1.15;
-        CanvasSize=UDim2.new(0,0,0,0);
-        Size=UDim2.fromScale(1,1);
-        ZIndex=201;
-        Parent=listFrame;
-        TopImage="";
-        BottomImage="";
-        ScrollBarThickness=IsMobile() and 2 or 3;
-        ScrollBarImageTransparency=0.15;
-        ScrollBarImageColor3=Library.AccentColor
-    })
+    local scroll=Library:Create("ScrollingFrame",{BackgroundTransparency=1;BorderSizePixel=0;CanvasSize=UDim2.new(0,0,0,0);Size=UDim2.fromScale(1,1);ZIndex=201;Parent=listFrame;TopImage="";BottomImage="";ScrollBarThickness=3;ScrollBarImageTransparency=0;ScrollBarImageColor3=Library.AccentColor;ElasticBehavior=Enum.ElasticBehavior.Always})
     Rnd(scroll,8); Library:AddToRegistry(scroll,{ScrollBarImageColor3="AccentColor"})
     Library:Create("UIListLayout",{FillDirection=Enum.FillDirection.Vertical;SortOrder=Enum.SortOrder.LayoutOrder;Parent=scroll})
     Library:Create("UIPadding",{PaddingTop=UDim.new(0,3);PaddingBottom=UDim.new(0,3);PaddingLeft=UDim.new(0,3);PaddingRight=UDim.new(0,3);Parent=scroll})
@@ -720,7 +691,7 @@ function F:AddDropdown(idx,info)
                 Library.RegistryMap[bLbl].Properties.TextColor3=selected and "AccentColor" or "FontColor"
                 btn.BackgroundColor3=selected and Color3.fromRGB(15,25,55) or Library.MainColor
             end
-            OnTap(btn, function(inp)
+            OnTap(bLbl, function(inp)
                     local try=not selected
                     if DD:GetActiveValues()==1 and not try and not info.AllowNull then return end
                     if info.Multi then selected=try; if selected then DD.Value[v]=true else DD.Value[v]=nil end
@@ -732,21 +703,8 @@ function F:AddDropdown(idx,info)
         scroll.CanvasSize=UDim2.fromOffset(0,count*22+6); rsize(math.clamp(count*22,0,MAX*22)+6)
     end
     function DD:SetValues(nv) if nv then DD.Values=nv end; DD:BuildList() end
-    function DD:OpenDropdown()
-        rpos()
-        listBlocker.Visible=true
-        listFrame.Visible=true
-        Library.OpenedFrames[listFrame]=true
-        Tween(arrow,{Rotation=180},0.15)
-        if dst then dst.Color=Library.AccentColor end
-    end
-    function DD:CloseDropdown()
-        listBlocker.Visible=false
-        listFrame.Visible=false
-        Library.OpenedFrames[listFrame]=nil
-        Tween(arrow,{Rotation=0},0.15)
-        if dst then dst.Color=Library.OutlineColor end
-    end
+    function DD:OpenDropdown() rpos(); listFrame.Visible=true; Library.OpenedFrames[listFrame]=true; Tween(arrow,{Rotation=180},0.15); if dst then dst.Color=Library.AccentColor end end
+    function DD:CloseDropdown() listFrame.Visible=false; Library.OpenedFrames[listFrame]=nil; Tween(arrow,{Rotation=0},0.15); if dst then dst.Color=Library.OutlineColor end end
     function DD:OnChanged(f) DD.Changed=f; f(DD.Value) end
     function DD:SetValue(v)
         if DD.Multi then local t={}; for val in next,v do if table.find(DD.Values,val) then t[val]=true end end; DD.Value=t
@@ -756,11 +714,6 @@ function F:AddDropdown(idx,info)
     OnTap(dOuter, function(inp)
         if not Library:MouseIsOverOpenedFrame() then
             if listFrame.Visible then DD:CloseDropdown() else DD:OpenDropdown() end end end)
-    OnTap(listBlocker, function(inp)
-        if listFrame.Visible then
-            DD:CloseDropdown()
-        end
-    end)
     Library:GiveSignal(InputService.InputBegan:Connect(function(inp)
         if IsPress(inp) then
             local p = Vector2.new(inp.Position.X, inp.Position.Y)
