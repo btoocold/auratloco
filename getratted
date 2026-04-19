@@ -977,7 +977,7 @@ function Library:CreateWindow(...)
         ZIndex=13;
         Parent=mainInner
     })
-    Rnd(tabContainer,8); MkStroke(tabContainer,Library.OutlineColor,1,0.1); Library:AddToRegistry(tabContainer,{BackgroundColor3="MainColor"})
+    Rnd(tabContainer,8); Library:AddToRegistry(tabContainer,{BackgroundColor3="MainColor"})
 
     function Window:SetWindowTitle(t) titleLbl.Text=t end
 
