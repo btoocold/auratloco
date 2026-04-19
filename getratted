@@ -969,8 +969,51 @@ function Library:CreateWindow(...)
         local tabFrame=Library:Create("Frame",{BackgroundTransparency=1;ClipsDescendants=true;Size=UDim2.fromScale(1,1);Visible=false;ZIndex=14;Parent=tabContainer})
         local ColPad,ColGap=7,6
         local _isMobile = IsMobile()
+        local function addSmoothTouchScroll(scrollFrame)
+            if not _isMobile then return end
+            local dragging = false
+            local lastY = 0
+            local velocity = 0
+            local touchRef = nil
+
+            scrollFrame.InputBegan:Connect(function(inp)
+                if inp.UserInputType == Enum.UserInputType.Touch then
+                    dragging = true
+                    touchRef = inp
+                    lastY = inp.Position.Y
+                    velocity = 0
+                end
+            end)
+
+            scrollFrame.InputChanged:Connect(function(inp)
+                if not dragging then return end
+                if inp.UserInputType == Enum.UserInputType.Touch and inp == touchRef then
+                    local delta = lastY - inp.Position.Y
+                    lastY = inp.Position.Y
+                    velocity = delta
+                    local newPos = scrollFrame.CanvasPosition.Y + delta
+                    scrollFrame.CanvasPosition = Vector2.new(0, math.clamp(newPos, 0, math.max(0, scrollFrame.CanvasSize.Y.Offset - scrollFrame.AbsoluteSize.Y)))
+                end
+            end)
+
+            scrollFrame.InputEnded:Connect(function(inp)
+                if inp.UserInputType == Enum.UserInputType.Touch and inp == touchRef then
+                    dragging = false
+                    touchRef = nil
+                    -- Momentum coast
+                    task.spawn(function()
+                        while math.abs(velocity) > 0.5 do
+                            velocity = velocity * 0.92
+                            local newPos = scrollFrame.CanvasPosition.Y + velocity
+                            scrollFrame.CanvasPosition = Vector2.new(0, math.clamp(newPos, 0, math.max(0, scrollFrame.CanvasSize.Y.Offset - scrollFrame.AbsoluteSize.Y)))
+                            RunService.Heartbeat:Wait()
+                        end
+                    end)
+                end
+            end)
+        end
         local function makeSide(xscale,xoff)
-            local s=Library:Create("ScrollingFrame",{BackgroundTransparency=1;BorderSizePixel=0;Position=UDim2.new(xscale,xoff,0,ColPad);Size=UDim2.new(0.5,-ColPad*2-ColGap/2,1,-ColPad*2);CanvasSize=UDim2.new(0,0,0,0);AutomaticCanvasSize=Enum.AutomaticSize.None;BottomImage="";TopImage="";ScrollBarThickness=0;ScrollBarImageTransparency=1;ScrollBarImageColor3=Library.AccentColor;ScrollingDirection=Enum.ScrollingDirection.Y;ClipsDescendants=true;ZIndex=15;Parent=tabFrame;ElasticBehavior=Enum.ElasticBehavior.Always;ScrollingEnabled=true})
+            local s=Library:Create("ScrollingFrame",{BackgroundTransparency=1;BorderSizePixel=0;Position=UDim2.new(xscale,xoff,0,ColPad);Size=UDim2.new(0.5,-ColPad*2-ColGap/2,1,-ColPad*2);CanvasSize=UDim2.new(0,0,0,0);AutomaticCanvasSize=Enum.AutomaticSize.None;BottomImage="";TopImage="";ScrollBarThickness=0;ScrollBarImageTransparency=1;ScrollBarImageColor3=Library.AccentColor;ScrollingDirection=Enum.ScrollingDirection.Y;ClipsDescendants=true;ZIndex=15;Parent=tabFrame;ElasticBehavior=Enum.ElasticBehavior.Always;ScrollingEnabled=not _isMobile})
             Library:Create("UIListLayout",{Padding=UDim.new(0,8);FillDirection=Enum.FillDirection.Vertical;SortOrder=Enum.SortOrder.LayoutOrder;HorizontalAlignment=Enum.HorizontalAlignment.Center;Parent=s})
             Library:Create("UIPadding",{PaddingLeft=UDim.new(0,2);PaddingRight=UDim.new(0,2);PaddingTop=UDim.new(0,2);PaddingBottom=UDim.new(0,2);Parent=s})
             Library:AddToRegistry(s,{ScrollBarImageColor3="AccentColor"})
@@ -979,6 +1022,7 @@ function Library:CreateWindow(...)
             return s
         end
         local leftSide=makeSide(0,ColPad); local rightSide=makeSide(0.5,ColGap/2)
+        addSmoothTouchScroll(leftSide); addSmoothTouchScroll(rightSide)
         function Tab:ShowTab()
             -- Close all open dropdowns/pickers before switching
             for f in next, Library.OpenedFrames do
