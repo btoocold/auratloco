@@ -998,14 +998,7 @@ function Library:CreateWindow(...)
             Library:Create("UIPadding",{PaddingLeft=UDim.new(0,2);PaddingRight=UDim.new(0,2);PaddingTop=UDim.new(0,2);PaddingBottom=UDim.new(0,2);Parent=s})
             Library:AddToRegistry(s,{ScrollBarImageColor3="AccentColor"})
             s.UIListLayout:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(function()
-                local prevPos = s.CanvasPosition
                 s.CanvasSize = UDim2.fromOffset(0, s.UIListLayout.AbsoluteContentSize.Y + 10)
-                -- Defer so engine processes CanvasSize before we restore position
-                task.defer(function()
-                    if s and s.Parent then
-                        s.CanvasPosition = prevPos
-                    end
-                end)
             end)
             return s
         end
