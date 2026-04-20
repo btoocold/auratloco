@@ -677,7 +677,7 @@ function F:AddDropdown(idx,info)
     rpos(); rsize()
     dOuter:GetPropertyChangedSignal("AbsolutePosition"):Connect(rpos)
     dOuter:GetPropertyChangedSignal("AbsoluteSize"):Connect(function() rpos(); rsize() end)
-    local scroll=Library:Create("ScrollingFrame",{BackgroundTransparency=1;BorderSizePixel=0;CanvasSize=UDim2.new(0,0,0,0);Size=UDim2.fromScale(1,1);ZIndex=201;Parent=listFrame;TopImage="";BottomImage="";ScrollBarThickness=3;ScrollBarImageTransparency=0;ScrollBarImageColor3=Library.AccentColor;ElasticBehavior=Enum.ElasticBehavior.Never;ScrollingEnabled=true})
+    local scroll=Library:Create("ScrollingFrame",{BackgroundTransparency=1;BorderSizePixel=0;CanvasSize=UDim2.new(0,0,0,0);Size=UDim2.fromScale(1,1);ZIndex=201;Parent=listFrame;TopImage="";BottomImage="";ScrollBarThickness=3;ScrollBarImageTransparency=0;ScrollBarImageColor3=Library.AccentColor;ElasticBehavior=Enum.ElasticBehavior.Always})
     Rnd(scroll,8); Library:AddToRegistry(scroll,{ScrollBarImageColor3="AccentColor"})
     Library:Create("UIListLayout",{FillDirection=Enum.FillDirection.Vertical;SortOrder=Enum.SortOrder.LayoutOrder;Parent=scroll})
     Library:Create("UIPadding",{PaddingTop=UDim.new(0,3);PaddingBottom=UDim.new(0,3);PaddingLeft=UDim.new(0,3);PaddingRight=UDim.new(0,3);Parent=scroll})
@@ -706,7 +706,7 @@ function F:AddDropdown(idx,info)
             end
             -- Use LinoriaLib's approach: InputBegan directly on btn (Active=true), check MouseButton1 only
             btn.InputBegan:Connect(function(inp)
-                if inp.UserInputType == Enum.UserInputType.MouseButton1 or inp.UserInputType == Enum.UserInputType.Touch then
+                if inp.UserInputType == Enum.UserInputType.MouseButton1 then
                     local try=not selected
                     if DD:GetActiveValues()==1 and not try and not info.AllowNull then return end
                     if info.Multi then selected=try; if selected then DD.Value[v]=true else DD.Value[v]=nil end
@@ -729,7 +729,7 @@ function F:AddDropdown(idx,info)
     end
     -- LinoriaLib's approach: use InputBegan on dOuter directly, check MouseButton1
     dOuter.InputBegan:Connect(function(inp)
-        if (inp.UserInputType == Enum.UserInputType.MouseButton1 or inp.UserInputType == Enum.UserInputType.Touch) and not Library:MouseIsOverOpenedFrame() then
+        if inp.UserInputType == Enum.UserInputType.MouseButton1 and not Library:MouseIsOverOpenedFrame() then
             if listFrame.Visible then DD:CloseDropdown() else DD:OpenDropdown() end
         end
     end)
@@ -848,16 +848,23 @@ function Library:CreateWindow(...)
         Parent=ScreenGui;
         ClipsDescendants=true
     })
-    -- Scale down on mobile phones only, iPad gets full PC size
-    if _mobile and not IsIPad() then
+    -- Scale down the entire window on mobile so it fits as a small box
+    if _mobile then
         local cam = workspace.CurrentCamera
         local vp = cam and cam.ViewportSize or Vector2.new(1280,720)
-        local scaleX = (vp.X * 0.40) / cfg.Size.X.Offset
-        local scaleY = (vp.Y * 0.50) / cfg.Size.Y.Offset
-        local s = math.min(scaleX, scaleY, 0.62)
-        s = math.clamp(s, 0.35, 0.6)
         local uiScale = Instance.new("UIScale")
-        uiScale.Scale = s
+        if IsIPad() then
+            -- iPad: scale to fit screen with padding so nothing gets cut off
+            local scaleX = (vp.X * 0.92) / cfg.Size.X.Offset
+            local scaleY = (vp.Y * 0.88) / cfg.Size.Y.Offset
+            uiScale.Scale = math.min(scaleX, scaleY, 1.0)
+        else
+            -- iPhone: keep existing small scale
+            local scaleX = (vp.X * 0.40) / cfg.Size.X.Offset
+            local scaleY = (vp.Y * 0.50) / cfg.Size.Y.Offset
+            local s = math.min(scaleX, scaleY, 0.62)
+            uiScale.Scale = math.clamp(s, 0.35, 0.6)
+        end
         uiScale.Parent = outer
     end
     Rnd(outer,12)
