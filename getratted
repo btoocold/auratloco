@@ -999,44 +999,51 @@ function Library:CreateWindow(...)
             local velocity = 0
             local touchRef = nil
 
-            scrollFrame.InputBegan:Connect(function(inp)
-                if inp.UserInputType == Enum.UserInputType.Touch then
+            local function isOverFrame()
+                local ap = scrollFrame.AbsolutePosition
+                local as = scrollFrame.AbsoluteSize
+                local tp = touchRef and touchRef.Position or Vector2.zero
+                return tp.X >= ap.X and tp.X <= ap.X+as.X and tp.Y >= ap.Y and tp.Y <= ap.Y+as.Y
+            end
+
+            Library:GiveSignal(InputService.InputBegan:Connect(function(inp)
+                if inp.UserInputType ~= Enum.UserInputType.Touch then return end
+                local ap = scrollFrame.AbsolutePosition
+                local as = scrollFrame.AbsoluteSize
+                local p = inp.Position
+                if p.X >= ap.X and p.X <= ap.X+as.X and p.Y >= ap.Y and p.Y <= ap.Y+as.Y then
                     dragging = true
                     touchRef = inp
-                    lastY = inp.Position.Y
+                    lastY = p.Y
                     velocity = 0
                 end
-            end)
+            end))
 
-            scrollFrame.InputChanged:Connect(function(inp)
-                if not dragging then return end
-                if inp.UserInputType == Enum.UserInputType.Touch and inp == touchRef then
-                    local delta = lastY - inp.Position.Y
-                    lastY = inp.Position.Y
-                    velocity = delta
-                    local newPos = scrollFrame.CanvasPosition.Y + delta
-                    scrollFrame.CanvasPosition = Vector2.new(0, math.clamp(newPos, 0, math.max(0, scrollFrame.CanvasSize.Y.Offset - scrollFrame.AbsoluteSize.Y)))
-                end
-            end)
+            Library:GiveSignal(InputService.InputChanged:Connect(function(inp)
+                if not dragging or inp.UserInputType ~= Enum.UserInputType.Touch or inp ~= touchRef then return end
+                local delta = lastY - inp.Position.Y
+                lastY = inp.Position.Y
+                velocity = delta
+                local newPos = scrollFrame.CanvasPosition.Y + delta
+                scrollFrame.CanvasPosition = Vector2.new(0, math.clamp(newPos, 0, math.max(0, scrollFrame.CanvasSize.Y.Offset - scrollFrame.AbsoluteSize.Y)))
+            end))
 
-            scrollFrame.InputEnded:Connect(function(inp)
-                if inp.UserInputType == Enum.UserInputType.Touch and inp == touchRef then
-                    dragging = false
-                    touchRef = nil
-                    -- Momentum coast
-                    task.spawn(function()
-                        while math.abs(velocity) > 0.5 do
-                            velocity = velocity * 0.92
-                            local newPos = scrollFrame.CanvasPosition.Y + velocity
-                            scrollFrame.CanvasPosition = Vector2.new(0, math.clamp(newPos, 0, math.max(0, scrollFrame.CanvasSize.Y.Offset - scrollFrame.AbsoluteSize.Y)))
-                            RunService.Heartbeat:Wait()
-                        end
-                    end)
-                end
-            end)
+            Library:GiveSignal(InputService.InputEnded:Connect(function(inp)
+                if inp.UserInputType ~= Enum.UserInputType.Touch or inp ~= touchRef then return end
+                dragging = false
+                touchRef = nil
+                task.spawn(function()
+                    while math.abs(velocity) > 0.5 do
+                        velocity = velocity * 0.92
+                        local newPos = scrollFrame.CanvasPosition.Y + velocity
+                        scrollFrame.CanvasPosition = Vector2.new(0, math.clamp(newPos, 0, math.max(0, scrollFrame.CanvasSize.Y.Offset - scrollFrame.AbsoluteSize.Y)))
+                        RunService.Heartbeat:Wait()
+                    end
+                end)
+            end))
         end
         local function makeSide(xscale,xoff)
-            local s=Library:Create("ScrollingFrame",{BackgroundTransparency=1;BorderSizePixel=0;Position=UDim2.new(xscale,xoff,0,ColPad);Size=UDim2.new(0.5,-ColPad*2-ColGap/2,1,-ColPad*2);CanvasSize=UDim2.new(0,0,0,0);AutomaticCanvasSize=Enum.AutomaticSize.None;BottomImage="";TopImage="";ScrollBarThickness=0;ScrollBarImageTransparency=1;ScrollBarImageColor3=Library.AccentColor;ScrollingDirection=Enum.ScrollingDirection.Y;ClipsDescendants=true;ZIndex=15;Parent=tabFrame;ElasticBehavior=Enum.ElasticBehavior.Always;ScrollingEnabled=true})
+            local s=Library:Create("ScrollingFrame",{BackgroundTransparency=1;BorderSizePixel=0;Position=UDim2.new(xscale,xoff,0,ColPad);Size=UDim2.new(0.5,-ColPad*2-ColGap/2,1,-ColPad*2);CanvasSize=UDim2.new(0,0,0,0);AutomaticCanvasSize=Enum.AutomaticSize.None;BottomImage="";TopImage="";ScrollBarThickness=0;ScrollBarImageTransparency=1;ScrollBarImageColor3=Library.AccentColor;ScrollingDirection=Enum.ScrollingDirection.Y;ClipsDescendants=true;ZIndex=15;Parent=tabFrame;ElasticBehavior=Enum.ElasticBehavior.Always;ScrollingEnabled=not _isMobile})
             Library:Create("UIListLayout",{Padding=UDim.new(0,8);FillDirection=Enum.FillDirection.Vertical;SortOrder=Enum.SortOrder.LayoutOrder;HorizontalAlignment=Enum.HorizontalAlignment.Center;Parent=s})
             Library:Create("UIPadding",{PaddingLeft=UDim.new(0,2);PaddingRight=UDim.new(0,2);PaddingTop=UDim.new(0,2);PaddingBottom=UDim.new(0,2);Parent=s})
             Library:AddToRegistry(s,{ScrollBarImageColor3="AccentColor"})
