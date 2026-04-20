@@ -662,7 +662,7 @@ function F:AddDropdown(idx,info)
     rpos(); rsize()
     dOuter:GetPropertyChangedSignal("AbsolutePosition"):Connect(rpos)
     dOuter:GetPropertyChangedSignal("AbsoluteSize"):Connect(function() rpos(); rsize() end)
-    local scroll=Library:Create("ScrollingFrame",{BackgroundTransparency=1;BorderSizePixel=0;CanvasSize=UDim2.new(0,0,0,0);Size=UDim2.fromScale(1,1);ZIndex=201;Parent=listFrame;TopImage="";BottomImage="";ScrollBarThickness=3;ScrollBarImageTransparency=0;ScrollBarImageColor3=Library.AccentColor;ElasticBehavior=Enum.ElasticBehavior.Never})
+    local scroll=Library:Create("ScrollingFrame",{BackgroundTransparency=1;BorderSizePixel=0;CanvasSize=UDim2.new(0,0,0,0);Size=UDim2.fromScale(1,1);ZIndex=201;Parent=listFrame;TopImage="";BottomImage="";ScrollBarThickness=3;ScrollBarImageTransparency=0;ScrollBarImageColor3=Library.AccentColor;ElasticBehavior=Enum.ElasticBehavior.Always})
     Rnd(scroll,8); Library:AddToRegistry(scroll,{ScrollBarImageColor3="AccentColor"})
     Library:Create("UIListLayout",{FillDirection=Enum.FillDirection.Vertical;SortOrder=Enum.SortOrder.LayoutOrder;Parent=scroll})
     Library:Create("UIPadding",{PaddingTop=UDim.new(0,3);PaddingBottom=UDim.new(0,3);PaddingLeft=UDim.new(0,3);PaddingRight=UDim.new(0,3);Parent=scroll})
@@ -992,17 +992,64 @@ function Library:CreateWindow(...)
         local tabFrame=Library:Create("Frame",{BackgroundTransparency=1;ClipsDescendants=true;Size=UDim2.fromScale(1,1);Visible=false;ZIndex=14;Parent=tabContainer})
         local ColPad,ColGap=7,14
         local _isMobile = IsMobile()
+        local function addSmoothTouchScroll(scrollFrame)
+            if not _isMobile then return end
+            local dragging = false
+            local lastY = 0
+            local velocity = 0
+            local touchRef = nil
+
+            local function isInsideFrame(pos)
+                local ap = scrollFrame.AbsolutePosition
+                local as = scrollFrame.AbsoluteSize
+                return pos.X >= ap.X and pos.X <= ap.X+as.X and pos.Y >= ap.Y and pos.Y <= ap.Y+as.Y
+            end
+
+            Library:GiveSignal(InputService.InputBegan:Connect(function(inp)
+                if inp.UserInputType ~= Enum.UserInputType.Touch then return end
+                if isInsideFrame(inp.Position) and not dragging then
+                    dragging = true
+                    touchRef = inp
+                    lastY = inp.Position.Y
+                    velocity = 0
+                end
+            end))
+
+            Library:GiveSignal(InputService.InputChanged:Connect(function(inp)
+                if not dragging or inp ~= touchRef then return end
+                if inp.UserInputType ~= Enum.UserInputType.Touch then return end
+                local delta = lastY - inp.Position.Y
+                lastY = inp.Position.Y
+                velocity = delta
+                local newPos = scrollFrame.CanvasPosition.Y + delta
+                scrollFrame.CanvasPosition = Vector2.new(0, math.clamp(newPos, 0, math.max(0, scrollFrame.CanvasSize.Y.Offset - scrollFrame.AbsoluteSize.Y)))
+            end))
+
+            Library:GiveSignal(InputService.InputEnded:Connect(function(inp)
+                if inp ~= touchRef then return end
+                dragging = false
+                touchRef = nil
+                task.spawn(function()
+                    while math.abs(velocity) > 0.5 do
+                        velocity = velocity * 0.92
+                        local newPos = scrollFrame.CanvasPosition.Y + velocity
+                        scrollFrame.CanvasPosition = Vector2.new(0, math.clamp(newPos, 0, math.max(0, scrollFrame.CanvasSize.Y.Offset - scrollFrame.AbsoluteSize.Y)))
+                        RunService.Heartbeat:Wait()
+                    end
+                end)
+            end))
+        end
         local function makeSide(xscale,xoff)
-            local s=Library:Create("ScrollingFrame",{BackgroundTransparency=1;BorderSizePixel=0;Position=UDim2.new(xscale,xoff,0,ColPad);Size=UDim2.new(0.5,-ColPad*2-ColGap/2,1,-ColPad*2);CanvasSize=UDim2.new(0,0,0,0);AutomaticCanvasSize=Enum.AutomaticSize.None;BottomImage="";TopImage="";ScrollBarThickness=_isMobile and 6 or 0;ScrollBarImageTransparency=_isMobile and 0.3 or 1;ScrollBarImageColor3=Library.AccentColor;ScrollingDirection=Enum.ScrollingDirection.Y;ClipsDescendants=true;ZIndex=15;Parent=tabFrame;ElasticBehavior=Enum.ElasticBehavior.Never;ScrollingEnabled=true})
+            local s=Library:Create("ScrollingFrame",{BackgroundTransparency=1;BorderSizePixel=0;Position=UDim2.new(xscale,xoff,0,ColPad);Size=UDim2.new(0.5,-ColPad*2-ColGap/2,1,-ColPad*2);CanvasSize=UDim2.new(0,0,0,0);AutomaticCanvasSize=Enum.AutomaticSize.None;BottomImage="";TopImage="";ScrollBarThickness=0;ScrollBarImageTransparency=1;ScrollBarImageColor3=Library.AccentColor;ScrollingDirection=Enum.ScrollingDirection.Y;ClipsDescendants=true;ZIndex=15;Parent=tabFrame;ElasticBehavior=Enum.ElasticBehavior.Always;ScrollingEnabled=not _isMobile})
             Library:Create("UIListLayout",{Padding=UDim.new(0,8);FillDirection=Enum.FillDirection.Vertical;SortOrder=Enum.SortOrder.LayoutOrder;HorizontalAlignment=Enum.HorizontalAlignment.Center;Parent=s})
             Library:Create("UIPadding",{PaddingLeft=UDim.new(0,2);PaddingRight=UDim.new(0,2);PaddingTop=UDim.new(0,2);PaddingBottom=UDim.new(0,2);Parent=s})
             Library:AddToRegistry(s,{ScrollBarImageColor3="AccentColor"})
             s.UIListLayout:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(function()
-                s.CanvasSize = UDim2.fromOffset(0, s.UIListLayout.AbsoluteContentSize.Y + 10)
-            end)
+                s.CanvasSize=UDim2.fromOffset(0,s.UIListLayout.AbsoluteContentSize.Y+10) end)
             return s
         end
         local leftSide=makeSide(0,ColPad); local rightSide=makeSide(0.5,ColGap/2)
+        addSmoothTouchScroll(leftSide); addSmoothTouchScroll(rightSide)
         function Tab:ShowTab()
             -- Close all open dropdowns/pickers before switching
             for f in next, Library.OpenedFrames do
