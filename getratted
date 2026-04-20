@@ -1,5 +1,5 @@
 --[[
-    GrimLib — Premium Roblox UI Library
+    Grimrat
     Fixed: GetTouchEnabled -> TouchEnabled
     Fixed: Toggle fade removed (caused invisible text)
     Fixed: AddSlider Min=0 assert fixed
@@ -13,6 +13,7 @@ local Players       = game:GetService("Players")
 local RunService    = game:GetService("RunService")
 local TweenService  = game:GetService("TweenService")
 local LocalPlayer   = Players.LocalPlayer
+local Mouse         = LocalPlayer:GetMouse()
 
 local ProtectGui = protectgui or (syn and syn.protect_gui) or function() end
 local ScreenGui  = Instance.new("ScreenGui")
@@ -40,7 +41,35 @@ local function CursorPos()
     return ok and p or Vector2.zero
 end
 local function IsMobile()
-    return InputService.TouchEnabled and not InputService.KeyboardEnabled
+    if not InputService.TouchEnabled then return false end
+    local cam = workspace.CurrentCamera
+    local vp = cam and cam.ViewportSize or Vector2.new(1920, 1080)
+    if vp.Y < 800 then return true end
+    if not InputService.KeyboardEnabled then return true end
+    if vp.X < 1400 then return true end
+    return false
+end
+
+-- Scroll-safe tap: on mobile, only fires callback if finger didn't drag (not a scroll)
+local TAP_THRESHOLD = 10
+local function OnTap(guiObject, callback)
+    guiObject.InputBegan:Connect(function(inp)
+        if not IsPress(inp) then return end
+        if inp.UserInputType == Enum.UserInputType.Touch then
+            local startPos = inp.Position
+            inp.Changed:Connect(function()
+                if inp.UserInputState == Enum.UserInputState.End then
+                    local endPos = inp.Position
+                    local dist = (Vector2.new(endPos.X, endPos.Y) - Vector2.new(startPos.X, startPos.Y)).Magnitude
+                    if dist < TAP_THRESHOLD then
+                        callback(inp)
+                    end
+                end
+            end)
+        else
+            callback(inp)
+        end
+    end)
 end
 
 local function Tween(inst, props, t, sty, dir)
@@ -93,16 +122,16 @@ local Library = {
     FontColor       = Color3.fromRGB(230, 230, 245);
     MainColor       = Color3.fromRGB(22,  22,  30);
     BackgroundColor = Color3.fromRGB(12,  12,  18);
-    AccentColor     = Color3.fromRGB(0,   90,  255);
-    OutlineColor    = Color3.fromRGB(0,   60,  180);
+    AccentColor     = Color3.fromRGB(210, 210, 220);
+    OutlineColor    = Color3.fromRGB(210, 210, 220);
     RiskColor       = Color3.fromRGB(255, 55,  55);
     SubtleColor     = Color3.fromRGB(120, 120, 150);
     Black           = Color3.new(0,0,0);
     Font            = Enum.Font.GothamMedium;
     FontBold        = Enum.Font.GothamBold;
 }
-Library.AccentColorDark  = Color3.fromRGB(0, 45, 160)
-Library.AccentColorLight = Color3.fromRGB(60, 140, 255)
+Library.AccentColorDark  = Color3.fromRGB(165, 165, 175)
+Library.AccentColorLight = Color3.fromRGB(235, 235, 240)
 
 local rHue = 0
 table.insert(Library.Signals, RunService.RenderStepped:Connect(function(dt)
@@ -222,14 +251,11 @@ function Library:IsOverFrame(frame)
     return p.X>=ap.X and p.X<=ap.X+as.X and p.Y>=ap.Y and p.Y<=ap.Y+as.Y
 end
 function Library:MouseIsOverOpenedFrame()
-    -- If any dropdown/picker is open, only allow clicks inside it
-    -- Clicks outside will be blocked (and the dropdown will be closed by the global InputBegan handler)
     for f in next, Library.OpenedFrames do
         if f.Visible then
-            if Library:IsOverFrame(f) then
-                return false -- click is inside the open frame, allow it
-            else
-                return true -- click is outside, block it
+            local ap,as=f.AbsolutePosition,f.AbsoluteSize
+            if Mouse.X>=ap.X and Mouse.X<=ap.X+as.X and Mouse.Y>=ap.Y and Mouse.Y<=ap.Y+as.Y then
+                return true
             end
         end
     end
@@ -480,9 +506,8 @@ function F:AddButton(...)
         assert(type(obj.Func)=="function","AddButton: Func missing") end
     Parse(Btn,...)
     local function MakeBtn(b)
-        local outer=Library:Create("Frame",{BackgroundColor3=Library.MainColor;BorderSizePixel=0;Size=UDim2.new(1,-4,0,22);ZIndex=20})
-        Rnd(outer,6); MkStroke(outer,Library.OutlineColor,1)
-        Grad(outer,Color3.fromRGB(30,30,45),Color3.fromRGB(18,18,28),90)
+        local outer=Library:Create("Frame",{BackgroundColor3=Library.MainColor;BackgroundTransparency=0.42;BorderSizePixel=0;Size=UDim2.new(1,-4,0,22);ZIndex=20})
+        Rnd(outer,6); MkStroke(outer,Library.OutlineColor,1,0.35)
         Library:AddToRegistry(outer,{BackgroundColor3="MainColor"})
         local lbl=Library:MakeLabel({Size=UDim2.fromScale(1,1);TextSize=13;Text=b.Text;ZIndex=21;Parent=outer})
         outer.InputBegan:Connect(function(inp) if IsPress(inp) then Tween(outer,{BackgroundColor3=Library.AccentColor},0.1) end end)
@@ -490,15 +515,14 @@ function F:AddButton(...)
         return outer,nil,lbl
     end
     local function InitEvents(b)
-        local function valid(inp) return IsPress(inp) and not Library:MouseIsOverOpenedFrame() end
         local function waitClick(ev,timeout)
             local bind=Instance.new("BindableEvent")
-            local conn=ev:Once(function(i) bind:Fire(valid(i)) end)
+            local conn=ev:Once(function(i) bind:Fire(IsPress(i) and not Library:MouseIsOverOpenedFrame()) end)
             task.delay(timeout,function() conn:Disconnect(); bind:Fire(false) end)
             return bind.Event:Wait()
         end
-        b.Outer.InputBegan:Connect(function(inp)
-            if not valid(inp) or b.Locked then return end
+        OnTap(b.Outer, function(inp)
+            if Library:MouseIsOverOpenedFrame() or b.Locked then return end
             if b.DoubleClick then
                 b.Label.TextColor3=Library.AccentColor; b.Label.Text="Sure?"; b.Locked=true
                 local ok=waitClick(b.Outer.InputBegan,0.6)
@@ -525,8 +549,8 @@ function F:AddInput(idx,info)
     local TB={Value=info.Default or "";Numeric=info.Numeric or false;Finished=info.Finished or false;Type="Input";Callback=info.Callback or function()end}
     Library:MakeLabel({Size=UDim2.new(1,0,0,13);TextSize=12;Text=info.Text;TextXAlignment=Enum.TextXAlignment.Left;ZIndex=20;Parent=self.Container})
     self:AddBlank(2)
-    local outer=Library:Create("Frame",{BackgroundColor3=Library.MainColor;BorderSizePixel=0;Size=UDim2.new(1,-4,0,22);ZIndex=20;Parent=self.Container})
-    Rnd(outer,6); local st=MkStroke(outer,Library.OutlineColor,1); Library:AddToRegistry(outer,{BackgroundColor3="MainColor"})
+    local outer=Library:Create("Frame",{BackgroundColor3=Library.MainColor;BackgroundTransparency=0.32;BorderSizePixel=0;Size=UDim2.new(1,-4,0,22);ZIndex=20;Parent=self.Container})
+    Rnd(outer,6); local st=MkStroke(outer,Library.OutlineColor,1,0.35); Library:AddToRegistry(outer,{BackgroundColor3="MainColor"})
     local clip=Library:Create("Frame",{BackgroundTransparency=1;ClipsDescendants=true;Position=UDim2.fromOffset(7,0);Size=UDim2.new(1,-7,1,0);ZIndex=22;Parent=outer})
     local box=Library:Create("TextBox",{BackgroundTransparency=1;Size=UDim2.fromScale(4,1);Font=Library.Font;PlaceholderColor3=Library.SubtleColor;PlaceholderText=info.Placeholder or "";Text=info.Default or "";TextColor3=Library.FontColor;TextSize=13;TextXAlignment=Enum.TextXAlignment.Left;ZIndex=22;Parent=clip;ClearTextOnFocus=false})
     Library:AddToRegistry(box,{TextColor3="FontColor"})
@@ -546,8 +570,8 @@ end
 function F:AddToggle(idx,info)
     assert(info.Text,"AddToggle: Missing Text")
     local T={Value=info.Default or false;Type="Toggle";Callback=info.Callback or function()end;Addons={};Risky=info.Risky}
-    local pill=Library:Create("Frame",{BackgroundColor3=T.Value and Library.AccentColor or Library.MainColor;BorderSizePixel=0;Size=UDim2.new(0,32,0,16);ZIndex=20;Parent=self.Container})
-    Rnd(pill,8); local pst=MkStroke(pill,T.Value and Library.AccentColorDark or Library.OutlineColor,1)
+    local pill=Library:Create("Frame",{BackgroundColor3=T.Value and Library.AccentColor or Library.MainColor;BackgroundTransparency=0.14;BorderSizePixel=0;Size=UDim2.new(0,32,0,16);ZIndex=20;Parent=self.Container})
+    Rnd(pill,8); local pst=MkStroke(pill,T.Value and Library.AccentColorDark or Library.OutlineColor,1,0.35)
     Library:AddToRegistry(pill,{BackgroundColor3=T.Value and "AccentColor" or "MainColor"})
     local knob=Library:Create("Frame",{BackgroundColor3=Color3.new(1,1,1);BorderSizePixel=0;AnchorPoint=Vector2.new(0,0.5);Position=T.Value and UDim2.new(1,-14,0.5,0) or UDim2.new(0,2,0.5,0);Size=UDim2.fromOffset(12,12);ZIndex=21;Parent=pill})
     Rnd(knob,6)
@@ -568,8 +592,8 @@ function F:AddToggle(idx,info)
         for _,a in next,T.Addons do if a.Type=="KeyPicker" and a.SyncToggleState then a.Toggled=b; a:Update() end end
         Library:SafeCallback(T.Callback,T.Value); Library:SafeCallback(T.Changed,T.Value); Library:UpdateDependencyBoxes()
     end
-    region.InputBegan:Connect(function(inp)
-        if IsPress(inp) and not Library:MouseIsOverOpenedFrame() then T:SetValue(not T.Value); Library:AttemptSave() end end)
+    OnTap(region, function(inp)
+        if not Library:MouseIsOverOpenedFrame() then T:SetValue(not T.Value); Library:AttemptSave() end end)
     if T.Risky then Library:RemoveFromRegistry(tLbl); tLbl.TextColor3=Library.RiskColor; Library:AddToRegistry(tLbl,{TextColor3="RiskColor"}) end
     T:Display(); self:AddBlank(info.BlankSize or 7); self:Resize()
     T.TextLabel=tLbl; T.Container=self.Container; setmetatable(T,BaseAddons); Toggles[idx]=T; Library:UpdateDependencyBoxes(); return T
@@ -581,8 +605,8 @@ function F:AddSlider(idx,info)
     local S={Value=info.Default;Min=info.Min;Max=info.Max;Rounding=info.Rounding;MaxSize=230;Type="Slider";Callback=info.Callback or function()end}
     if not info.Compact then
         Library:MakeLabel({Size=UDim2.new(1,0,0,13);TextSize=12;Text=info.Text;TextXAlignment=Enum.TextXAlignment.Left;TextYAlignment=Enum.TextYAlignment.Bottom;ZIndex=20;Parent=self.Container}); self:AddBlank(3) end
-    local track=Library:Create("Frame",{BackgroundColor3=Library.MainColor;BorderSizePixel=0;Size=UDim2.new(1,-4,0,16);ZIndex=20;Parent=self.Container})
-    Rnd(track,8); local tst=MkStroke(track,Library.OutlineColor,1); Library:AddToRegistry(track,{BackgroundColor3="MainColor"})
+    local track=Library:Create("Frame",{BackgroundColor3=Library.MainColor;BackgroundTransparency=0.22;BorderSizePixel=0;Size=UDim2.new(1,-4,0,16);ZIndex=20;Parent=self.Container})
+    Rnd(track,8); local tst=MkStroke(track,Library.OutlineColor,1,0.35); Library:AddToRegistry(track,{BackgroundColor3="MainColor"})
     local fill=Library:Create("Frame",{BackgroundColor3=Library.AccentColor;BorderSizePixel=0;Size=UDim2.new(0,0,1,0);ZIndex=22;Parent=track})
     Rnd(fill,8); Grad(fill,Library.AccentColorLight,Library.AccentColor,0); Library:AddToRegistry(fill,{BackgroundColor3="AccentColor"})
     local vLbl=Library:MakeLabel({Size=UDim2.fromScale(1,1);TextSize=12;ZIndex=24;Parent=track})
@@ -625,8 +649,8 @@ function F:AddDropdown(idx,info)
     local DD={Values=info.Values;Value=info.Multi and {};Multi=info.Multi;Type="Dropdown";SpecialType=info.SpecialType;Callback=info.Callback or function()end}
     if not info.Compact then
         Library:MakeLabel({Size=UDim2.new(1,0,0,13);TextSize=12;Text=info.Text;TextXAlignment=Enum.TextXAlignment.Left;TextYAlignment=Enum.TextYAlignment.Bottom;ZIndex=20;Parent=self.Container}); self:AddBlank(3) end
-    local dOuter=Library:Create("Frame",{BackgroundColor3=Library.MainColor;BorderSizePixel=0;Size=UDim2.new(1,-4,0,22);ZIndex=20;Parent=self.Container})
-    Rnd(dOuter,6); local dst=MkStroke(dOuter,Library.OutlineColor,1); Library:AddToRegistry(dOuter,{BackgroundColor3="MainColor"})
+    local dOuter=Library:Create("Frame",{BackgroundColor3=Library.MainColor;BackgroundTransparency=0.32;BorderSizePixel=0;Size=UDim2.new(1,-4,0,22);ZIndex=20;Parent=self.Container})
+    Rnd(dOuter,6); local dst=MkStroke(dOuter,Library.OutlineColor,1,0.35); Library:AddToRegistry(dOuter,{BackgroundColor3="MainColor"})
     local arrow=Library:Create("ImageLabel",{AnchorPoint=Vector2.new(0,0.5);BackgroundTransparency=1;Position=UDim2.new(1,-16,0.5,0);Size=UDim2.fromOffset(10,10);Image="rbxassetid://6282522798";ZIndex=23;Parent=dOuter})
     local iList=Library:MakeLabel({Position=UDim2.fromOffset(7,0);Size=UDim2.new(1,-22,1,0);TextSize=13;Text="--";TextXAlignment=Enum.TextXAlignment.Left;ZIndex=22;Parent=dOuter})
     if type(info.Tooltip)=="string" then Library:AddToolTip(info.Tooltip,dOuter) end
@@ -638,7 +662,7 @@ function F:AddDropdown(idx,info)
     rpos(); rsize()
     dOuter:GetPropertyChangedSignal("AbsolutePosition"):Connect(rpos)
     dOuter:GetPropertyChangedSignal("AbsoluteSize"):Connect(function() rpos(); rsize() end)
-    local scroll=Library:Create("ScrollingFrame",{BackgroundTransparency=1;BorderSizePixel=0;CanvasSize=UDim2.new(0,0,0,0);Size=UDim2.fromScale(1,1);ZIndex=201;Parent=listFrame;TopImage="";BottomImage="";ScrollBarThickness=IsMobile() and 8 or 3;ScrollBarImageTransparency=0;ScrollBarImageColor3=Library.AccentColor;ElasticBehavior=Enum.ElasticBehavior.Always})
+    local scroll=Library:Create("ScrollingFrame",{BackgroundTransparency=1;BorderSizePixel=0;CanvasSize=UDim2.new(0,0,0,0);Size=UDim2.fromScale(1,1);ZIndex=201;Parent=listFrame;TopImage="";BottomImage="";ScrollBarThickness=3;ScrollBarImageTransparency=0;ScrollBarImageColor3=Library.AccentColor;ElasticBehavior=Enum.ElasticBehavior.Always})
     Rnd(scroll,8); Library:AddToRegistry(scroll,{ScrollBarImageColor3="AccentColor"})
     Library:Create("UIListLayout",{FillDirection=Enum.FillDirection.Vertical;SortOrder=Enum.SortOrder.LayoutOrder;Parent=scroll})
     Library:Create("UIPadding",{PaddingTop=UDim.new(0,3);PaddingBottom=UDim.new(0,3);PaddingLeft=UDim.new(0,3);PaddingRight=UDim.new(0,3);Parent=scroll})
@@ -665,14 +689,16 @@ function F:AddDropdown(idx,info)
                 Library.RegistryMap[bLbl].Properties.TextColor3=selected and "AccentColor" or "FontColor"
                 btn.BackgroundColor3=selected and Color3.fromRGB(15,25,55) or Library.MainColor
             end
-            bLbl.InputBegan:Connect(function(inp)
-                if IsPress(inp) then
+            -- Use LinoriaLib's approach: InputBegan directly on btn (Active=true), check MouseButton1 only
+            btn.InputBegan:Connect(function(inp)
+                if inp.UserInputType == Enum.UserInputType.MouseButton1 then
                     local try=not selected
                     if DD:GetActiveValues()==1 and not try and not info.AllowNull then return end
                     if info.Multi then selected=try; if selected then DD.Value[v]=true else DD.Value[v]=nil end
                     else selected=try; DD.Value=selected and v or nil; for _,b in next,Btns do b:Update() end end
                     Tbl:Update(); DD:Display(); Library:SafeCallback(DD.Callback,DD.Value); Library:SafeCallback(DD.Changed,DD.Value); Library:AttemptSave()
-                end end)
+                end
+            end)
             Tbl:Update(); DD:Display(); Btns[btn]=Tbl
         end
         scroll.CanvasSize=UDim2.fromOffset(0,count*22+6); rsize(math.clamp(count*22,0,MAX*22)+6)
@@ -686,17 +712,22 @@ function F:AddDropdown(idx,info)
         else DD.Value=v and table.find(DD.Values,v) and v or nil end
         DD:BuildList(); Library:SafeCallback(DD.Callback,DD.Value); Library:SafeCallback(DD.Changed,DD.Value)
     end
+    -- LinoriaLib's approach: use InputBegan on dOuter directly, check MouseButton1
     dOuter.InputBegan:Connect(function(inp)
-        if IsPress(inp) and not Library:MouseIsOverOpenedFrame() then
-            if listFrame.Visible then DD:CloseDropdown() else DD:OpenDropdown() end end end)
+        if inp.UserInputType == Enum.UserInputType.MouseButton1 and not Library:MouseIsOverOpenedFrame() then
+            if listFrame.Visible then DD:CloseDropdown() else DD:OpenDropdown() end
+        end
+    end)
+    -- LinoriaLib's approach: use Mouse.X/Y for close-outside check
     Library:GiveSignal(InputService.InputBegan:Connect(function(inp)
-        if IsPress(inp) then
-            local p = Vector2.new(inp.Position.X, inp.Position.Y)
+        if inp.UserInputType == Enum.UserInputType.MouseButton1 then
             local ap, as = listFrame.AbsolutePosition, listFrame.AbsoluteSize
             local dap, das = dOuter.AbsolutePosition, dOuter.AbsoluteSize
-            local insideList = p.X>=ap.X and p.X<=ap.X+as.X and p.Y>=ap.Y and p.Y<=ap.Y+as.Y
-            local insideOuter = p.X>=dap.X and p.X<=dap.X+das.X and p.Y>=dap.Y and p.Y<=dap.Y+das.Y
-            if not insideList and not insideOuter then DD:CloseDropdown() end
+            if Mouse.X < ap.X or Mouse.X > ap.X+as.X or Mouse.Y < (ap.Y-20-1) or Mouse.Y > ap.Y+as.Y then
+                if Mouse.X < dap.X or Mouse.X > dap.X+das.X or Mouse.Y < dap.Y or Mouse.Y > dap.Y+das.Y then
+                    DD:CloseDropdown()
+                end
+            end
         end
     end))
     DD:BuildList(); DD:Display()
@@ -732,7 +763,7 @@ BaseGroupbox.__namecall=function(t,k,...) return F[k](...) end
 end
 
 do
-    Library.NotificationArea=Library:Create("Frame",{BackgroundTransparency=1;Position=UDim2.fromOffset(8,40);Size=UDim2.fromOffset(300,400);ZIndex=500;Parent=ScreenGui})
+    Library.NotificationArea=Library:Create("Frame",{BackgroundTransparency=1;Position=UDim2.fromOffset(0,0);Size=UDim2.fromOffset(300,400);ZIndex=500;Parent=ScreenGui})
     Library:Create("UIListLayout",{Padding=UDim.new(0,5);FillDirection=Enum.FillDirection.Vertical;SortOrder=Enum.SortOrder.LayoutOrder;Parent=Library.NotificationArea})
     local wO=Library:Create("Frame",{BackgroundColor3=Library.MainColor;BorderSizePixel=0;Position=UDim2.fromOffset(8,8);Size=UDim2.fromOffset(220,24);Visible=false;ZIndex=400;Parent=ScreenGui})
     Rnd(wO,8); MkStroke(wO,Library.OutlineColor,1.5); Glow(wO,16); Library:AddToRegistry(wO,{BackgroundColor3="MainColor"})
@@ -793,7 +824,7 @@ function Library:CreateWindow(...)
     local outer=Library:Create("Frame",{
         AnchorPoint=cfg.AnchorPoint;
         BackgroundColor3=Library.BackgroundColor;
-        BackgroundTransparency=0.22;
+        BackgroundTransparency=1;
         BorderSizePixel=0;
         Position=cfg.Position;
         Size=cfg.Size;
@@ -806,39 +837,30 @@ function Library:CreateWindow(...)
     if _mobile then
         local cam = workspace.CurrentCamera
         local vp = cam and cam.ViewportSize or Vector2.new(1280,720)
-        local scaleX = (vp.X * 0.55) / cfg.Size.X.Offset
-        local scaleY = (vp.Y * 0.65) / cfg.Size.Y.Offset
-        local s = math.min(scaleX, scaleY, 0.85)
-        s = math.clamp(s, 0.45, 0.8)
+        local scaleX = (vp.X * 0.40) / cfg.Size.X.Offset
+        local scaleY = (vp.Y * 0.50) / cfg.Size.Y.Offset
+        local s = math.min(scaleX, scaleY, 0.62)
+        s = math.clamp(s, 0.35, 0.6)
         local uiScale = Instance.new("UIScale")
         uiScale.Scale = s
         uiScale.Parent = outer
     end
     Rnd(outer,12)
-    local outerStroke = MkStroke(outer, Color3.fromRGB(0,80,255), 3, 0)
+    local outerStroke = MkStroke(outer, Color3.fromRGB(55, 55, 60), 2.5, 0)
     local outerGlow = Glow(outer, 24)
-    if outerGlow then outerGlow.ImageTransparency = 0.25 end
-
-    local cyanBorder=Library:Create("Frame",{BackgroundTransparency=1;BorderSizePixel=0;Position=UDim2.fromOffset(4,4);Size=UDim2.new(1,-8,1,-8);ZIndex=10;Parent=outer})
-    Rnd(cyanBorder,9)
-    local cyanStroke = MkStroke(cyanBorder, Color3.fromRGB(0, 200, 255), 1, 0)
-
-    Library:GiveSignal(RunService.RenderStepped:Connect(function()
-        local rc = Library.CurrentRainbowColor or Color3.fromRGB(0, 80, 255)
-        local rh = Library.CurrentRainbowHue or 0
-        if outerStroke and outerStroke.Parent then outerStroke.Color = rc end
-        if outerGlow and outerGlow.Parent then outerGlow.ImageColor3 = rc end
-        if cyanStroke and cyanStroke.Parent then cyanStroke.Color = Color3.fromHSV((rh + 0.15) % 1, 0.7, 1) end
-    end))
+    if outerGlow then
+        outerGlow.ImageColor3 = Color3.fromRGB(40, 40, 45)
+        outerGlow.ImageTransparency = 0.78
+    end
     Library:MakeDraggable(outer,30)
     Library:AddToRegistry(outer,{BackgroundColor3="BackgroundColor"})
 
     local inner=Library:Create("Frame",{
         BackgroundColor3=Library.MainColor;
-        BackgroundTransparency=0.12;
+        BackgroundTransparency=1;
         BorderSizePixel=0;
-        Position=UDim2.fromOffset(2,2);
-        Size=UDim2.new(1,-4,1,-4);
+        Position=UDim2.fromOffset(0,0);
+        Size=UDim2.new(1,0,1,0);
         ZIndex=11;
         Parent=outer;
         ClipsDescendants=true
@@ -847,10 +869,10 @@ function Library:CreateWindow(...)
 
     local titleBar=Library:Create("Frame",{
         BackgroundColor3=Library.Black;
-        BackgroundTransparency=0.18;
+        BackgroundTransparency=0.08;
         BorderSizePixel=0;
         Position=UDim2.fromOffset(0,0);
-        Size=UDim2.new(1,0,0,32);
+        Size=UDim2.new(1,0,0,20);
         ZIndex=12;
         Parent=inner;
         ClipsDescendants=true
@@ -876,6 +898,7 @@ function Library:CreateWindow(...)
         TextSize=14;
         Font=Library.FontBold;
         Text=cfg.Title;
+        Visible=false;
         TextXAlignment=Enum.TextXAlignment.Left;
         ZIndex=14;
         Parent=titleBar
@@ -894,19 +917,19 @@ function Library:CreateWindow(...)
 
     local mainOuter=Library:Create("Frame",{
         BackgroundColor3=Library.BackgroundColor;
-        BackgroundTransparency=0.18;
+        BackgroundTransparency=1;
         BorderSizePixel=0;
-        Position=UDim2.fromOffset(8,40);
-        Size=UDim2.new(1,-16,1,-48);
+        Position=UDim2.fromOffset(8,8);
+        Size=UDim2.new(1,0,1,0);
         ZIndex=11;
         Parent=inner;
         ClipsDescendants=true
     })
-    Rnd(mainOuter,9); MkStroke(mainOuter,Library.OutlineColor,1,0.1); Library:AddToRegistry(mainOuter,{BackgroundColor3="BackgroundColor"})
+    Rnd(mainOuter,9); MkStroke(mainOuter,Library.OutlineColor,1,0.55); Library:AddToRegistry(mainOuter,{BackgroundColor3="BackgroundColor"})
 
     local mainInner=Library:Create("Frame",{
         BackgroundColor3=Library.BackgroundColor;
-        BackgroundTransparency=0.14;
+        BackgroundTransparency=1;
         BorderSizePixel=0;
         Size=UDim2.fromScale(1,1);
         ZIndex=12;
@@ -915,33 +938,59 @@ function Library:CreateWindow(...)
     })
     Rnd(mainInner,9); Library:AddToRegistry(mainInner,{BackgroundColor3="BackgroundColor"})
 
-    local tabArea=Library:Create("Frame",{BackgroundTransparency=1;Position=UDim2.fromOffset(8,7);Size=UDim2.new(1,-16,0,22);ZIndex=13;Parent=mainInner})
+    local bodyBg = Library:Create("ImageLabel",{
+        Name = "BodyBackground";
+        BackgroundTransparency = 1;
+        BorderSizePixel = 0;
+        Image = "rbxassetid://108910308499788";
+        ImageTransparency = 0.06;
+        ScaleType = Enum.ScaleType.Crop;
+        Position = UDim2.new(0,0,0,0);
+        Size = UDim2.new(1,0,1,0);
+        ZIndex = 11;
+        Parent = inner
+    })
+    Rnd(bodyBg,10)
+
+    local bodyShade = Library:Create("Frame",{
+        Name = "BodyBackgroundShade";
+        BackgroundColor3 = Color3.fromRGB(0,0,0);
+        BackgroundTransparency = 0.9;
+        BorderSizePixel = 0;
+        Position = UDim2.new(0,0,0,0);
+        Size = UDim2.new(1,0,1,0);
+        ZIndex = 11;
+        Parent = inner
+    })
+    Rnd(bodyShade,10)
+
+    local tabArea=Library:Create("Frame",{BackgroundTransparency=1;Position=UDim2.fromOffset(12,8);Size=UDim2.new(1,-24,0,22);ZIndex=13;Parent=mainInner})
     Library:Create("UIListLayout",{Padding=UDim.new(0,cfg.TabPadding);FillDirection=Enum.FillDirection.Horizontal;SortOrder=Enum.SortOrder.LayoutOrder;Parent=tabArea})
 
     local tabContainer=Library:Create("Frame",{
         BackgroundColor3=Library.MainColor;
-        BackgroundTransparency=0.10;
+        BackgroundTransparency=1;
         BorderSizePixel=0;
         ClipsDescendants=true;
-        Position=UDim2.fromOffset(8,31);
-        Size=UDim2.new(1,-16,1,-39);
+        Position=UDim2.fromOffset(12,34);
+        Size=UDim2.new(1,-24,1,-42);
         ZIndex=13;
         Parent=mainInner
     })
-    Rnd(tabContainer,8); MkStroke(tabContainer,Library.OutlineColor,1,0.1); Library:AddToRegistry(tabContainer,{BackgroundColor3="MainColor"})
+    Rnd(tabContainer,8); Library:AddToRegistry(tabContainer,{BackgroundColor3="MainColor"})
 
     function Window:SetWindowTitle(t) titleLbl.Text=t end
 
     function Window:AddTab(name)
         local Tab={Groupboxes={};Tabboxes={}}
         local tw=Library:GetTextBounds(name,Library.FontBold,13)
-        local tabBtn=Library:Create("Frame",{BackgroundColor3=Library.BackgroundColor;BorderSizePixel=0;Size=UDim2.new(0,tw+18,1,0);ZIndex=14;Parent=tabArea})
+        local tabBtn=Library:Create("Frame",{BackgroundColor3=Library.BackgroundColor;BackgroundTransparency=0.18;BorderSizePixel=0;Size=UDim2.new(0,tw+18,1,0);ZIndex=14;Parent=tabArea})
         Rnd(tabBtn,6); Library:AddToRegistry(tabBtn,{BackgroundColor3="BackgroundColor"})
         Library:MakeLabel({Size=UDim2.fromScale(1,1);Text=name;TextSize=13;Font=Library.FontBold;ZIndex=15;Parent=tabBtn})
         local blocker=Library:Create("Frame",{BackgroundColor3=Library.MainColor;BorderSizePixel=0;Position=UDim2.new(0,0,1,-1);Size=UDim2.new(1,0,0,2);BackgroundTransparency=1;ZIndex=16;Parent=tabBtn})
         Library:AddToRegistry(blocker,{BackgroundColor3="MainColor"})
         local tabFrame=Library:Create("Frame",{BackgroundTransparency=1;ClipsDescendants=true;Size=UDim2.fromScale(1,1);Visible=false;ZIndex=14;Parent=tabContainer})
-        local ColPad,ColGap=7,6
+        local ColPad,ColGap=7,14
         local _isMobile = IsMobile()
         local function makeSide(xscale,xoff)
             local s=Library:Create("ScrollingFrame",{BackgroundTransparency=1;BorderSizePixel=0;Position=UDim2.new(xscale,xoff,0,ColPad);Size=UDim2.new(0.5,-ColPad*2-ColGap/2,1,-ColPad*2);CanvasSize=UDim2.new(0,0,0,0);AutomaticCanvasSize=Enum.AutomaticSize.None;BottomImage="";TopImage="";ScrollBarThickness=_isMobile and 6 or 0;ScrollBarImageTransparency=_isMobile and 0.3 or 1;ScrollBarImageColor3=Library.AccentColor;ScrollingDirection=Enum.ScrollingDirection.Y;ClipsDescendants=true;ZIndex=15;Parent=tabFrame;ElasticBehavior=Enum.ElasticBehavior.Always;ScrollingEnabled=true})
@@ -949,7 +998,10 @@ function Library:CreateWindow(...)
             Library:Create("UIPadding",{PaddingLeft=UDim.new(0,2);PaddingRight=UDim.new(0,2);PaddingTop=UDim.new(0,2);PaddingBottom=UDim.new(0,2);Parent=s})
             Library:AddToRegistry(s,{ScrollBarImageColor3="AccentColor"})
             s.UIListLayout:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(function()
-                s.CanvasSize=UDim2.fromOffset(0,s.UIListLayout.AbsoluteContentSize.Y+10) end)
+                local prevPos = s.CanvasPosition
+                s.CanvasSize=UDim2.fromOffset(0,s.UIListLayout.AbsoluteContentSize.Y+10)
+                s.CanvasPosition = prevPos
+            end)
             return s
         end
         local leftSide=makeSide(0,ColPad); local rightSide=makeSide(0.5,ColGap/2)
@@ -969,8 +1021,8 @@ function Library:CreateWindow(...)
         end
         function Tab:AddGroupbox(info)
             local GB={}; local side=info.Side==1 and leftSide or rightSide
-            local boxO=Library:Create("Frame",{BackgroundColor3=Library.BackgroundColor;BorderSizePixel=0;Size=UDim2.new(1,0,0,30);ZIndex=15;Parent=side})
-            Rnd(boxO,9); MkStroke(boxO,Color3.fromRGB(0,150,255),1.5); Library:AddToRegistry(boxO,{BackgroundColor3="BackgroundColor"})
+            local boxO=Library:Create("Frame",{BackgroundColor3=Library.BackgroundColor;BackgroundTransparency=0.28;BorderSizePixel=0;Size=UDim2.new(1,0,0,30);ZIndex=15;Parent=side})
+            Rnd(boxO,9); MkStroke(boxO,Color3.fromRGB(210,210,220),1,0.6); Library:AddToRegistry(boxO,{BackgroundColor3="BackgroundColor"})
             local gbTop=Library:Create("Frame",{BackgroundColor3=Library.AccentColor;BackgroundTransparency=1;BorderSizePixel=0;Size=UDim2.new(1,0,0,2);ZIndex=16;Visible=false;Parent=boxO})
             Library:MakeLabel({Size=UDim2.new(1,-6,0,18);Position=UDim2.fromOffset(7,2);TextSize=12;Font=Library.FontBold;Text=info.Name;TextXAlignment=Enum.TextXAlignment.Left;ZIndex=17;Parent=boxO})
             local cont=Library:Create("Frame",{BackgroundTransparency=1;Position=UDim2.fromOffset(4,22);Size=UDim2.new(1,-4,1,-22);ZIndex=18;Parent=boxO})
@@ -984,8 +1036,8 @@ function Library:CreateWindow(...)
         function Tab:AddRightGroupbox(n) return Tab:AddGroupbox({Side=2;Name=n}) end
         function Tab:AddTabbox(info)
             local Tabbox={Tabs={}}; local side=info.Side==1 and leftSide or rightSide
-            local tbO=Library:Create("Frame",{BackgroundColor3=Library.BackgroundColor;BorderSizePixel=0;Size=UDim2.new(1,0,0,0);ZIndex=15;Parent=side})
-            Rnd(tbO,9); MkStroke(tbO,Color3.fromRGB(0,150,255),1.5); Library:AddToRegistry(tbO,{BackgroundColor3="BackgroundColor"})
+            local tbO=Library:Create("Frame",{BackgroundColor3=Library.BackgroundColor;BackgroundTransparency=0.28;BorderSizePixel=0;Size=UDim2.new(1,0,0,0);ZIndex=15;Parent=side})
+            Rnd(tbO,9); MkStroke(tbO,Color3.fromRGB(210,210,220),1,0.6); Library:AddToRegistry(tbO,{BackgroundColor3="BackgroundColor"})
             local tbAcc=Library:Create("Frame",{BackgroundColor3=Library.AccentColor;BackgroundTransparency=1;BorderSizePixel=0;Size=UDim2.new(1,0,0,2);ZIndex=16;Visible=false;Parent=tbO})
             local btnRow=Library:Create("Frame",{BackgroundTransparency=1;Position=UDim2.fromOffset(0,1);Size=UDim2.new(1,0,0,20);ZIndex=16;ClipsDescendants=true;Parent=tbO})
             Library:Create("UIListLayout",{FillDirection=Enum.FillDirection.Horizontal;SortOrder=Enum.SortOrder.LayoutOrder;Parent=btnRow})
@@ -1027,13 +1079,8 @@ function Library:CreateWindow(...)
         Window.Tabs[name]=Tab; return Tab
     end
 
-    -- Mobile toggle button
+    -- Mobile toggle button (disabled — main script provides its own)
     local mobileBtn=nil
-    if InputService.TouchEnabled then
-        mobileBtn=Library:Create("TextButton",{BackgroundColor3=Library.AccentColor;BorderSizePixel=0;Position=UDim2.fromOffset(8,8);Size=UDim2.fromOffset(70,34);Text="☰ UI";TextColor3=Color3.new(1,1,1);Font=Library.FontBold;TextSize=14;ZIndex=600;Parent=ScreenGui})
-        Rnd(mobileBtn,7); MkStroke(mobileBtn,Library:GetDarkerColor(Library.AccentColor),1)
-        Library:MakeDraggable(mobileBtn)
-    end
 
     -- ── FIXED Toggle: no fade, just show/hide directly ─────────
     local toggled=false; local fading=false
