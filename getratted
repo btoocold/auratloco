@@ -641,292 +641,113 @@ function F:AddSlider(idx,info)
     S:Display(); self:AddBlank(info.BlankSize or 7); self:Resize(); Options[idx]=S; return S
 end
 
-function F:AddDropdown(Idx, Info)
-    if Info.SpecialType == 'Player' then
-        Info.Values = GetPlayers(); Info.AllowNull = true
-    elseif Info.SpecialType == 'Team' then
-        Info.Values = GetTeams(); Info.AllowNull = true
-    end
-    assert(Info.Values, 'AddDropdown: Missing dropdown value list.')
-    assert(Info.AllowNull or Info.Default, 'AddDropdown: Missing default value. Pass `AllowNull` as true if this was intentional.')
-    if not Info.Text then Info.Compact = true end
-
-    local Dropdown = {
-        Values = Info.Values; Value = Info.Multi and {};
-        Multi = Info.Multi; Type = 'Dropdown';
-        SpecialType = Info.SpecialType;
-        Callback = Info.Callback or function(Value) end;
-    }
-    local Groupbox = self
-    local Container = Groupbox.Container
-
-    if not Info.Compact then
-        Library:CreateLabel({
-            Size = UDim2.new(1, 0, 0, 10); TextSize = 14; Text = Info.Text;
-            TextXAlignment = Enum.TextXAlignment.Left;
-            TextYAlignment = Enum.TextYAlignment.Bottom;
-            ZIndex = 5; Parent = Container;
-        })
-        Groupbox:AddBlank(3)
-    end
-
-    local RelativeOffset = 0
-    for _, Element in next, Container:GetChildren() do
-        if not Element:IsA('UIListLayout') then
-            RelativeOffset = RelativeOffset + Element.Size.Y.Offset
+function F:AddDropdown(idx,info)
+    if info.SpecialType=="Player" then info.Values=GetPlayers(); info.AllowNull=true
+    elseif info.SpecialType=="Team" then info.Values=GetTeams(); info.AllowNull=true end
+    assert(info.Values,"AddDropdown: values"); assert(info.AllowNull or info.Default,"AddDropdown: default")
+    if not info.Text then info.Compact=true end
+    local DD={Values=info.Values;Value=info.Multi and {};Multi=info.Multi;Type="Dropdown";SpecialType=info.SpecialType;Callback=info.Callback or function()end}
+    if not info.Compact then
+        Library:MakeLabel({Size=UDim2.new(1,0,0,13);TextSize=12;Text=info.Text;TextXAlignment=Enum.TextXAlignment.Left;TextYAlignment=Enum.TextYAlignment.Bottom;ZIndex=20;Parent=self.Container}); self:AddBlank(3) end
+    local dOuter=Library:Create("Frame",{BackgroundColor3=Library.MainColor;BackgroundTransparency=0.32;BorderSizePixel=0;Size=UDim2.new(1,-4,0,22);ZIndex=20;Parent=self.Container})
+    Rnd(dOuter,6); local dst=MkStroke(dOuter,Library.OutlineColor,1,0.35); Library:AddToRegistry(dOuter,{BackgroundColor3="MainColor"})
+    local arrow=Library:Create("ImageLabel",{AnchorPoint=Vector2.new(0,0.5);BackgroundTransparency=1;Position=UDim2.new(1,-16,0.5,0);Size=UDim2.fromOffset(10,10);Image="rbxassetid://6282522798";ZIndex=23;Parent=dOuter})
+    local iList=Library:MakeLabel({Position=UDim2.fromOffset(7,0);Size=UDim2.new(1,-22,1,0);TextSize=13;Text="--";TextXAlignment=Enum.TextXAlignment.Left;ZIndex=22;Parent=dOuter})
+    if type(info.Tooltip)=="string" then Library:AddToolTip(info.Tooltip,dOuter) end
+    local MAX = IsMobile() and 5 or 8
+    local listFrame=Library:Create("Frame",{BackgroundColor3=Library.MainColor;BorderSizePixel=0;ZIndex=200;Visible=false;Parent=ScreenGui})
+    Rnd(listFrame,8); MkStroke(listFrame,Library.OutlineColor,1.5); Library:AddToRegistry(listFrame,{BackgroundColor3="MainColor"})
+    local function rpos()
+        local posY = dOuter.AbsolutePosition.Y + dOuter.AbsoluteSize.Y + 3
+        local screenH = ScreenGui.AbsoluteSize.Y
+        local listH = listFrame.AbsoluteSize.Y
+        -- If dropdown would go off screen bottom, show above the button instead
+        if posY + listH > screenH - 10 then
+            posY = dOuter.AbsolutePosition.Y - listH - 3
         end
+        listFrame.Position = UDim2.fromOffset(dOuter.AbsolutePosition.X, posY)
     end
-
-    local DropdownOuter = Library:Create('Frame', {
-        BackgroundColor3 = Color3.new(0, 0, 0); BorderColor3 = Color3.new(0, 0, 0);
-        Size = UDim2.new(1, -4, 0, 20); ZIndex = 5; Parent = Container;
-    })
-    Library:AddToRegistry(DropdownOuter, { BorderColor3 = 'Black' })
-
-    local DropdownInner = Library:Create('Frame', {
-        BackgroundColor3 = Library.MainColor; BorderColor3 = Library.OutlineColor;
-        BorderMode = Enum.BorderMode.Inset; Size = UDim2.new(1, 0, 1, 0);
-        ZIndex = 6; Parent = DropdownOuter;
-    })
-    Library:AddToRegistry(DropdownInner, { BackgroundColor3 = 'MainColor'; BorderColor3 = 'OutlineColor' })
-
-    Library:Create('UIGradient', {
-        Color = ColorSequence.new({
-            ColorSequenceKeypoint.new(0, Color3.new(1, 1, 1)),
-            ColorSequenceKeypoint.new(1, Color3.fromRGB(212, 212, 212))
-        }); Rotation = 90; Parent = DropdownInner;
-    })
-
-    local DropdownArrow = Library:Create('ImageLabel', {
-        AnchorPoint = Vector2.new(0, 0.5); BackgroundTransparency = 1;
-        Position = UDim2.new(1, -16, 0.5, 0); Size = UDim2.new(0, 12, 0, 12);
-        Image = 'http://www.roblox.com/asset/?id=6282522798'; ZIndex = 8; Parent = DropdownInner;
-    })
-
-    local ItemList = Library:CreateLabel({
-        Position = UDim2.new(0, 5, 0, 0); Size = UDim2.new(1, -5, 1, 0);
-        TextSize = 14; Text = '--'; TextXAlignment = Enum.TextXAlignment.Left;
-        TextWrapped = true; ZIndex = 7; Parent = DropdownInner;
-    })
-
-    Library:OnHighlight(DropdownOuter, DropdownOuter,
-        { BorderColor3 = 'AccentColor' }, { BorderColor3 = 'Black' })
-
-    if type(Info.Tooltip) == 'string' then
-        Library:AddToolTip(Info.Tooltip, DropdownOuter)
+    local function rsize(y) listFrame.Size=UDim2.fromOffset(dOuter.AbsoluteSize.X, y or MAX*22+6) end
+    rpos(); rsize()
+    dOuter:GetPropertyChangedSignal("AbsolutePosition"):Connect(rpos)
+    dOuter:GetPropertyChangedSignal("AbsoluteSize"):Connect(function() rpos(); rsize() end)
+    local scroll=Library:Create("ScrollingFrame",{BackgroundTransparency=1;BorderSizePixel=0;CanvasSize=UDim2.new(0,0,0,0);Size=UDim2.fromScale(1,1);ZIndex=201;Parent=listFrame;TopImage="";BottomImage="";ScrollBarThickness=3;ScrollBarImageTransparency=0;ScrollBarImageColor3=Library.AccentColor;ElasticBehavior=Enum.ElasticBehavior.Always})
+    Rnd(scroll,8); Library:AddToRegistry(scroll,{ScrollBarImageColor3="AccentColor"})
+    Library:Create("UIListLayout",{FillDirection=Enum.FillDirection.Vertical;SortOrder=Enum.SortOrder.LayoutOrder;Parent=scroll})
+    Library:Create("UIPadding",{PaddingTop=UDim.new(0,3);PaddingBottom=UDim.new(0,3);PaddingLeft=UDim.new(0,3);PaddingRight=UDim.new(0,3);Parent=scroll})
+    function DD:Display()
+        local s=""
+        if info.Multi then for _,v in next,DD.Values do if DD.Value[v] then s=s..v..", " end end; s=s:sub(1,#s-2)
+        else s=DD.Value or "" end; iList.Text=s=="" and "--" or s
     end
-
-    local MAX_DROPDOWN_ITEMS = 8
-
-    local ListOuter = Library:Create('Frame', {
-        BackgroundColor3 = Color3.new(0, 0, 0); BorderColor3 = Color3.new(0, 0, 0);
-        ZIndex = 20; Visible = false; Parent = ScreenGui;
-    })
-
-    local function RecalculateListPosition()
-        ListOuter.Position = UDim2.fromOffset(
-            DropdownOuter.AbsolutePosition.X,
-            DropdownOuter.AbsolutePosition.Y + DropdownOuter.Size.Y.Offset + 1
-        )
+    function DD:GetActiveValues()
+        if info.Multi then local t={}; for v in next,DD.Value do table.insert(t,v) end; return t
+        else return DD.Value and 1 or 0 end
     end
-
-    local function RecalculateListSize(YSize)
-        ListOuter.Size = UDim2.fromOffset(
-            DropdownOuter.AbsoluteSize.X,
-            YSize or (MAX_DROPDOWN_ITEMS * 20 + 2)
-        )
-    end
-
-    RecalculateListPosition(); RecalculateListSize()
-    DropdownOuter:GetPropertyChangedSignal('AbsolutePosition'):Connect(RecalculateListPosition)
-
-    local ListInner = Library:Create('Frame', {
-        BackgroundColor3 = Library.MainColor; BorderColor3 = Library.OutlineColor;
-        BorderMode = Enum.BorderMode.Inset; BorderSizePixel = 0;
-        Size = UDim2.new(1, 0, 1, 0); ZIndex = 21; Parent = ListOuter;
-    })
-    Library:AddToRegistry(ListInner, { BackgroundColor3 = 'MainColor'; BorderColor3 = 'OutlineColor' })
-
-    local Scrolling = Library:Create('ScrollingFrame', {
-        BackgroundTransparency = 1; BorderSizePixel = 0;
-        CanvasSize = UDim2.new(0, 0, 0, 0); Size = UDim2.new(1, 0, 1, 0);
-        ZIndex = 21; Parent = ListInner;
-        TopImage = 'rbxasset://textures/ui/Scroll/scroll-middle.png';
-        BottomImage = 'rbxasset://textures/ui/Scroll/scroll-middle.png';
-        ScrollBarThickness = 3; ScrollBarImageColor3 = Library.AccentColor;
-        ElasticBehavior = Enum.ElasticBehavior.Never;
-    })
-    Library:AddToRegistry(Scrolling, { ScrollBarImageColor3 = 'AccentColor' })
-
-    Library:Create('UIListLayout', {
-        Padding = UDim.new(0, 0); FillDirection = Enum.FillDirection.Vertical;
-        SortOrder = Enum.SortOrder.LayoutOrder; Parent = Scrolling;
-    })
-
-    function Dropdown:Display()
-        local Str = ''
-        if Info.Multi then
-            for _, Value in next, Dropdown.Values do
-                if Dropdown.Value[Value] then Str = Str .. Value .. ', ' end
+    function DD:BuildList()
+        for _,e in next,scroll:GetChildren() do if not e:IsA("UIListLayout") and not e:IsA("UIPadding") then e:Destroy() end end
+        local Btns,count={},0
+        for _,v in next,DD.Values do count=count+1
+            local btn=Library:Create("Frame",{BackgroundColor3=Library.MainColor;BorderSizePixel=0;Size=UDim2.new(1,0,0,22);ZIndex=202;Active=true;Parent=scroll})
+            Rnd(btn,5); Library:AddToRegistry(btn,{BackgroundColor3="MainColor"})
+            local bLbl=Library:MakeLabel({Active=false;Size=UDim2.new(1,-10,1,0);Position=UDim2.fromOffset(7,0);TextSize=13;Text=v;TextXAlignment=Enum.TextXAlignment.Left;ZIndex=204;Parent=btn})
+            local Tbl={}; local selected=info.Multi and DD.Value[v] or DD.Value==v
+            function Tbl:Update()
+                selected=info.Multi and DD.Value[v] or DD.Value==v
+                bLbl.TextColor3=selected and Library.AccentColor or Library.FontColor
+                Library.RegistryMap[bLbl].Properties.TextColor3=selected and "AccentColor" or "FontColor"
+                btn.BackgroundColor3=selected and Color3.fromRGB(15,25,55) or Library.MainColor
             end
-            Str = Str:sub(1, #Str - 2)
-        else
-            Str = Dropdown.Value or ''
-        end
-        ItemList.Text = (Str == '' and '--' or Str)
-    end
-
-    function Dropdown:GetActiveValues()
-        if Info.Multi then
-            local T = {}
-            for Value in next, Dropdown.Value do table.insert(T, Value) end
-            return T
-        else
-            return Dropdown.Value and 1 or 0
-        end
-    end
-
-    function Dropdown:BuildDropdownList()
-        local Buttons = {}
-        for _, Element in next, Scrolling:GetChildren() do
-            if not Element:IsA('UIListLayout') then Element:Destroy() end
-        end
-        local Count = 0
-        for _, Value in next, Dropdown.Values do
-            local Table = {}
-            Count = Count + 1
-
-            local Button = Library:Create('Frame', {
-                BackgroundColor3 = Library.MainColor; BorderColor3 = Library.OutlineColor;
-                BorderMode = Enum.BorderMode.Middle; Size = UDim2.new(1, -1, 0, 20);
-                ZIndex = 23; Active = true; Parent = Scrolling;
-            })
-            Library:AddToRegistry(Button, { BackgroundColor3 = 'MainColor'; BorderColor3 = 'OutlineColor' })
-
-            local ButtonLabel = Library:CreateLabel({
-                Active = false; Size = UDim2.new(1, -6, 1, 0);
-                Position = UDim2.new(0, 6, 0, 0); TextSize = 14; Text = Value;
-                TextXAlignment = Enum.TextXAlignment.Left; ZIndex = 25; Parent = Button;
-            })
-
-            Library:OnHighlight(Button, Button,
-                { BorderColor3 = 'AccentColor', ZIndex = 24 },
-                { BorderColor3 = 'OutlineColor', ZIndex = 23 })
-
-            local Selected = Info.Multi and Dropdown.Value[Value] or Dropdown.Value == Value
-
-            function Table:UpdateButton()
-                Selected = Info.Multi and Dropdown.Value[Value] or Dropdown.Value == Value
-                ButtonLabel.TextColor3 = Selected and Library.AccentColor or Library.FontColor
-                Library.RegistryMap[ButtonLabel].Properties.TextColor3 = Selected and 'AccentColor' or 'FontColor'
-            end
-
-            ButtonLabel.InputBegan:Connect(function(Input)
-                if Input.UserInputType == Enum.UserInputType.MouseButton1 then
-                    local Try = not Selected
-                    if Dropdown:GetActiveValues() == 1 and not Try and not Info.AllowNull then return end
-                    if Info.Multi then
-                        Selected = Try
-                        if Selected then Dropdown.Value[Value] = true else Dropdown.Value[Value] = nil end
-                    else
-                        Selected = Try
-                        if Selected then Dropdown.Value = Value else Dropdown.Value = nil end
-                        for _, OtherButton in next, Buttons do OtherButton:UpdateButton() end
-                    end
-                    Table:UpdateButton(); Dropdown:Display()
-                    Library:SafeCallback(Dropdown.Callback, Dropdown.Value)
-                    Library:SafeCallback(Dropdown.Changed, Dropdown.Value)
-                    Library:AttemptSave()
+            -- Use LinoriaLib's approach: InputBegan directly on btn (Active=true), check MouseButton1 only
+            btn.InputBegan:Connect(function(inp)
+                if inp.UserInputType == Enum.UserInputType.MouseButton1 then
+                    local try=not selected
+                    if DD:GetActiveValues()==1 and not try and not info.AllowNull then return end
+                    if info.Multi then selected=try; if selected then DD.Value[v]=true else DD.Value[v]=nil end
+                    else selected=try; DD.Value=selected and v or nil; for _,b in next,Btns do b:Update() end end
+                    Tbl:Update(); DD:Display(); Library:SafeCallback(DD.Callback,DD.Value); Library:SafeCallback(DD.Changed,DD.Value); Library:AttemptSave()
                 end
             end)
-
-            Table:UpdateButton(); Dropdown:Display()
-            Buttons[Button] = Table
+            Tbl:Update(); DD:Display(); Btns[btn]=Tbl
         end
-
-        Scrolling.CanvasSize = UDim2.fromOffset(0, (Count * 20) + 1)
-        local Y = math.clamp(Count * 20, 0, MAX_DROPDOWN_ITEMS * 20) + 1
-        RecalculateListSize(Y)
+        scroll.CanvasSize=UDim2.fromOffset(0,count*22+6); rsize(math.clamp(count*22,0,MAX*22)+6); rpos()
     end
-
-    function Dropdown:SetValues(NewValues)
-        if NewValues then Dropdown.Values = NewValues end
-        Dropdown:BuildDropdownList()
+    function DD:SetValues(nv) if nv then DD.Values=nv end; DD:BuildList() end
+    function DD:OpenDropdown() rpos(); listFrame.Visible=true; Library.OpenedFrames[listFrame]=true; Tween(arrow,{Rotation=180},0.15); if dst then dst.Color=Library.AccentColor end end
+    function DD:CloseDropdown() listFrame.Visible=false; Library.OpenedFrames[listFrame]=nil; Tween(arrow,{Rotation=0},0.15); if dst then dst.Color=Library.OutlineColor end end
+    function DD:OnChanged(f) DD.Changed=f; f(DD.Value) end
+    function DD:SetValue(v)
+        if DD.Multi then local t={}; for val in next,v do if table.find(DD.Values,val) then t[val]=true end end; DD.Value=t
+        else DD.Value=v and table.find(DD.Values,v) and v or nil end
+        DD:BuildList(); Library:SafeCallback(DD.Callback,DD.Value); Library:SafeCallback(DD.Changed,DD.Value)
     end
-
-    function Dropdown:OpenDropdown()
-        ListOuter.Visible = true; Library.OpenedFrames[ListOuter] = true
-        DropdownArrow.Rotation = 180
-    end
-
-    function Dropdown:CloseDropdown()
-        ListOuter.Visible = false; Library.OpenedFrames[ListOuter] = nil
-        DropdownArrow.Rotation = 0
-    end
-
-    function Dropdown:OnChanged(Func)
-        Dropdown.Changed = Func; Func(Dropdown.Value)
-    end
-
-    function Dropdown:SetValue(Val)
-        if Dropdown.Multi then
-            local nTable = {}
-            for Value in next, Val do
-                if table.find(Dropdown.Values, Value) then nTable[Value] = true end
-            end
-            Dropdown.Value = nTable
-        else
-            if not Val then Dropdown.Value = nil
-            elseif table.find(Dropdown.Values, Val) then Dropdown.Value = Val end
-        end
-        Dropdown:BuildDropdownList()
-        Library:SafeCallback(Dropdown.Callback, Dropdown.Value)
-        Library:SafeCallback(Dropdown.Changed, Dropdown.Value)
-    end
-
-    DropdownOuter.InputBegan:Connect(function(Input)
-        if Input.UserInputType == Enum.UserInputType.MouseButton1 and not Library:MouseIsOverOpenedFrame() then
-            if ListOuter.Visible then Dropdown:CloseDropdown() else Dropdown:OpenDropdown() end
+    -- LinoriaLib's approach: use InputBegan on dOuter directly, check MouseButton1
+    dOuter.InputBegan:Connect(function(inp)
+        if inp.UserInputType == Enum.UserInputType.MouseButton1 and not Library:MouseIsOverOpenedFrame() then
+            if listFrame.Visible then DD:CloseDropdown() else DD:OpenDropdown() end
         end
     end)
-
-    InputService.InputBegan:Connect(function(Input)
-        if Input.UserInputType == Enum.UserInputType.MouseButton1 then
-            local AbsPos, AbsSize = ListOuter.AbsolutePosition, ListOuter.AbsoluteSize
-            if Mouse.X < AbsPos.X or Mouse.X > AbsPos.X + AbsSize.X
-                or Mouse.Y < (AbsPos.Y - 20 - 1) or Mouse.Y > AbsPos.Y + AbsSize.Y then
-                Dropdown:CloseDropdown()
+    -- LinoriaLib's approach: use Mouse.X/Y for close-outside check
+    Library:GiveSignal(InputService.InputBegan:Connect(function(inp)
+        if inp.UserInputType == Enum.UserInputType.MouseButton1 then
+            local ap, as = listFrame.AbsolutePosition, listFrame.AbsoluteSize
+            local dap, das = dOuter.AbsolutePosition, dOuter.AbsoluteSize
+            if Mouse.X < ap.X or Mouse.X > ap.X+as.X or Mouse.Y < (ap.Y-20-1) or Mouse.Y > ap.Y+as.Y then
+                if Mouse.X < dap.X or Mouse.X > dap.X+das.X or Mouse.Y < dap.Y or Mouse.Y > dap.Y+das.Y then
+                    DD:CloseDropdown()
+                end
             end
         end
-    end)
-
-    Dropdown:BuildDropdownList(); Dropdown:Display()
-
-    local Defaults = {}
-    if type(Info.Default) == 'string' then
-        local i = table.find(Dropdown.Values, Info.Default); if i then table.insert(Defaults, i) end
-    elseif type(Info.Default) == 'table' then
-        for _, Value in next, Info.Default do
-            local i = table.find(Dropdown.Values, Value); if i then table.insert(Defaults, i) end
-        end
-    elseif type(Info.Default) == 'number' and Dropdown.Values[Info.Default] ~= nil then
-        table.insert(Defaults, Info.Default)
-    end
-
-    if next(Defaults) then
-        for i = 1, #Defaults do
-            local Index = Defaults[i]
-            if Info.Multi then Dropdown.Value[Dropdown.Values[Index]] = true
-            else Dropdown.Value = Dropdown.Values[Index] end
-            if not Info.Multi then break end
-        end
-        Dropdown:BuildDropdownList(); Dropdown:Display()
-    end
-
-    Groupbox:AddBlank(Info.BlankSize or 5)
-    Groupbox:Resize()
-    Options[Idx] = Dropdown
-    return Dropdown
+    end))
+    DD:BuildList(); DD:Display()
+    local defs={}
+    if type(info.Default)=="string" then local i=table.find(DD.Values,info.Default); if i then table.insert(defs,i) end
+    elseif type(info.Default)=="table" then for _,v in next,info.Default do local i=table.find(DD.Values,v); if i then table.insert(defs,i) end end
+    elseif type(info.Default)=="number" and DD.Values[info.Default] then table.insert(defs,info.Default) end
+    if next(defs) then
+        for _,i in next,defs do if info.Multi then DD.Value[DD.Values[i]]=true else DD.Value=DD.Values[i]; break end end
+        DD:BuildList(); DD:Display() end
+    self:AddBlank(info.BlankSize or 5); self:Resize(); Options[idx]=DD; return DD
 end
 
 function F:AddDependencyBox()
