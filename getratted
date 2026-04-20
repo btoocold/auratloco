@@ -23,6 +23,32 @@ ScreenGui.IgnoreGuiInset = true
 ScreenGui.DisplayOrder   = 999
 ScreenGui.Parent         = CoreGui
 
+-- Disable Roblox core GUI overlays that intercept clicks and pass them through to UI elements
+local function DisableRobloxOverlays()
+    local coreGui = game:GetService("CoreGui")
+    local targets = {CallDialogScreen=true, PlayerMenuScreen=true, HeadsetDisconnectedDialog=true}
+    for _, gui in ipairs(coreGui:GetChildren()) do
+        if targets[gui.Name] then
+            for _, obj in ipairs(gui:GetDescendants()) do
+                if obj:IsA("GuiObject") then obj.Active = false end
+            end
+        end
+    end
+end
+DisableRobloxOverlays()
+-- Re-run if new GUIs are added at runtime
+game:GetService("CoreGui").ChildAdded:Connect(function(gui)
+    local targets = {CallDialogScreen=true, PlayerMenuScreen=true, HeadsetDisconnectedDialog=true}
+    if targets[gui.Name] then
+        gui.DescendantAdded:Connect(function(obj)
+            if obj:IsA("GuiObject") then obj.Active = false end
+        end)
+        for _, obj in ipairs(gui:GetDescendants()) do
+            if obj:IsA("GuiObject") then obj.Active = false end
+        end
+    end
+end)
+
 local Toggles = {}
 local Options = {}
 getgenv().Toggles = Toggles
