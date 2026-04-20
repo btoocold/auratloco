@@ -1,5 +1,5 @@
 --[[
-    GrimLib — Premium Roblox UI Library
+    Grimrat
     Fixed: GetTouchEnabled -> TouchEnabled
     Fixed: Toggle fade removed (caused invisible text)
     Fixed: AddSlider Min=0 assert fixed
@@ -13,6 +13,7 @@ local Players       = game:GetService("Players")
 local RunService    = game:GetService("RunService")
 local TweenService  = game:GetService("TweenService")
 local LocalPlayer   = Players.LocalPlayer
+local Mouse         = LocalPlayer:GetMouse()
 
 local ProtectGui = protectgui or (syn and syn.protect_gui) or function() end
 local ScreenGui  = Instance.new("ScreenGui")
@@ -250,14 +251,11 @@ function Library:IsOverFrame(frame)
     return p.X>=ap.X and p.X<=ap.X+as.X and p.Y>=ap.Y and p.Y<=ap.Y+as.Y
 end
 function Library:MouseIsOverOpenedFrame()
-    -- If any dropdown/picker is open, only allow clicks inside it
-    -- Clicks outside will be blocked (and the dropdown will be closed by the global InputBegan handler)
     for f in next, Library.OpenedFrames do
         if f.Visible then
-            if Library:IsOverFrame(f) then
-                return false -- click is inside the open frame, allow it
-            else
-                return true -- click is outside, block it
+            local ap,as=f.AbsolutePosition,f.AbsoluteSize
+            if Mouse.X>=ap.X and Mouse.X<=ap.X+as.X and Mouse.Y>=ap.Y and Mouse.Y<=ap.Y+as.Y then
+                return true
             end
         end
     end
@@ -691,13 +689,16 @@ function F:AddDropdown(idx,info)
                 Library.RegistryMap[bLbl].Properties.TextColor3=selected and "AccentColor" or "FontColor"
                 btn.BackgroundColor3=selected and Color3.fromRGB(15,25,55) or Library.MainColor
             end
-            OnTap(bLbl, function(inp)
+            -- Use LinoriaLib's approach: InputBegan directly on btn (Active=true), check MouseButton1 only
+            btn.InputBegan:Connect(function(inp)
+                if inp.UserInputType == Enum.UserInputType.MouseButton1 then
                     local try=not selected
                     if DD:GetActiveValues()==1 and not try and not info.AllowNull then return end
                     if info.Multi then selected=try; if selected then DD.Value[v]=true else DD.Value[v]=nil end
                     else selected=try; DD.Value=selected and v or nil; for _,b in next,Btns do b:Update() end end
                     Tbl:Update(); DD:Display(); Library:SafeCallback(DD.Callback,DD.Value); Library:SafeCallback(DD.Changed,DD.Value); Library:AttemptSave()
-                end)
+                end
+            end)
             Tbl:Update(); DD:Display(); Btns[btn]=Tbl
         end
         scroll.CanvasSize=UDim2.fromOffset(0,count*22+6); rsize(math.clamp(count*22,0,MAX*22)+6)
@@ -711,17 +712,22 @@ function F:AddDropdown(idx,info)
         else DD.Value=v and table.find(DD.Values,v) and v or nil end
         DD:BuildList(); Library:SafeCallback(DD.Callback,DD.Value); Library:SafeCallback(DD.Changed,DD.Value)
     end
-    OnTap(dOuter, function(inp)
-        if not Library:MouseIsOverOpenedFrame() then
-            if listFrame.Visible then DD:CloseDropdown() else DD:OpenDropdown() end end end)
+    -- LinoriaLib's approach: use InputBegan on dOuter directly, check MouseButton1
+    dOuter.InputBegan:Connect(function(inp)
+        if inp.UserInputType == Enum.UserInputType.MouseButton1 and not Library:MouseIsOverOpenedFrame() then
+            if listFrame.Visible then DD:CloseDropdown() else DD:OpenDropdown() end
+        end
+    end)
+    -- LinoriaLib's approach: use Mouse.X/Y for close-outside check
     Library:GiveSignal(InputService.InputBegan:Connect(function(inp)
-        if IsPress(inp) then
-            local p = Vector2.new(inp.Position.X, inp.Position.Y)
+        if inp.UserInputType == Enum.UserInputType.MouseButton1 then
             local ap, as = listFrame.AbsolutePosition, listFrame.AbsoluteSize
             local dap, das = dOuter.AbsolutePosition, dOuter.AbsoluteSize
-            local insideList = p.X>=ap.X and p.X<=ap.X+as.X and p.Y>=ap.Y and p.Y<=ap.Y+as.Y
-            local insideOuter = p.X>=dap.X and p.X<=dap.X+das.X and p.Y>=dap.Y and p.Y<=dap.Y+das.Y
-            if not insideList and not insideOuter then DD:CloseDropdown() end
+            if Mouse.X < ap.X or Mouse.X > ap.X+as.X or Mouse.Y < (ap.Y-20-1) or Mouse.Y > ap.Y+as.Y then
+                if Mouse.X < dap.X or Mouse.X > dap.X+das.X or Mouse.Y < dap.Y or Mouse.Y > dap.Y+das.Y then
+                    DD:CloseDropdown()
+                end
+            end
         end
     end))
     DD:BuildList(); DD:Display()
