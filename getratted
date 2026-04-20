@@ -993,7 +993,7 @@ function Library:CreateWindow(...)
         local ColPad,ColGap=7,14
         local _isMobile = IsMobile()
         local function makeSide(xscale,xoff)
-            local s=Library:Create("ScrollingFrame",{BackgroundTransparency=1;BorderSizePixel=0;Position=UDim2.new(xscale,xoff,0,ColPad);Size=UDim2.new(0.5,-ColPad*2-ColGap/2,1,-ColPad*2);CanvasSize=UDim2.new(0,0,0,0);AutomaticCanvasSize=Enum.AutomaticSize.None;BottomImage="";TopImage="";ScrollBarThickness=_isMobile and 6 or 0;ScrollBarImageTransparency=_isMobile and 0.3 or 1;ScrollBarImageColor3=Library.AccentColor;ScrollingDirection=Enum.ScrollingDirection.Y;ClipsDescendants=true;ZIndex=15;Parent=tabFrame;ElasticBehavior=Enum.ElasticBehavior.Never;ScrollingEnabled=true})
+            local s=Library:Create("ScrollingFrame",{BackgroundTransparency=1;BorderSizePixel=0;Position=UDim2.new(xscale,xoff,0,ColPad);Size=UDim2.new(0.5,-ColPad*2-ColGap/2,1,-ColPad*2);CanvasSize=UDim2.new(0,0,0,0);AutomaticCanvasSize=Enum.AutomaticSize.None;BottomImage="";TopImage="";ScrollBarThickness=_isMobile and 6 or 0;ScrollBarImageTransparency=_isMobile and 0.3 or 1;ScrollBarImageColor3=Library.AccentColor;ScrollingDirection=Enum.ScrollingDirection.Y;ClipsDescendants=true;ZIndex=15;Parent=tabFrame;ElasticBehavior=Enum.ElasticBehavior.Always;ScrollingEnabled=true})
             Library:Create("UIListLayout",{Padding=UDim.new(0,8);FillDirection=Enum.FillDirection.Vertical;SortOrder=Enum.SortOrder.LayoutOrder;HorizontalAlignment=Enum.HorizontalAlignment.Center;Parent=s})
             Library:Create("UIPadding",{PaddingLeft=UDim.new(0,2);PaddingRight=UDim.new(0,2);PaddingTop=UDim.new(0,2);PaddingBottom=UDim.new(0,2);Parent=s})
             Library:AddToRegistry(s,{ScrollBarImageColor3="AccentColor"})
