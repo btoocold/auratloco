@@ -66,14 +66,7 @@ local function OnTap(guiObject, callback)
                 end
             end)
         else
-            -- Use InputEnded for mouse so dropdown items fire after the global close handler
-            local conn
-            conn = guiObject.InputEnded:Connect(function(inp2)
-                if IsPress(inp2) then
-                    conn:Disconnect()
-                    callback(inp2)
-                end
-            end)
+            callback(inp)
         end
     end)
 end
@@ -204,6 +197,25 @@ function Library:UpdateColorsUsingRegistry()
 end
 function Library:UpdateDependencyBoxes() for _,d in next, Library.DependencyBoxes do d:Update() end end
 function Library:GiveSignal(s) table.insert(Library.Signals, s) end
+
+function Library:LockUI(exceptFrame)
+    for _, obj in ipairs(ScreenGui:GetDescendants()) do
+        if obj:IsA("GuiObject") and obj.Active then
+            if not (obj == exceptFrame or obj:IsDescendantOf(exceptFrame)) then
+                obj:SetAttribute("_wasActive", true)
+                obj.Active = false
+            end
+        end
+    end
+end
+function Library:UnlockUI()
+    for _, obj in ipairs(ScreenGui:GetDescendants()) do
+        if obj:IsA("GuiObject") and obj:GetAttribute("_wasActive") then
+            obj.Active = true
+            obj:SetAttribute("_wasActive", nil)
+        end
+    end
+end
 function Library:Unload()
     for i=#Library.Signals,1,-1 do table.remove(Library.Signals,i):Disconnect() end
     if Library.OnUnload then Library.OnUnload() end
@@ -412,7 +424,7 @@ function F:AddKeyPicker(idx, info)
         function MB:Select() for _,b in next,MBtns do b:Deselect() end; KP.Mode=mode
             lbl.TextColor3=Library.AccentColor; Library.RegistryMap[lbl].Properties.TextColor3="AccentColor"; mOuter.Visible=false end
         function MB:Deselect() lbl.TextColor3=Library.FontColor; Library.RegistryMap[lbl].Properties.TextColor3="FontColor" end
-        lbl.InputBegan:Connect(function(inp) if IsPress(inp) and not Library:MouseIsOverOpenedFrame() then MB:Select(); Library:AttemptSave() end end)
+        lbl.InputBegan:Connect(function(inp) if IsPress(inp) then MB:Select(); Library:AttemptSave() end end)
         if mode==KP.Mode then MB:Select() end; MBtns[mode]=MB
     end
     function KP:Update()
@@ -519,7 +531,7 @@ function F:AddButton(...)
         Rnd(outer,6); MkStroke(outer,Library.OutlineColor,1,0.35)
         Library:AddToRegistry(outer,{BackgroundColor3="MainColor"})
         local lbl=Library:MakeLabel({Size=UDim2.fromScale(1,1);TextSize=13;Text=b.Text;ZIndex=21;Parent=outer})
-        outer.InputBegan:Connect(function(inp) if IsPress(inp) and not Library:MouseIsOverOpenedFrame() then Tween(outer,{BackgroundColor3=Library.AccentColor},0.1) end end)
+        outer.InputBegan:Connect(function(inp) if IsPress(inp) then Tween(outer,{BackgroundColor3=Library.AccentColor},0.1) end end)
         outer.InputEnded:Connect(function(inp) if IsPress(inp) then Tween(outer,{BackgroundColor3=Library.MainColor},0.15) end end)
         return outer,nil,lbl
     end
@@ -710,8 +722,8 @@ function F:AddDropdown(idx,info)
         scroll.CanvasSize=UDim2.fromOffset(0,count*22+6); rsize(math.clamp(count*22,0,MAX*22)+6)
     end
     function DD:SetValues(nv) if nv then DD.Values=nv end; DD:BuildList() end
-    function DD:OpenDropdown() rpos(); listFrame.Visible=true; Library.OpenedFrames[listFrame]=true; Tween(arrow,{Rotation=180},0.15); if dst then dst.Color=Library.AccentColor end end
-    function DD:CloseDropdown() listFrame.Visible=false; Library.OpenedFrames[listFrame]=nil; Tween(arrow,{Rotation=0},0.15); if dst then dst.Color=Library.OutlineColor end end
+    function DD:OpenDropdown() rpos(); listFrame.Visible=true; Library.OpenedFrames[listFrame]=true; Library:LockUI(listFrame); Tween(arrow,{Rotation=180},0.15); if dst then dst.Color=Library.AccentColor end end
+    function DD:CloseDropdown() listFrame.Visible=false; Library.OpenedFrames[listFrame]=nil; Library:UnlockUI(); Tween(arrow,{Rotation=0},0.15); if dst then dst.Color=Library.OutlineColor end end
     function DD:OnChanged(f) DD.Changed=f; f(DD.Value) end
     function DD:SetValue(v)
         if DD.Multi then local t={}; for val in next,v do if table.find(DD.Values,val) then t[val]=true end end; DD.Value=t
@@ -1116,7 +1128,7 @@ function Library:CreateWindow(...)
         end
         function Tab:AddLeftTabbox(n) return Tab:AddTabbox({Name=n;Side=1}) end
         function Tab:AddRightTabbox(n) return Tab:AddTabbox({Name=n;Side=2}) end
-        tabBtn.InputBegan:Connect(function(inp) if IsPress(inp) and not Library:MouseIsOverOpenedFrame() then Tab:ShowTab() end end)
+        tabBtn.InputBegan:Connect(function(inp) if IsPress(inp) then Tab:ShowTab() end end)
         if #tabContainer:GetChildren()==1 then Tab:ShowTab() end
         Window.Tabs[name]=Tab; return Tab
     end
