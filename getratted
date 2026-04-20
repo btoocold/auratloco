@@ -49,6 +49,12 @@ local function IsMobile()
     if vp.X < 1400 then return true end
     return false
 end
+local function IsIPad()
+    if not InputService.TouchEnabled then return false end
+    local cam = workspace.CurrentCamera
+    local vp = cam and cam.ViewportSize or Vector2.new(1920, 1080)
+    return math.min(vp.X, vp.Y) >= 768
+end
 
 -- Scroll-safe tap: on mobile, only fires callback if finger didn't drag (not a scroll)
 local TAP_THRESHOLD = 10
@@ -671,7 +677,7 @@ function F:AddDropdown(idx,info)
     rpos(); rsize()
     dOuter:GetPropertyChangedSignal("AbsolutePosition"):Connect(rpos)
     dOuter:GetPropertyChangedSignal("AbsoluteSize"):Connect(function() rpos(); rsize() end)
-    local scroll=Library:Create("ScrollingFrame",{BackgroundTransparency=1;BorderSizePixel=0;CanvasSize=UDim2.new(0,0,0,0);Size=UDim2.fromScale(1,1);ZIndex=201;Parent=listFrame;TopImage="";BottomImage="";ScrollBarThickness=3;ScrollBarImageTransparency=0;ScrollBarImageColor3=Library.AccentColor;ElasticBehavior=Enum.ElasticBehavior.Always})
+    local scroll=Library:Create("ScrollingFrame",{BackgroundTransparency=1;BorderSizePixel=0;CanvasSize=UDim2.new(0,0,0,0);Size=UDim2.fromScale(1,1);ZIndex=201;Parent=listFrame;TopImage="";BottomImage="";ScrollBarThickness=3;ScrollBarImageTransparency=0;ScrollBarImageColor3=Library.AccentColor;ElasticBehavior=Enum.ElasticBehavior.Never;ScrollingEnabled=true})
     Rnd(scroll,8); Library:AddToRegistry(scroll,{ScrollBarImageColor3="AccentColor"})
     Library:Create("UIListLayout",{FillDirection=Enum.FillDirection.Vertical;SortOrder=Enum.SortOrder.LayoutOrder;Parent=scroll})
     Library:Create("UIPadding",{PaddingTop=UDim.new(0,3);PaddingBottom=UDim.new(0,3);PaddingLeft=UDim.new(0,3);PaddingRight=UDim.new(0,3);Parent=scroll})
@@ -729,12 +735,11 @@ function F:AddDropdown(idx,info)
     end)
     -- LinoriaLib's approach: use Mouse.X/Y for close-outside check
     Library:GiveSignal(InputService.InputBegan:Connect(function(inp)
-        if inp.UserInputType == Enum.UserInputType.MouseButton1 or inp.UserInputType == Enum.UserInputType.Touch then
-            local p = Vector2.new(inp.Position.X, inp.Position.Y)
+        if inp.UserInputType == Enum.UserInputType.MouseButton1 then
             local ap, as = listFrame.AbsolutePosition, listFrame.AbsoluteSize
             local dap, das = dOuter.AbsolutePosition, dOuter.AbsoluteSize
-            if p.X < ap.X or p.X > ap.X+as.X or p.Y < (ap.Y-20-1) or p.Y > ap.Y+as.Y then
-                if p.X < dap.X or p.X > dap.X+das.X or p.Y < dap.Y or p.Y > dap.Y+das.Y then
+            if Mouse.X < ap.X or Mouse.X > ap.X+as.X or Mouse.Y < (ap.Y-20-1) or Mouse.Y > ap.Y+as.Y then
+                if Mouse.X < dap.X or Mouse.X > dap.X+das.X or Mouse.Y < dap.Y or Mouse.Y > dap.Y+das.Y then
                     DD:CloseDropdown()
                 end
             end
@@ -843,8 +848,8 @@ function Library:CreateWindow(...)
         Parent=ScreenGui;
         ClipsDescendants=true
     })
-    -- Scale down the entire window on mobile so it fits as a small box
-    if _mobile then
+    -- Scale down on mobile phones only, iPad gets full PC size
+    if _mobile and not IsIPad() then
         local cam = workspace.CurrentCamera
         local vp = cam and cam.ViewportSize or Vector2.new(1280,720)
         local scaleX = (vp.X * 0.40) / cfg.Size.X.Offset
