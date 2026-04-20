@@ -663,18 +663,14 @@ function F:AddDropdown(idx,info)
     local MAX = IsMobile() and 5 or 8
     local listFrame=Library:Create("Frame",{BackgroundColor3=Library.MainColor;BorderSizePixel=0;ZIndex=200;Visible=false;Active=true;Parent=ScreenGui})
     Rnd(listFrame,8); MkStroke(listFrame,Library.OutlineColor,1.5); Library:AddToRegistry(listFrame,{BackgroundColor3="MainColor"})
-    -- Match listFrame scale to outer's UIScale so dropdown looks correct on mobile
     local _listScale = Instance.new("UIScale")
-    _listScale.Scale = 1
+    _listScale.Scale = Library._mobileScale or 1
     _listScale.Parent = listFrame
-    task.defer(function()
-        local uiScale = ScreenGui:FindFirstChildOfClass("UIScale")
-        if uiScale then _listScale.Scale = uiScale.Scale end
-    end)
     local function rpos()
-        local posY = dOuter.AbsolutePosition.Y + dOuter.AbsoluteSize.Y + 3
+        local posY = dOuter.AbsolutePosition.Y + dOuter.AbsoluteSize.Y + 60
         local screenH = ScreenGui.AbsoluteSize.Y
         local listH = listFrame.AbsoluteSize.Y
+        -- If dropdown would go off screen bottom, show above the button instead
         if posY + listH > screenH - 10 then
             posY = dOuter.AbsolutePosition.Y - listH - 3
         end
@@ -874,6 +870,7 @@ function Library:CreateWindow(...)
             uiScale.Scale = math.clamp(s, 0.35, 0.6)
         end
         uiScale.Parent = outer
+        Library._mobileScale = uiScale.Scale
     end
     Rnd(outer,12)
     local outerStroke = MkStroke(outer, Color3.fromRGB(55, 55, 60), 2.5, 0)
