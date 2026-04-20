@@ -833,7 +833,18 @@ function Library:CreateWindow(...)
         Parent=ScreenGui;
         ClipsDescendants=true
     })
-    -- Scale is handled by the main script via ScreenGui UIScale
+    -- Scale down the entire window on mobile so it fits as a small box
+    if _mobile then
+        local cam = workspace.CurrentCamera
+        local vp = cam and cam.ViewportSize or Vector2.new(1280,720)
+        local scaleX = (vp.X * 0.40) / cfg.Size.X.Offset
+        local scaleY = (vp.Y * 0.50) / cfg.Size.Y.Offset
+        local s = math.min(scaleX, scaleY, 0.62)
+        s = math.clamp(s, 0.35, 0.6)
+        local uiScale = Instance.new("UIScale")
+        uiScale.Scale = s
+        uiScale.Parent = outer
+    end
     Rnd(outer,12)
     local outerStroke = MkStroke(outer, Color3.fromRGB(55, 55, 60), 2.5, 0)
     local outerGlow = Glow(outer, 24)
