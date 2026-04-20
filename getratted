@@ -658,7 +658,7 @@ function F:AddDropdown(idx,info)
     local listFrame=Library:Create("Frame",{BackgroundColor3=Library.MainColor;BorderSizePixel=0;ZIndex=200;Visible=false;Parent=ScreenGui})
     Rnd(listFrame,8); MkStroke(listFrame,Library.OutlineColor,1.5); Library:AddToRegistry(listFrame,{BackgroundColor3="MainColor"})
     local function rpos()
-        local posY = dOuter.AbsolutePosition.Y + dOuter.AbsoluteSize.Y + 3
+        local posY = dOuter.AbsolutePosition.Y + dOuter.AbsoluteSize.Y + 26
         local screenH = ScreenGui.AbsoluteSize.Y
         local listH = listFrame.AbsoluteSize.Y
         -- If dropdown would go off screen bottom, show above the button instead
