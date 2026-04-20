@@ -197,25 +197,6 @@ function Library:UpdateColorsUsingRegistry()
 end
 function Library:UpdateDependencyBoxes() for _,d in next, Library.DependencyBoxes do d:Update() end end
 function Library:GiveSignal(s) table.insert(Library.Signals, s) end
-
-function Library:LockUI(exceptFrame)
-    for _, obj in ipairs(ScreenGui:GetDescendants()) do
-        if obj:IsA("GuiObject") and obj.Active then
-            if not (obj == exceptFrame or obj:IsDescendantOf(exceptFrame)) then
-                obj:SetAttribute("_wasActive", true)
-                obj.Active = false
-            end
-        end
-    end
-end
-function Library:UnlockUI()
-    for _, obj in ipairs(ScreenGui:GetDescendants()) do
-        if obj:IsA("GuiObject") and obj:GetAttribute("_wasActive") then
-            obj.Active = true
-            obj:SetAttribute("_wasActive", nil)
-        end
-    end
-end
 function Library:Unload()
     for i=#Library.Signals,1,-1 do table.remove(Library.Signals,i):Disconnect() end
     if Library.OnUnload then Library.OnUnload() end
@@ -710,7 +691,7 @@ function F:AddDropdown(idx,info)
                 Library.RegistryMap[bLbl].Properties.TextColor3=selected and "AccentColor" or "FontColor"
                 btn.BackgroundColor3=selected and Color3.fromRGB(15,25,55) or Library.MainColor
             end
-            OnTap(btn, function(inp)
+            OnTap(bLbl, function(inp)
                     local try=not selected
                     if DD:GetActiveValues()==1 and not try and not info.AllowNull then return end
                     if info.Multi then selected=try; if selected then DD.Value[v]=true else DD.Value[v]=nil end
@@ -722,8 +703,8 @@ function F:AddDropdown(idx,info)
         scroll.CanvasSize=UDim2.fromOffset(0,count*22+6); rsize(math.clamp(count*22,0,MAX*22)+6)
     end
     function DD:SetValues(nv) if nv then DD.Values=nv end; DD:BuildList() end
-    function DD:OpenDropdown() rpos(); listFrame.Visible=true; Library.OpenedFrames[listFrame]=true; Library:LockUI(listFrame); Tween(arrow,{Rotation=180},0.15); if dst then dst.Color=Library.AccentColor end end
-    function DD:CloseDropdown() listFrame.Visible=false; Library.OpenedFrames[listFrame]=nil; Library:UnlockUI(); Tween(arrow,{Rotation=0},0.15); if dst then dst.Color=Library.OutlineColor end end
+    function DD:OpenDropdown() rpos(); listFrame.Visible=true; Library.OpenedFrames[listFrame]=true; Tween(arrow,{Rotation=180},0.15); if dst then dst.Color=Library.AccentColor end end
+    function DD:CloseDropdown() listFrame.Visible=false; Library.OpenedFrames[listFrame]=nil; Tween(arrow,{Rotation=0},0.15); if dst then dst.Color=Library.OutlineColor end end
     function DD:OnChanged(f) DD.Changed=f; f(DD.Value) end
     function DD:SetValue(v)
         if DD.Multi then local t={}; for val in next,v do if table.find(DD.Values,val) then t[val]=true end end; DD.Value=t
