@@ -706,7 +706,7 @@ function F:AddDropdown(idx,info)
             end
             -- Use LinoriaLib's approach: InputBegan directly on btn (Active=true), check MouseButton1 only
             btn.InputBegan:Connect(function(inp)
-                if inp.UserInputType == Enum.UserInputType.MouseButton1 then
+                if inp.UserInputType == Enum.UserInputType.MouseButton1 or inp.UserInputType == Enum.UserInputType.Touch then
                     local try=not selected
                     if DD:GetActiveValues()==1 and not try and not info.AllowNull then return end
                     if info.Multi then selected=try; if selected then DD.Value[v]=true else DD.Value[v]=nil end
@@ -729,17 +729,18 @@ function F:AddDropdown(idx,info)
     end
     -- LinoriaLib's approach: use InputBegan on dOuter directly, check MouseButton1
     dOuter.InputBegan:Connect(function(inp)
-        if inp.UserInputType == Enum.UserInputType.MouseButton1 and not Library:MouseIsOverOpenedFrame() then
+        if (inp.UserInputType == Enum.UserInputType.MouseButton1 or inp.UserInputType == Enum.UserInputType.Touch) and not Library:MouseIsOverOpenedFrame() then
             if listFrame.Visible then DD:CloseDropdown() else DD:OpenDropdown() end
         end
     end)
     -- LinoriaLib's approach: use Mouse.X/Y for close-outside check
     Library:GiveSignal(InputService.InputBegan:Connect(function(inp)
-        if inp.UserInputType == Enum.UserInputType.MouseButton1 then
+        if inp.UserInputType == Enum.UserInputType.MouseButton1 or inp.UserInputType == Enum.UserInputType.Touch then
+            local p = Vector2.new(inp.Position.X, inp.Position.Y)
             local ap, as = listFrame.AbsolutePosition, listFrame.AbsoluteSize
             local dap, das = dOuter.AbsolutePosition, dOuter.AbsoluteSize
-            if Mouse.X < ap.X or Mouse.X > ap.X+as.X or Mouse.Y < (ap.Y-20-1) or Mouse.Y > ap.Y+as.Y then
-                if Mouse.X < dap.X or Mouse.X > dap.X+das.X or Mouse.Y < dap.Y or Mouse.Y > dap.Y+das.Y then
+            if p.X < ap.X or p.X > ap.X+as.X or p.Y < (ap.Y-20-1) or p.Y > ap.Y+as.Y then
+                if p.X < dap.X or p.X > dap.X+das.X or p.Y < dap.Y or p.Y > dap.Y+das.Y then
                     DD:CloseDropdown()
                 end
             end
