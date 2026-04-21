@@ -660,11 +660,11 @@ function F:AddDropdown(idx,info)
     local arrow=Library:Create("ImageLabel",{AnchorPoint=Vector2.new(0,0.5);BackgroundTransparency=1;Position=UDim2.new(1,-16,0.5,0);Size=UDim2.fromOffset(10,10);Image="rbxassetid://6282522798";ZIndex=23;Parent=dOuter})
     local iList=Library:MakeLabel({Position=UDim2.fromOffset(7,0);Size=UDim2.new(1,-22,1,0);TextSize=13;Text="--";TextXAlignment=Enum.TextXAlignment.Left;ZIndex=22;Parent=dOuter})
     if type(info.Tooltip)=="string" then Library:AddToolTip(info.Tooltip,dOuter) end
-    local MAX = IsMobile() and 5 or 8
+    local MAX = IsMobile() and 6 or 8
     local listFrame=Library:Create("Frame",{BackgroundColor3=Library.MainColor;BorderSizePixel=0;ZIndex=200;Visible=false;Active=true;Parent=ScreenGui})
     Rnd(listFrame,8); MkStroke(listFrame,Library.OutlineColor,1.5); Library:AddToRegistry(listFrame,{BackgroundColor3="MainColor"})
     local _listScale = Instance.new("UIScale")
-    _listScale.Scale = Library._mobileScale or 1
+    _listScale.Scale = 1
     _listScale.Parent = listFrame
     local function rpos()
         local posY = dOuter.AbsolutePosition.Y + dOuter.AbsoluteSize.Y + 60
@@ -680,7 +680,7 @@ function F:AddDropdown(idx,info)
     rpos(); rsize()
     dOuter:GetPropertyChangedSignal("AbsolutePosition"):Connect(rpos)
     dOuter:GetPropertyChangedSignal("AbsoluteSize"):Connect(function() rpos(); rsize() end)
-    local scroll=Library:Create("ScrollingFrame",{BackgroundTransparency=1;BorderSizePixel=0;CanvasSize=UDim2.new(0,0,0,0);Size=UDim2.fromScale(1,1);ZIndex=201;Parent=listFrame;TopImage="";BottomImage="";ScrollBarThickness=3;ScrollBarImageTransparency=0;ScrollBarImageColor3=Library.AccentColor;ElasticBehavior=Enum.ElasticBehavior.Always})
+    local scroll=Library:Create("ScrollingFrame",{BackgroundTransparency=1;BorderSizePixel=0;CanvasSize=UDim2.new(0,0,0,0);Size=UDim2.fromScale(1,1);ZIndex=201;Parent=listFrame;TopImage="";BottomImage="";ScrollBarThickness=IsMobile() and 6 or 3;ScrollBarImageTransparency=0;ScrollBarImageColor3=Library.AccentColor;ElasticBehavior=Enum.ElasticBehavior.Always;ScrollingDirection=Enum.ScrollingDirection.Y})
     Rnd(scroll,8); Library:AddToRegistry(scroll,{ScrollBarImageColor3="AccentColor"})
     Library:Create("UIListLayout",{FillDirection=Enum.FillDirection.Vertical;SortOrder=Enum.SortOrder.LayoutOrder;Parent=scroll})
     Library:Create("UIPadding",{PaddingTop=UDim.new(0,3);PaddingBottom=UDim.new(0,3);PaddingLeft=UDim.new(0,3);PaddingRight=UDim.new(0,3);Parent=scroll})
@@ -707,15 +707,32 @@ function F:AddDropdown(idx,info)
                 Library.RegistryMap[bLbl].Properties.TextColor3=selected and "AccentColor" or "FontColor"
                 btn.BackgroundColor3=selected and Color3.fromRGB(15,25,55) or Library.MainColor
             end
-            -- Use LinoriaLib's approach: InputBegan directly on btn (Active=true), check MouseButton1 only
-            btn.InputBegan:Connect(function(inp)
-                if inp.UserInputType == Enum.UserInputType.MouseButton1 or inp.UserInputType == Enum.UserInputType.Touch then
-                    local try=not selected
-                    if DD:GetActiveValues()==1 and not try and not info.AllowNull then return end
-                    if info.Multi then selected=try; if selected then DD.Value[v]=true else DD.Value[v]=nil end
-                    else selected=try; DD.Value=selected and v or nil; for _,b in next,Btns do b:Update() end end
-                    Tbl:Update(); DD:Display(); Library:SafeCallback(DD.Callback,DD.Value); Library:SafeCallback(DD.Changed,DD.Value); Library:AttemptSave()
+            local function selectOption()
+                local try=not selected
+                if DD:GetActiveValues()==1 and not try and not info.AllowNull then return end
+                if info.Multi then
+                    selected=try
+                    if selected then
+                        DD.Value[v]=true
+                    else
+                        DD.Value[v]=nil
+                    end
+                else
+                    selected=try
+                    DD.Value=selected and v or nil
+                    for _,b in next,Btns do
+                        b:Update()
+                    end
                 end
+                Tbl:Update()
+                DD:Display()
+                Library:SafeCallback(DD.Callback,DD.Value)
+                Library:SafeCallback(DD.Changed,DD.Value)
+                Library:AttemptSave()
+            end
+
+            OnTap(btn, function()
+                selectOption()
             end)
             Tbl:Update(); DD:Display(); Btns[btn]=Tbl
         end
