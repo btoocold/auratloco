@@ -660,30 +660,24 @@ function F:AddDropdown(idx,info)
     local arrow=Library:Create("ImageLabel",{AnchorPoint=Vector2.new(0,0.5);BackgroundTransparency=1;Position=UDim2.new(1,-16,0.5,0);Size=UDim2.fromOffset(10,10);Image="rbxassetid://6282522798";ZIndex=23;Parent=dOuter})
     local iList=Library:MakeLabel({Position=UDim2.fromOffset(7,0);Size=UDim2.new(1,-22,1,0);TextSize=13;Text="--";TextXAlignment=Enum.TextXAlignment.Left;ZIndex=22;Parent=dOuter})
     if type(info.Tooltip)=="string" then Library:AddToolTip(info.Tooltip,dOuter) end
+    local _isIphone = IsMobile() and not IsIPad()
     local MAX = IsMobile() and 6 or 8
+    local ITEM_H = _isIphone and 28 or 22
     local listFrame=Library:Create("Frame",{BackgroundColor3=Library.MainColor;BorderSizePixel=0;ZIndex=200;Visible=false;Active=true;Parent=ScreenGui})
     Rnd(listFrame,8); MkStroke(listFrame,Library.OutlineColor,1.5); Library:AddToRegistry(listFrame,{BackgroundColor3="MainColor"})
-    -- iPhone only: scale listFrame to match the window's UIScale so items aren't huge
-    local _isIphone = IsMobile() and not IsIPad()
-    local _mscale = (_isIphone and Library._mobileScale) or 1
-    local ITEM_H = _isIphone and math.round(26 / _mscale) or 22
     local _listScale = Instance.new("UIScale")
-    _listScale.Scale = _mscale
+    _listScale.Scale = 1
     _listScale.Parent = listFrame
     local function rpos()
         local posY = dOuter.AbsolutePosition.Y + dOuter.AbsoluteSize.Y + 60
         local screenH = ScreenGui.AbsoluteSize.Y
         local listH = listFrame.AbsoluteSize.Y
-        -- If dropdown would go off screen bottom, show above the button instead
         if posY + listH > screenH - 10 then
             posY = dOuter.AbsolutePosition.Y - listH - 3
         end
         listFrame.Position = UDim2.fromOffset(dOuter.AbsolutePosition.X, posY)
     end
-    local function rsize(y)
-        -- width: dOuter.AbsoluteSize.X is screen px, divide by scale so UIScale renders it correctly
-        listFrame.Size=UDim2.fromOffset(dOuter.AbsoluteSize.X / _mscale, y or MAX*ITEM_H+6)
-    end
+    local function rsize(y) listFrame.Size=UDim2.fromOffset(dOuter.AbsoluteSize.X, y or MAX*ITEM_H+6) end
     rpos(); rsize()
     dOuter:GetPropertyChangedSignal("AbsolutePosition"):Connect(rpos)
     dOuter:GetPropertyChangedSignal("AbsoluteSize"):Connect(function() rpos(); rsize() end)
