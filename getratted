@@ -674,9 +674,11 @@ function F:AddDropdown(idx,info)
         if posY + listH > screenH - 10 then
             posY = dOuter.AbsolutePosition.Y - listH - 3
         end
-        listFrame.Position = UDim2.fromOffset(dOuter.AbsolutePosition.X, posY)
+        local scale = Library._mobileScale or 1
+        local posX = dOuter.AbsolutePosition.X / scale
+        listFrame.Position = UDim2.fromOffset(posX, posY)
     end
-    local function rsize(y) listFrame.Size=UDim2.fromOffset(dOuter.AbsoluteSize.X, y or MAX*22+6) end
+    local function rsize(y) local scale = Library._mobileScale or 1; listFrame.Size=UDim2.fromOffset(dOuter.AbsoluteSize.X / scale, y or MAX*22+6) end
     rpos(); rsize()
     dOuter:GetPropertyChangedSignal("AbsolutePosition"):Connect(rpos)
     dOuter:GetPropertyChangedSignal("AbsoluteSize"):Connect(function() rpos(); rsize() end)
