@@ -987,7 +987,7 @@ function Library:CreateWindow(...)
         Name = "BodyBackground";
         BackgroundTransparency = 1;
         BorderSizePixel = 0;
-        Image = "rbxassetid://83300626169126";
+        Image = "rbxassetid://117665466925358";
         ImageTransparency = 0.06;
         ScaleType = Enum.ScaleType.Crop;
         Position = UDim2.new(0,0,0,0);
