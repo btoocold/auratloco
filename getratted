@@ -668,9 +668,9 @@ function F:AddDropdown(idx,info)
     _listScale.Scale = 1
     _listScale.Parent = listFrame
     local function rpos()
-        local posY = dOuter.AbsolutePosition.Y + dOuter.AbsoluteSize.Y + 3
+        local posY = dOuter.AbsolutePosition.Y + dOuter.AbsoluteSize.Y + 60
         local screenH = ScreenGui.AbsoluteSize.Y
-        local listH = MAX * 22 + 6
+        local listH = listFrame.AbsoluteSize.Y
         -- If dropdown would go off screen bottom, show above the button instead
         if posY + listH > screenH - 10 then
             posY = dOuter.AbsolutePosition.Y - listH - 3
