@@ -668,14 +668,20 @@ function F:AddDropdown(idx,info)
     _listScale.Scale = 1
     _listScale.Parent = listFrame
     local function rpos()
-        local posY = dOuter.AbsolutePosition.Y + dOuter.AbsoluteSize.Y + 60
         local screenH = ScreenGui.AbsoluteSize.Y
-        local listH = listFrame.AbsoluteSize.Y
-        -- If dropdown would go off screen bottom, show above the button instead
+        local screenW = ScreenGui.AbsoluteSize.X
+        -- Use known list height: MAX items * 22px + 6px padding
+        local listH = MAX * 22 + 6
+        local listW = dOuter.AbsoluteSize.X
+        -- Default: open below the dropdown button with a 3px gap
+        local posY = dOuter.AbsolutePosition.Y + dOuter.AbsoluteSize.Y + 3
+        -- If it would overflow the bottom, flip above instead
         if posY + listH > screenH - 10 then
             posY = dOuter.AbsolutePosition.Y - listH - 3
         end
-        listFrame.Position = UDim2.fromOffset(dOuter.AbsolutePosition.X, posY)
+        -- Clamp X so it never goes off the right or left edge
+        local posX = math.clamp(dOuter.AbsolutePosition.X, 4, math.max(4, screenW - listW - 4))
+        listFrame.Position = UDim2.fromOffset(posX, posY)
     end
     local function rsize(y) listFrame.Size=UDim2.fromOffset(dOuter.AbsoluteSize.X, y or MAX*22+6) end
     rpos(); rsize()
