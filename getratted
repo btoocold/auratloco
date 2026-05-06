@@ -661,23 +661,28 @@ function F:AddDropdown(idx,info)
     local arrow=Library:Create("ImageLabel",{AnchorPoint=Vector2.new(0,0.5);BackgroundTransparency=1;Position=UDim2.new(1,-16,0.5,0);Size=UDim2.fromOffset(10,10);Image="rbxassetid://6282522798";ZIndex=23;Parent=dOuter})
     local iList=Library:MakeLabel({Position=UDim2.fromOffset(7,0);Size=UDim2.new(1,-22,1,0);TextSize=13;Text="--";TextXAlignment=Enum.TextXAlignment.Left;ZIndex=22;Parent=dOuter})
     if type(info.Tooltip)=="string" then Library:AddToolTip(info.Tooltip,dOuter) end
-    local MAX = IsMobile() and 6 or 8
+    local _isMob = IsMobile()
+    local ITEM_H = _isMob and 18 or 22
+    local MAX = _isMob and 6 or 8
     local listFrame=Library:Create("Frame",{BackgroundColor3=Library.MainColor;BorderSizePixel=0;ZIndex=200;Visible=false;Active=true;Parent=ScreenGui})
     Rnd(listFrame,8); MkStroke(listFrame,Library.OutlineColor,1.5); Library:AddToRegistry(listFrame,{BackgroundColor3="MainColor"})
     local _listScale = Instance.new("UIScale")
-    _listScale.Scale = 1
+    -- Match list scale to window scale on mobile so sizing is consistent
+    _listScale.Scale = (_isMob and Library._mobileScale) and Library._mobileScale or 1
     _listScale.Parent = listFrame
     local function rpos()
-        local posY = dOuter.AbsolutePosition.Y + dOuter.AbsoluteSize.Y + 60
+        local scale = _listScale.Scale
+        local ap = dOuter.AbsolutePosition
+        local as = dOuter.AbsoluteSize
+        local listH = listFrame.Size.Y.Offset * scale
         local screenH = ScreenGui.AbsoluteSize.Y
-        local listH = listFrame.AbsoluteSize.Y
-        -- If dropdown would go off screen bottom, show above the button instead
+        local posY = ap.Y + as.Y + 60
         if posY + listH > screenH - 10 then
-            posY = dOuter.AbsolutePosition.Y - listH - 3
+            posY = ap.Y - listH - 3
         end
-        listFrame.Position = UDim2.fromOffset(dOuter.AbsolutePosition.X, posY)
+        listFrame.Position = UDim2.fromOffset(ap.X, posY)
     end
-    local function rsize(y) listFrame.Size=UDim2.fromOffset(dOuter.AbsoluteSize.X, y or MAX*22+6) end
+    local function rsize(y) listFrame.Size=UDim2.fromOffset(dOuter.AbsoluteSize.X, y or MAX*ITEM_H+6) end
     rpos(); rsize()
     dOuter:GetPropertyChangedSignal("AbsolutePosition"):Connect(rpos)
     dOuter:GetPropertyChangedSignal("AbsoluteSize"):Connect(function() rpos(); rsize() end)
@@ -698,9 +703,9 @@ function F:AddDropdown(idx,info)
         for _,e in next,scroll:GetChildren() do if not e:IsA("UIListLayout") and not e:IsA("UIPadding") then e:Destroy() end end
         local Btns,count={},0
         for _,v in next,DD.Values do count=count+1
-            local btn=Library:Create("Frame",{BackgroundColor3=Library.MainColor;BorderSizePixel=0;Size=UDim2.new(1,0,0,22);ZIndex=202;Active=true;Parent=scroll})
+            local btn=Library:Create("Frame",{BackgroundColor3=Library.MainColor;BorderSizePixel=0;Size=UDim2.new(1,0,0,ITEM_H);ZIndex=202;Active=true;Parent=scroll})
             Rnd(btn,5); Library:AddToRegistry(btn,{BackgroundColor3="MainColor"})
-            local bLbl=Library:MakeLabel({Active=false;Size=UDim2.new(1,-10,1,0);Position=UDim2.fromOffset(7,0);TextSize=13;Text=v;TextXAlignment=Enum.TextXAlignment.Left;ZIndex=204;Parent=btn})
+            local bLbl=Library:MakeLabel({Active=false;Size=UDim2.new(1,-10,1,0);Position=UDim2.fromOffset(7,0);TextSize=_isMob and 11 or 13;Text=v;TextXAlignment=Enum.TextXAlignment.Left;ZIndex=204;Parent=btn})
             local Tbl={}; local selected=info.Multi and DD.Value[v] or DD.Value==v
             function Tbl:Update()
                 selected=info.Multi and DD.Value[v] or DD.Value==v
@@ -737,7 +742,7 @@ function F:AddDropdown(idx,info)
             end)
             Tbl:Update(); DD:Display(); Btns[btn]=Tbl
         end
-        scroll.CanvasSize=UDim2.fromOffset(0,count*22+6); rsize(math.clamp(count*22,0,MAX*22)+6); rpos()
+        scroll.CanvasSize=UDim2.fromOffset(0,count*ITEM_H+6); rsize(math.clamp(count*ITEM_H,0,MAX*ITEM_H)+6); rpos()
     end
     function DD:SetValues(nv) if nv then DD.Values=nv end; DD:BuildList() end
     function DD:OpenDropdown() rpos(); listFrame.Visible=true; Library.OpenedFrames[listFrame]=true; Tween(arrow,{Rotation=180},0.15); if dst then dst.Color=Library.AccentColor end end
