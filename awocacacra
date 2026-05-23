@@ -1,8 +1,3 @@
--- Made by samet
--- Join for high quality UI Commissions
--- https://discord.gg/VhvTd5HV8d
--- @joestar._3
-
 local Library do 
     local Workspace = game:GetService("Workspace")
     local UserInputService = game:GetService("UserInputService")
@@ -6276,3 +6271,4 @@ local Library do
 end
 
 getgenv().Library = Library
+return Library
