@@ -2335,7 +2335,6 @@ local Library do
                     Position = UDim2New(0, 12, 0, 10), Size = UDim2New(0, 42, 0, 42),
                     BackgroundColor3 = FromRGB(232, 120, 10), BorderSizePixel = 0, ZIndex = 4,
                 })
-                Instances:Create("UICorner", { Parent = Items["LogoBox"].Instance, Name = "\0", CornerRadius = UDimNew(0, 8) })
                 Items["Logo"] = Instances:Create("ImageLabel", {
                     Parent = Items["LogoBox"].Instance, Name = "\0",
                     Image = "rbxassetid://"..Window.Logo,
