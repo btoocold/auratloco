@@ -2278,7 +2278,7 @@ local Library do
                     Name = "\0",
                     AnchorPoint = Vector2New(0.5, 0.5),
                     Position = UDim2New(0.5, 0, 0.5, 0),
-                    Size = UDim2New(0, 760, 0, 520),
+                    Size = UDim2New(0, 720, 0, 630),
                     BackgroundColor3 = FromRGB(245, 245, 243),
                     BorderSizePixel = 0,
                     ZIndex = 2,
@@ -2316,7 +2316,7 @@ local Library do
                 Items["TopBar"] = Instances:Create("Frame", {
                     Parent = Items["MainFrame"].Instance,
                     Name = "\0",
-                    Size = UDim2New(1, 0, 0, 54),
+                    Size = UDim2New(1, 0, 0, 64),
                     BackgroundColor3 = FromRGB(232, 120, 10),
                     BorderSizePixel = 0,
                     ZIndex = 3,
@@ -2332,7 +2332,7 @@ local Library do
                 -- logo box
                 Items["LogoBox"] = Instances:Create("Frame", {
                     Parent = Items["TopBar"].Instance, Name = "\0",
-                    Position = UDim2New(0, 10, 0, 8), Size = UDim2New(0, 38, 0, 38),
+                    Position = UDim2New(0, 12, 0, 10), Size = UDim2New(0, 42, 0, 42),
                     BackgroundColor3 = FromRGB(255, 255, 255), BorderSizePixel = 0, ZIndex = 4,
                 })
                 Instances:Create("UICorner", { Parent = Items["LogoBox"].Instance, Name = "\0", CornerRadius = UDimNew(0, 8) })
@@ -2351,7 +2351,7 @@ local Library do
                     FontFace = Library.Font,
                     TextSize = 16, TextColor3 = FromRGB(255,255,255),
                     TextXAlignment = Enum.TextXAlignment.Left,
-                    Position = UDim2New(0, 56, 0, 8),
+                    Position = UDim2New(0, 64, 0, 12),
                     Size = UDim2New(0, 200, 0, 20),
                     BackgroundTransparency = 1, ZIndex = 4,
                 })
@@ -2361,7 +2361,7 @@ local Library do
                     FontFace = Library.Font,
                     TextSize = 12, TextColor3 = FromRGB(255,220,180),
                     TextXAlignment = Enum.TextXAlignment.Left,
-                    Position = UDim2New(0, 56, 0, 28),
+                    Position = UDim2New(0, 64, 0, 34),
                     Size = UDim2New(0, 200, 0, 16),
                     BackgroundTransparency = 1, ZIndex = 4,
                 })
@@ -2369,21 +2369,28 @@ local Library do
                 -- search bar
                 Items["SearchBack"] = Instances:Create("Frame", {
                     Parent = Items["TopBar"].Instance, Name = "\0",
-                    Position = UDim2New(0, 220, 0, 10),
-                    Size = UDim2New(0, 240, 0, 34),
-                    BackgroundColor3 = FromRGB(255,255,255),
+                    Position = UDim2New(0, 168, 0, 12),
+                    Size = UDim2New(0, 382, 0, 40),
+                    BackgroundColor3 = FromRGB(35,35,35),
                     BorderSizePixel = 0, ZIndex = 4,
                 })
                 Instances:Create("UICorner", { Parent = Items["SearchBack"].Instance, Name = "\0", CornerRadius = UDimNew(0, 17) })
                 Items["Search"] = Instances:Create("TextBox", {
                     Parent = Items["SearchBack"].Instance, Name = "\0",
                     PlaceholderText = "Search flags, settings...",
-                    PlaceholderColor3 = FromRGB(180,150,120),
+                    PlaceholderColor3 = FromRGB(150,150,150),
                     Text = "", FontFace = Library.Font,
-                    TextSize = 13, TextColor3 = FromRGB(60,40,20),
+                    TextSize = 16, TextColor3 = FromRGB(245,245,245),
                     TextXAlignment = Enum.TextXAlignment.Left,
-                    Position = UDim2New(0,14,0,0), Size = UDim2New(1,-28,1,0),
+                    Position = UDim2New(0,14,0,0), Size = UDim2New(1,-52,1,0),
                     BackgroundTransparency = 1, ZIndex = 5,
+                })
+                Items["SearchIcon"] = Instances:Create("TextLabel", {
+                    Parent = Items["SearchBack"].Instance, Name = "\0",
+                    Text = "⌕", FontFace = Library.Font, TextSize = 22,
+                    TextColor3 = FromRGB(232,120,10), TextXAlignment = Enum.TextXAlignment.Center,
+                    AnchorPoint = Vector2New(1,0.5), Position = UDim2New(1,-10,0.5,0),
+                    Size = UDim2New(0,24,0,24), BackgroundTransparency = 1, ZIndex = 6,
                 })
 
                 -- top-right icon buttons
@@ -2391,8 +2398,8 @@ local Library do
                     local btn = Instances:Create("TextButton", {
                         Parent = Items["TopBar"].Instance, Name = "\0",
                         AnchorPoint = Vector2New(1,0),
-                        Position = UDim2New(1, offsetX, 0, 11),
-                        Size = UDim2New(0,32,0,32),
+                        Position = UDim2New(1, offsetX, 0, 16),
+                        Size = UDim2New(0,34,0,34),
                         BackgroundColor3 = FromRGB(255,255,255), BackgroundTransparency = 0.75,
                         Text = "", BorderSizePixel = 0, ZIndex = 4, AutoButtonColor = false,
                     })
@@ -2417,7 +2424,7 @@ local Library do
                 -- ── GREEN STATUS BAR ─────────────────────────────────────────
                 Items["StatusBar"] = Instances:Create("Frame", {
                     Parent = Items["MainFrame"].Instance, Name = "\0",
-                    Position = UDim2New(0,0,0,54), Size = UDim2New(1,0,0,28),
+                    Position = UDim2New(0,0,0,96), Size = UDim2New(1,0,0,24),
                     BackgroundColor3 = FromRGB(58,170,92), BorderSizePixel = 0, ZIndex = 3,
                 })
                 local function MakeStatusTag(text, icon, xPos)
@@ -2439,7 +2446,7 @@ local Library do
                 -- ── TOP TABS BAR ─────────────────────────────────────────────
                 Items["TabsBar"] = Instances:Create("Frame", {
                     Parent = Items["MainFrame"].Instance, Name = "\0",
-                    Position = UDim2New(0,0,0,82), Size = UDim2New(1,0,0,36),
+                    Position = UDim2New(0,0,0,64), Size = UDim2New(1,0,0,32),
                     BackgroundColor3 = FromRGB(255,255,253), BorderSizePixel = 0, ZIndex = 3,
                 })
                 Instances:Create("Frame", {
@@ -2456,14 +2463,14 @@ local Library do
                 })
                 Instances:Create("UIPadding", {
                     Parent = Items["TabsBar"].Instance, Name = "\0",
-                    PaddingLeft = UDimNew(0,8),
+                    PaddingLeft = UDimNew(0,16),
                 })
 
                 -- ── CONTENT AREA ─────────────────────────────────────────────
                 Items["Content"] = Instances:Create("ScrollingFrame", {
                     Parent = Items["MainFrame"].Instance, Name = "\0",
-                    Position = UDim2New(0,0,0,118),
-                    Size = UDim2New(1,0,1,-118),
+                    Position = UDim2New(0,0,0,120),
+                    Size = UDim2New(1,0,1,-120),
                     BackgroundColor3 = FromRGB(240,240,238),
                     BorderSizePixel = 0, ZIndex = 2,
                     ScrollBarThickness = 3,
@@ -2475,6 +2482,86 @@ local Library do
                     Parent = Items["Content"].Instance, Name = "\0",
                     Padding = UDimNew(0,0), SortOrder = Enum.SortOrder.LayoutOrder,
                 })
+
+                -- ── QUICK TOGGLES PREVIEW ROW ────────────────────────────────
+                Items["QuickToggles"] = Instances:Create("Frame", {
+                    Parent = Items["Content"].Instance, Name = "\0",
+                    LayoutOrder = 0,
+                    Size = UDim2New(1, 0, 0, 254),
+                    BackgroundTransparency = 1,
+                    BorderSizePixel = 0,
+                    ZIndex = 3,
+                })
+                Items["QuickTitle"] = Instances:Create("TextLabel", {
+                    Parent = Items["QuickToggles"].Instance, Name = "\0",
+                    Text = "❖  Quick toggles · 3 active",
+                    FontFace = Library.Font, TextSize = 12,
+                    TextColor3 = FromRGB(45,45,45),
+                    TextXAlignment = Enum.TextXAlignment.Left,
+                    Position = UDim2New(0, 16, 0, 10),
+                    Size = UDim2New(1, -32, 0, 22),
+                    BackgroundTransparency = 1, ZIndex = 4,
+                })
+
+                local function MakeQuickCard(i, title, state, icon)
+                    local card = Instances:Create("Frame", {
+                        Parent = Items["QuickToggles"].Instance, Name = "\0",
+                        Position = UDim2New(0, 16 + ((i-1) * 176), 0, 46),
+                        Size = UDim2New(0, 170, 0, 210),
+                        BackgroundColor3 = (state == "Active") and FromRGB(255,245,225) or FromRGB(245,245,245),
+                        BorderSizePixel = 0,
+                        ZIndex = 4,
+                    })
+                    Instances:Create("UICorner", { Parent = card.Instance, Name = "\0", CornerRadius = UDimNew(0, 6) })
+                    Instances:Create("UIStroke", { Parent = card.Instance, Name = "\0", Color = FromRGB(224,224,224), Thickness = 1 })
+
+                    if state == "Active" then
+                        Instances:Create("TextLabel", {
+                            Parent = card.Instance, Name = "\0", Text = "ON",
+                            FontFace = Library.Font, TextSize = 10, TextColor3 = FromRGB(255,255,255),
+                            BackgroundColor3 = FromRGB(255,45,55), BorderSizePixel = 0,
+                            Position = UDim2New(0, 8, 0, 8), Size = UDim2New(0, 24, 0, 16), ZIndex = 5,
+                        })
+                    end
+
+                    Instances:Create("TextLabel", {
+                        Parent = card.Instance, Name = "\0",
+                        Text = icon, FontFace = Library.Font, TextSize = 28,
+                        TextColor3 = (state == "Active") and FromRGB(232,120,10) or FromRGB(200,200,200),
+                        TextXAlignment = Enum.TextXAlignment.Center,
+                        Position = UDim2New(0,0,0,72), Size = UDim2New(1,0,0,44),
+                        BackgroundTransparency = 1, ZIndex = 5,
+                    })
+
+                    Instances:Create("Frame", {
+                        Parent = card.Instance, Name = "\0",
+                        Position = UDim2New(0,0,1,-42), Size = UDim2New(1,0,0,42),
+                        BackgroundColor3 = FromRGB(255,255,255), BorderSizePixel = 0, ZIndex = 5,
+                    })
+
+                    Instances:Create("TextLabel", {
+                        Parent = card.Instance, Name = "\0",
+                        Text = title, FontFace = Library.Font, TextSize = 11,
+                        TextColor3 = FromRGB(70,70,70), TextXAlignment = Enum.TextXAlignment.Left,
+                        Position = UDim2New(0,8,1,-38), Size = UDim2New(1,-16,0,16),
+                        BackgroundTransparency = 1, ZIndex = 6,
+                    })
+                    Instances:Create("TextLabel", {
+                        Parent = card.Instance, Name = "\0",
+                        Text = state, FontFace = Library.Font, TextSize = 13,
+                        TextColor3 = (state == "Active") and FromRGB(255,45,55) or FromRGB(120,120,120),
+                        TextXAlignment = Enum.TextXAlignment.Left,
+                        Position = UDim2New(0,8,1,-20), Size = UDim2New(1,-16,0,16),
+                        BackgroundTransparency = 1, ZIndex = 6,
+                    })
+                    return card
+                end
+
+                MakeQuickCard(1, "Silent aim", "Active", "⌖")
+                MakeQuickCard(2, "ESP boxes", "Active", "◉")
+                MakeQuickCard(3, "Speed hack", "Off", "♞")
+                MakeQuickCard(4, "Fly mode", "Off", "↑")
+
 
                 -- settings panel (reuse original logic, simplified)
                 local Settings = {
@@ -2639,12 +2726,12 @@ local Library do
                     Text = Page.Name,
                     FontFace = Library.Font,
                     TextSize = 13,
-                    TextColor3 = FromRGB(140, 100, 60),
+                    TextColor3 = FromRGB(120, 120, 120),
                     AutoButtonColor = false,
                     BackgroundTransparency = 1,
                     BorderSizePixel = 0,
-                    Size = UDim2New(0, 0, 1, 0),
-                    AutomaticSize = Enum.AutomaticSize.X,
+                    Size = UDim2New(0, 72, 1, 0),
+                    AutomaticSize = Enum.AutomaticSize.None,
                     ZIndex = 4,
                 })
                 Instances:Create("UIPadding", { Parent=Items["Tab"].Instance, Name="\0", PaddingLeft=UDimNew(0,12), PaddingRight=UDimNew(0,12) })
@@ -2663,6 +2750,7 @@ local Library do
                 Items["Page"] = Instances:Create("Frame", {
                     Parent = Library.UnusedHolder.Instance,
                     Name = "\0",
+                    LayoutOrder = 10,
                     Visible = false,
                     BackgroundTransparency = 1,
                     Size = UDim2New(1,0,0,0),
@@ -2714,7 +2802,7 @@ local Library do
                     Items["Underline"]:Tween(nil, { BackgroundTransparency=0 })
                     for _,s in Page.Sections do task.spawn(function() s:TweenElements(true) end) end
                 else
-                    Items["Tab"]:Tween(nil, { TextColor3=FromRGB(140,100,60) })
+                    Items["Tab"]:Tween(nil, { TextColor3=FromRGB(120,120,120) })
                     Items["Underline"]:Tween(nil, { BackgroundTransparency=1 })
                 end
 
@@ -4536,7 +4624,8 @@ local Library do
                     BorderColor3 = FromRGB(0, 0, 0),
                     Size = UDim2New(0, 159, 0, 87),
                     BorderSizePixel = 0,
-                    BackgroundColor3 = FromRGB(235, 235, 232)
+                    BackgroundColor3 = FromRGB(255, 255, 255),
+                    ZIndex = 999,
                 })  Items["OptionHolder"]:AddToTheme({BackgroundColor3 = "Background"})
                  
                 Instances:Create("UIStroke", {
@@ -4644,8 +4733,12 @@ local Library do
                     end)
                     
                     RenderStepped = RunService.RenderStepped:Connect(function()
-                        Items["OptionHolder"].Instance.Position = UDim2New(0, Items["RealDropdown"].Instance.AbsolutePosition.X, 0, Items["RealDropdown"].Instance.AbsolutePosition.Y + Items["RealDropdown"].Instance.AbsoluteSize.Y + 5)
-                        Items["OptionHolder"].Instance.Size = UDim2New(0, Items["RealDropdown"].Instance.AbsoluteSize.X, 0, Dropdown.OptionHolderSize)
+                        local row = Items["Dropdown"].Instance
+                        local x = row.AbsolutePosition.X
+                        local y = row.AbsolutePosition.Y + row.AbsoluteSize.Y + 4
+                        local w = math.max(row.AbsoluteSize.X, Items["RealDropdown"].Instance.AbsoluteSize.X)
+                        Items["OptionHolder"].Instance.Position = UDim2New(0, x, 0, y)
+                        Items["OptionHolder"].Instance.Size = UDim2New(0, w, 0, math.max(Dropdown.OptionHolderSize, 150))
                     end)
 
                     for Index, Value in Library.OpenFrames do 
@@ -4690,7 +4783,7 @@ local Library do
                     end
 
                     if not Value.ClassName:find("UI") then 
-                        Value.ZIndex = (Dropdown.IsOpen and Dropdown.Section.IsSettings and 8) or (Dropdown.IsOpen and 3) or 1
+                        Value.ZIndex = (Dropdown.IsOpen and 999) or 1
                     end
 
                     if type(TransparencyProperty) == "table" then 
