@@ -2326,7 +2326,7 @@ local Library do
                 Instances:Create("Frame", {
                     Parent = Items["TopBar"].Instance, Name = "\0",
                     Position = UDim2New(0,0,1,-10), Size = UDim2New(1,0,0,10),
-                    BackgroundColor3 = FromRGB(232, 120, 10), BorderSizePixel = 0, ZIndex = 3,
+                    BackgroundColor3 = FromRGB(249, 91, 1), BorderSizePixel = 0, ZIndex = 3,
                 })
 
                 -- logo box
