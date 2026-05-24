@@ -188,7 +188,7 @@ local Library do
             ["Section Top"] = FromRGB(255, 255, 253),       -- Dark section header
             ["Section Background"] = FromRGB(245, 245, 243),-- Deep black section background
             ["Section Background 2"] = FromRGB(255, 255, 255),-- Alternate section, minimal difference
-            ["Accent"] = FromRGB(232, 120, 10),           -- Darker blue accent for consistency
+            ["Accent"] = FromRGB(249, 91, 1),           -- Darker blue accent for consistency
             ["Element"] = FromRGB(235, 235, 232)            -- Deep gray for UI elements
         }
     }
@@ -2317,7 +2317,7 @@ local Library do
                     Parent = Items["MainFrame"].Instance,
                     Name = "\0",
                     Size = UDim2New(1, 0, 0, 64),
-                    BackgroundColor3 = FromRGB(232, 120, 10),
+                    BackgroundColor3 = FromRGB(249, 91, 1),
                     BorderSizePixel = 0,
                     ZIndex = 3,
                 })
@@ -2333,7 +2333,7 @@ local Library do
                 Items["LogoBox"] = Instances:Create("Frame", {
                     Parent = Items["TopBar"].Instance, Name = "\0",
                     Position = UDim2New(0, 12, 0, 10), Size = UDim2New(0, 42, 0, 42),
-                    BackgroundColor3 = FromRGB(232, 120, 10), BorderSizePixel = 0, ZIndex = 4,
+                    BackgroundColor3 = FromRGB(249, 91, 1), BorderSizePixel = 0, ZIndex = 4,
                 })
                 Instances:Create("UICorner", { Parent = Items["LogoBox"].Instance, Name = "\0", CornerRadius = UDimNew(0, 10) })
                 Items["Logo"] = Instances:Create("ImageLabel", {
