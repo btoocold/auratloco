@@ -2451,6 +2451,7 @@ local Library do
                     Parent = Items["MainFrame"].Instance, Name = "\0",
                     Position = UDim2New(0,0,0,64), Size = UDim2New(1,0,0,32),
                     BackgroundColor3 = FromRGB(255,255,253), BorderSizePixel = 0, ZIndex = 3,
+                    Visible = false,
                 })
                 Instances:Create("Frame", {
                     Parent = Items["TabsBar"].Instance, Name = "\0",
