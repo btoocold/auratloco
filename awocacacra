@@ -54,6 +54,8 @@ local Library do
     local RectNew = Rect.new
 
     local IsMobile = UserInputService.TouchEnabled or false
+    local screenWidth = workspace.CurrentCamera and workspace.CurrentCamera.ViewportSize.X or 800
+    local IsPhone = IsMobile and screenWidth < 600
 
     Library = {
         Theme =  { },
@@ -2287,7 +2289,7 @@ local Library do
                 Instances:Create("UICorner", { Parent = Items["MainFrame"].Instance, Name = "\0", CornerRadius = UDimNew(0, 10) })
                 Instances:Create("UIStroke",  { Parent = Items["MainFrame"].Instance, Name = "\0", Color = FromRGB(220,220,217), Thickness = 1 })
 
-                if IsMobile then
+                if IsPhone then
                     Instances:Create("UIScale", { Parent = Items["MainFrame"].Instance, Name = "\0", Scale = 0.7 })
                 end
 
