@@ -55,7 +55,7 @@ local Library do
 
     local IsMobile = UserInputService.TouchEnabled or false
     local screenWidth = workspace.CurrentCamera and workspace.CurrentCamera.ViewportSize.X or 800
-    local IsPhone = IsMobile and screenWidth < 600
+    local IsPhone = IsMobile and screenWidth < 850
 
     Library = {
         Theme =  { },
@@ -2290,7 +2290,9 @@ local Library do
                 Instances:Create("UIStroke",  { Parent = Items["MainFrame"].Instance, Name = "\0", Color = FromRGB(220,220,217), Thickness = 1 })
 
                 if IsPhone then
-                    Instances:Create("UIScale", { Parent = Items["MainFrame"].Instance, Name = "\0", Scale = 0.7 })
+                    Instances:Create("UIScale", { Parent = Items["MainFrame"].Instance, Name = "\0", Scale = 0.55 })
+                elseif IsMobile then
+                    Instances:Create("UIScale", { Parent = Items["MainFrame"].Instance, Name = "\0", Scale = 0.75 })
                 end
 
                 -- drag
