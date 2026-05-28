@@ -2621,15 +2621,18 @@ local Library do
                     -- Quick toggle actions directly in lib
                     pcall(function()
                         if i == 1 then
-                            -- RTX Mode
+                            -- RTX Mode: direct lighting
                             local L = game:GetService("Lighting")
                             if active then L.Saturation=1; L.Brightness=2; L.Contrast=0.5
                             else L.Saturation=0; L.Brightness=1; L.Contrast=0 end
                         elseif i == 2 then
+                            -- ESP: fire the Enable ESP toggle
                             if getgenv and getgenv()._hioQtEsp then getgenv()._hioQtEsp(active) end
                         elseif i == 3 then
+                            -- Speed: fire walkspeed toggle
                             if getgenv and getgenv()._hioQtSpeed then getgenv()._hioQtSpeed(active) end
                         elseif i == 4 then
+                            -- Fly: fire fly toggle
                             if getgenv and getgenv()._hioQtFly then getgenv()._hioQtFly(active) end
                         end
                     end)
