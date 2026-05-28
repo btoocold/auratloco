@@ -2564,10 +2564,58 @@ local Library do
                     return card
                 end
 
-                MakeQuickCard(1, "Silent aim", "Active", "⌖")
-                MakeQuickCard(2, "ESP boxes", "Active", "◉")
-                MakeQuickCard(3, "Speed hack", "Off", "♞")
-                MakeQuickCard(4, "Fly mode", "Off", "↑")
+                local qtCards = {}
+                qtCards[1] = MakeQuickCard(1, "RTX Mode", "Off", "✦")
+                qtCards[2] = MakeQuickCard(2, "ESP boxes", "Active", "◉")
+                qtCards[3] = MakeQuickCard(3, "Speed hack", "Off", "♞")
+                qtCards[4] = MakeQuickCard(4, "Fly mode", "Off", "↑")
+
+                local qtStates = { false, true, false, false }
+
+                local function updateCard(i, active)
+                    qtStates[i] = active
+                    local card = qtCards[i].Instance
+                    card.BackgroundColor3 = active and FromRGB(255,245,225) or FromRGB(245,245,245)
+                    for _, c in ipairs(card:GetChildren()) do
+                        if c:IsA("TextLabel") then
+                            if c.TextSize == 13 then
+                                c.Text = active and "Active" or "Off"
+                                c.TextColor3 = active and FromRGB(255,45,55) or FromRGB(120,120,120)
+                            elseif c.TextSize == 28 then
+                                c.TextColor3 = active and FromRGB(232,120,10) or FromRGB(200,200,200)
+                            end
+                        end
+                        if c:IsA("Frame") then
+                            for _, cc in ipairs(c:GetChildren()) do
+                                if cc:IsA("TextLabel") and cc.Text == "ON" then cc.Parent:Destroy() end
+                            end
+                        end
+                    end
+                    if active then
+                        local onLabel = Instance.new("TextLabel")
+                        onLabel.Text = "ON"
+                        onLabel.TextSize = 10
+                        onLabel.TextColor3 = FromRGB(255,255,255)
+                        onLabel.BackgroundColor3 = FromRGB(255,45,55)
+                        onLabel.BorderSizePixel = 0
+                        onLabel.Position = UDim2New(0,8,0,8)
+                        onLabel.Size = UDim2New(0,24,0,16)
+                        onLabel.ZIndex = 5
+                        onLabel.Parent = card
+                    end
+                    -- Fire callback to main script
+                    if getgenv and getgenv()._hioQuickToggleCB then
+                        pcall(getgenv()._hioQuickToggleCB, i, active)
+                    end
+                end
+
+                for i, card in ipairs(qtCards) do
+                    card.Instance.InputBegan:Connect(function(input)
+                        if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+                            updateCard(i, not qtStates[i])
+                        end
+                    end)
+                end
 
 
                 -- settings panel (reuse original logic, simplified)
