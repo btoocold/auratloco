@@ -2636,10 +2636,14 @@ local Library do
                 end
 
                 for i, card in ipairs(qtCards) do
-                    card.Instance.InputBegan:Connect(function(input)
-                        if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
-                            updateCard(i, not qtStates[i])
-                        end
+                    local btn = Instance.new("TextButton")
+                    btn.Size = UDim2.new(1, 0, 1, 0)
+                    btn.BackgroundTransparency = 1
+                    btn.Text = ""
+                    btn.ZIndex = card.Instance.ZIndex + 1
+                    btn.Parent = card.Instance
+                    btn.MouseButton1Click:Connect(function()
+                        updateCard(i, not qtStates[i])
                     end)
                 end
 
