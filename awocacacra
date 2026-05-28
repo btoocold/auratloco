@@ -2566,11 +2566,11 @@ local Library do
 
                 local qtCards = {}
                 qtCards[1] = MakeQuickCard(1, "RTX Mode", "Off", "✦")
-                qtCards[2] = MakeQuickCard(2, "ESP boxes", "Active", "◉")
+                qtCards[2] = MakeQuickCard(2, "ESP boxes", "Off", "◉")
                 qtCards[3] = MakeQuickCard(3, "Speed hack", "Off", "♞")
                 qtCards[4] = MakeQuickCard(4, "Fly mode", "Off", "↑")
 
-                local qtStates = { false, true, false, false }
+                local qtStates = { false, false, false, false }
 
                 local function updateCard(i, active)
                     qtStates[i] = active
