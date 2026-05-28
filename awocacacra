@@ -2444,10 +2444,22 @@ local Library do
                         Size = UDim2New(0, 130, 1, 0),
                         BackgroundTransparency = 1, ZIndex = 4,
                     })
+                    return lbl
                 end
                 MakeStatusTag("Undetected",  "", 10)
                 MakeStatusTag("Fast inject",  "", 145)
-                MakeStatusTag("Auto-update", "", 280)
+                local autoUpdateTag = MakeStatusTag("↻  Auto-update", "", 280)
+
+                -- Animate the refresh symbol
+                task.spawn(function()
+                    local symbols = {"↻  Auto-update", "↺  Auto-update"}
+                    local i = 1
+                    while autoUpdateTag and autoUpdateTag.Instance and autoUpdateTag.Instance.Parent do
+                        autoUpdateTag.Instance.Text = "  " .. symbols[i]
+                        i = (i % #symbols) + 1
+                        task.wait(0.5)
+                    end
+                end)
 
                 -- ── TOP TABS BAR ─────────────────────────────────────────────
                 Items["TabsBar"] = Instances:Create("Frame", {
