@@ -2620,7 +2620,7 @@ local Library do
                     end
                     -- Fire callback to main script
                     if getgenv and getgenv()._hioQuickToggleCB then
-                        pcall(getgenv()._hioQuickToggleCB, i, active)
+                        getgenv()._hioQuickToggleCB(i, active)
                     end
                 end
 
