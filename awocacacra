@@ -2618,10 +2618,21 @@ local Library do
                         onLabel.ZIndex = 5
                         onLabel.Parent = card
                     end
-                    -- Fire callback to main script
-                    if getgenv and getgenv()._hioQuickToggleCB then
-                        getgenv()._hioQuickToggleCB(i, active)
-                    end
+                    -- Quick toggle actions directly in lib
+                    pcall(function()
+                        if i == 1 then
+                            -- RTX Mode
+                            local L = game:GetService("Lighting")
+                            if active then L.Saturation=1; L.Brightness=2; L.Contrast=0.5
+                            else L.Saturation=0; L.Brightness=1; L.Contrast=0 end
+                        elseif i == 2 then
+                            if getgenv and getgenv()._hioQtEsp then getgenv()._hioQtEsp(active) end
+                        elseif i == 3 then
+                            if getgenv and getgenv()._hioQtSpeed then getgenv()._hioQtSpeed(active) end
+                        elseif i == 4 then
+                            if getgenv and getgenv()._hioQtFly then getgenv()._hioQtFly(active) end
+                        end
+                    end)
                 end
 
                 for i, card in ipairs(qtCards) do
