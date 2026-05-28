@@ -2501,7 +2501,7 @@ local Library do
                 })
                 Items["QuickTitle"] = Instances:Create("TextLabel", {
                     Parent = Items["QuickToggles"].Instance, Name = "\0",
-                    Text = "❖  Quick toggles · 3 active",
+                    Text = "❖  Quick toggles · 0 active",
                     FontFace = Library.Font, TextSize = 12,
                     TextColor3 = FromRGB(45,45,45),
                     TextXAlignment = Enum.TextXAlignment.Left,
@@ -2574,8 +2574,16 @@ local Library do
 
                 local function updateCard(i, active)
                     qtStates[i] = active
+                    -- Update active count
+                    local count = 0
+                    for _, v in ipairs(qtStates) do if v then count = count + 1 end end
+                    Items["QuickTitle"].Instance.Text = "❖  Quick toggles · " .. count .. " active"
                     local card = qtCards[i].Instance
                     card.BackgroundColor3 = active and FromRGB(255,245,225) or FromRGB(245,245,245)
+                    -- Remove existing ON label first
+                    for _, c in ipairs(card:GetChildren()) do
+                        if c:IsA("TextLabel") and c.Text == "ON" then c:Destroy() end
+                    end
                     for _, c in ipairs(card:GetChildren()) do
                         if c:IsA("TextLabel") then
                             if c.TextSize == 13 then
@@ -2583,11 +2591,6 @@ local Library do
                                 c.TextColor3 = active and FromRGB(255,45,55) or FromRGB(120,120,120)
                             elseif c.TextSize == 28 then
                                 c.TextColor3 = active and FromRGB(232,120,10) or FromRGB(200,200,200)
-                            end
-                        end
-                        if c:IsA("Frame") then
-                            for _, cc in ipairs(c:GetChildren()) do
-                                if cc:IsA("TextLabel") and cc.Text == "ON" then cc.Parent:Destroy() end
                             end
                         end
                     end
