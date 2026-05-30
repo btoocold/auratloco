@@ -1,5 +1,5 @@
 --[[
-    Grimrat
+    Gris
     Fixed: GetTouchEnabled -> TouchEnabled
     Fixed: Toggle fade removed (caused invisible text)
     Fixed: AddSlider Min=0 assert fixed
