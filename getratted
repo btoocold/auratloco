@@ -576,10 +576,10 @@ end
 function F:AddToggle(idx,info)
     assert(info.Text,"AddToggle: Missing Text")
     local T={Value=info.Default or false;Type="Toggle";Callback=info.Callback or function()end;Addons={};Risky=info.Risky}
-    local TOGGLE_OFF_COLOR = Color3.fromRGB(80, 80, 95)
-    local pill=Library:Create("Frame",{BackgroundColor3=T.Value and Library.AccentColor or TOGGLE_OFF_COLOR;BackgroundTransparency=0.14;BorderSizePixel=0;Size=UDim2.new(0,32,0,16);ZIndex=20;Parent=self.Container})
+    local TOGGLE_OFF_COLOR = Color3.fromRGB(45, 45, 58)
+    local pill=Library:Create("Frame",{BackgroundColor3=T.Value and Library.AccentColor or TOGGLE_OFF_COLOR;BackgroundTransparency=0;BorderSizePixel=0;Size=UDim2.new(0,32,0,16);ZIndex=20;Parent=self.Container})
     Rnd(pill,8); local pst=MkStroke(pill,T.Value and Library.AccentColorDark or Library.OutlineColor,1,0)
-    Library:AddToRegistry(pill,{BackgroundColor3=T.Value and "AccentColor" or function() return Color3.fromRGB(80,80,95) end})
+    Library:AddToRegistry(pill,{BackgroundColor3=T.Value and "AccentColor" or function() return Color3.fromRGB(45,45,58) end})
     local knob=Library:Create("Frame",{BackgroundColor3=Color3.new(1,1,1);BorderSizePixel=0;AnchorPoint=Vector2.new(0,0.5);Position=T.Value and UDim2.new(1,-14,0.5,0) or UDim2.new(0,2,0.5,0);Size=UDim2.fromOffset(12,12);ZIndex=21;Parent=pill})
     Rnd(knob,6)
     local tLbl=Library:MakeLabel({Size=UDim2.new(0,170,1,0);Position=UDim2.new(1,8,0,0);TextSize=13;Text=info.Text;TextXAlignment=Enum.TextXAlignment.Left;ZIndex=21;Parent=pill})
@@ -589,8 +589,8 @@ function F:AddToggle(idx,info)
     function T:Display()
         Tween(pill,{BackgroundColor3=T.Value and Library.AccentColor or TOGGLE_OFF_COLOR},0.12)
         Tween(knob,{Position=T.Value and UDim2.new(1,-14,0.5,0) or UDim2.new(0,2,0.5,0)},0.12)
-        if pst then pst.Color=T.Value and Library.AccentColorDark or Library.OutlineColor; pst.Transparency=T.Value and 0 or 0.4 end
-        Library.RegistryMap[pill].Properties.BackgroundColor3=T.Value and "AccentColor" or function() return Color3.fromRGB(80,80,95) end
+        if pst then pst.Color=Library.OutlineColor; pst.Transparency=0 end
+        Library.RegistryMap[pill].Properties.BackgroundColor3=T.Value and "AccentColor" or function() return Color3.fromRGB(45,45,58) end
     end
     function T:UpdateColors() T:Display() end
     function T:OnChanged(f) T.Changed=f; f(T.Value) end
