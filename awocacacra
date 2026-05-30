@@ -3678,7 +3678,7 @@ local Library do
                     ZIndex = 2,
                     BorderSizePixel = 0,
                     BackgroundColor3 = FromRGB(124, 163, 255)
-                })  Items["Indicator"]:AddToTheme({BackgroundColor3 = "Element"})
+                })  Items["Indicator"]:AddToTheme({BackgroundColor3 = "Text"})
                 
                 Instances:Create("UICorner", {
                     Parent = Items["Indicator"].Instance,
