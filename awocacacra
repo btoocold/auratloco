@@ -2643,25 +2643,10 @@ local Library do
                     btn.Size = UDim2.new(1, 0, 1, 0)
                     btn.BackgroundTransparency = 1
                     btn.Text = ""
-                    btn.ZIndex = 100
+                    btn.ZIndex = card.Instance.ZIndex + 1
                     btn.Parent = card.Instance
                     btn.MouseButton1Click:Connect(function()
-                        local active = not qtStates[i]
-                        updateCard(i, active)
-                        -- Actions
-                        pcall(function()
-                            if i == 1 then
-                                local L = game:GetService("Lighting")
-                                if active then L.Saturation=1; L.Brightness=2; L.Contrast=0.5
-                                else L.Saturation=0; L.Brightness=1; L.Contrast=0 end
-                            elseif i == 2 then
-                                if getgenv and getgenv()._hioQtEsp then getgenv()._hioQtEsp(active) end
-                            elseif i == 3 then
-                                if getgenv and getgenv()._hioQtSpeed then getgenv()._hioQtSpeed(active) end
-                            elseif i == 4 then
-                                if getgenv and getgenv()._hioQtFly then getgenv()._hioQtFly(active) end
-                            end
-                        end)
+                        updateCard(i, not qtStates[i])
                     end)
                 end
 
@@ -3768,7 +3753,8 @@ local Library do
                 end)
 
                 Items["Toggle"]:OnHoverLeave(function()
-                    Items["Indicator"]:Tween(TweenInfo.new(0.15, Enum.EasingStyle.Quint, Enum.EasingDirection.Out), {Size = UDim2New(0, 18, 0, 18), Position = UDim2New(0, 0, 0, 0)})
+                    local pos = Toggle.Value and UDim2New(0, 0, 0, 0) or UDim2New(0, 60, 0, 0)
+                    Items["Indicator"]:Tween(TweenInfo.new(0.15, Enum.EasingStyle.Quint, Enum.EasingDirection.Out), {Size = UDim2New(0, 18, 0, 18), Position = pos})
                 end)
             end
 
@@ -4139,10 +4125,6 @@ local Library do
                     Items["Text"].Instance.Position = UDim2New(0, 84, 0, 0)
                 end 
             end
-
-            -- Set initial position immediately before any tween
-            Items["Indicator"].Instance.Position = UDim2New(0, 60, 0, 0)
-            Items["Text"].Instance.Position = UDim2New(0, 84, 0, 0)
 
             Items["Toggle"]:Connect("InputBegan", function(Input)
                 if Input.UserInputType == Enum.UserInputType.MouseButton1 or Input.UserInputType == Enum.UserInputType.Touch then 
