@@ -59,9 +59,7 @@ function lib:init(ti, dosplash, visiblekey, deleteprevious)
         splash.Visible = true
         splash.ZIndex = 40
 
-        local uc_22 = Instance.new("UICorner")
-        uc_22.CornerRadius = UDim.new(0, 18)
-        uc_22.Parent = splash
+
 
         local sicon = Instance.new("ImageLabel")
         sicon.Name = "sicon"
