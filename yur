@@ -67,29 +67,16 @@ function lib:init(ti, dosplash, visiblekey, deleteprevious)
         sicon.Name = "sicon"
         sicon.Parent = splash
         sicon.AnchorPoint = Vector2.new(0.5, 0.5)
-        sicon.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
         sicon.BackgroundTransparency = 1
         sicon.Position = UDim2.new(0.5, 0, 0.5, 0)
-        sicon.Size = UDim2.new(0, 191, 0, 190)
-        sicon.ZIndex = 40
+        sicon.Size = UDim2.new(1, 0, 1, 0)
+        sicon.ZIndex = 41
         sicon.Image = "rbxassetid://126836519928618"
         sicon.ScaleType = Enum.ScaleType.Fit
-        sicon.TileSize = UDim2.new(1, 0, 20, 0)
 
 
 
-        local sshadow = Instance.new("ImageLabel")
-        sshadow.Name = "sshadow"
-        sshadow.Parent = splash
-        sshadow.AnchorPoint = Vector2.new(0.5, 0.5)
-        sshadow.BackgroundTransparency = 1
-        sshadow.Position = UDim2.new(0.5, 0, 0.5, 0)
-        sshadow.Size = UDim2.new(1.20000005, 0, 1.20000005, 0)
-        sshadow.ZIndex = 39
-        sshadow.Image = "rbxassetid://313486536"
-        sshadow.ImageColor3 = Color3.fromRGB(0, 0, 0)
-        sshadow.ImageTransparency = 0.400
-        sshadow.TileSize = UDim2.new(0, 1, 0, 1)
+
         splash:TweenPosition(UDim2.new(0.5, 0, 0.5, 0), "InOut", "Quart", 1)
         wait(2)
         splash:TweenPosition(UDim2.new(0.5, 0, 2, 0), "InOut", "Quart", 1)
