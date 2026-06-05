@@ -87,6 +87,7 @@ function lib:init(ti, dosplash, visiblekey, deleteprevious)
     main.Parent = scrgui
     main.AnchorPoint = Vector2.new(0.5, 0.5)
     main.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+    main.BackgroundTransparency = 1
     main.BackgroundTransparency = 0.150
     main.Position = UDim2.new(0.5, 0, 2, 0)
     main.Size = UDim2.new(0, 721, 0, 584)
@@ -153,6 +154,7 @@ function lib:init(ti, dosplash, visiblekey, deleteprevious)
     workarea.Name = "workarea"
     workarea.Parent = main
     workarea.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+    workarea.BackgroundTransparency = 1
     workarea.Position = UDim2.new(0.36403501, 0, 0, 0)
     workarea.Size = UDim2.new(0, 458, 0, 584)
 
@@ -164,6 +166,7 @@ function lib:init(ti, dosplash, visiblekey, deleteprevious)
     workareacornerhider.Name = "workareacornerhider"
     workareacornerhider.Parent = workarea
     workareacornerhider.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+    workareacornerhider.BackgroundTransparency = 1
     workareacornerhider.BorderSizePixel = 0
     workareacornerhider.Size = UDim2.new(0, 18, 0.99895674, 0)
 
@@ -174,6 +177,7 @@ function lib:init(ti, dosplash, visiblekey, deleteprevious)
     search.Name = "search"
     search.Parent = main
     search.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+    search.BackgroundTransparency = 1
     search.Position = UDim2.new(0.0256588068, 0, 0.0958904102, 0)
     search.Size = UDim2.new(0, 225, 0, 34)
 
@@ -186,6 +190,7 @@ function lib:init(ti, dosplash, visiblekey, deleteprevious)
     searchicon.Parent = search
     searchicon.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
     searchicon.BackgroundTransparency = 1
+    searchicon.BackgroundTransparency = 1
     searchicon.BorderColor3 = Color3.fromRGB(27, 42, 53)
     searchicon.Position = UDim2.new(0.0379999988, -2, 0.138999999, 2)
     searchicon.Size = UDim2.new(0, 24, 0, 21)
@@ -197,6 +202,7 @@ function lib:init(ti, dosplash, visiblekey, deleteprevious)
     searchtextbox.Name = "searchtextbox"
     searchtextbox.Parent = search
     searchtextbox.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+    searchtextbox.BackgroundTransparency = 1
     searchtextbox.BackgroundTransparency = 1
     searchtextbox.ClipsDescendants = true
     searchtextbox.Position = UDim2.new(0.180257514, 0, -0.0162218884, 0)
@@ -220,6 +226,7 @@ function lib:init(ti, dosplash, visiblekey, deleteprevious)
     sidebar.Parent = main
     sidebar.Active = true
     sidebar.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+    sidebar.BackgroundTransparency = 1
     sidebar.BackgroundTransparency = 1
     sidebar.BorderSizePixel = 0
     sidebar.Position = UDim2.new(0.0249653254, 0, 0.181506842, 0)
@@ -258,6 +265,7 @@ function lib:init(ti, dosplash, visiblekey, deleteprevious)
     buttons.Name = "buttons"
     buttons.Parent = main
     buttons.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+    buttons.BackgroundTransparency = 1
     buttons.BackgroundTransparency = 1
     buttons.Size = UDim2.new(0, 105, 0, 57)
 
@@ -719,6 +727,7 @@ function lib:init(ti, dosplash, visiblekey, deleteprevious)
         sidebardivider.Parent = sidebar
         sidebardivider.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
         sidebardivider.BackgroundTransparency = 1
+        sidebardivider.BackgroundTransparency = 1
         sidebardivider.BorderSizePixel = 2
         sidebardivider.Position = UDim2.new(0, 0, 0.00215982716, 0)
         sidebardivider.Size = UDim2.new(0, 226, 0, 26)
@@ -843,6 +852,7 @@ function lib:init(ti, dosplash, visiblekey, deleteprevious)
             label.Parent = workareamain
             label.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
             label.BackgroundTransparency = 1
+            label.BackgroundTransparency = 1
             label.BorderSizePixel = 2
             label.Size = UDim2.new(0, 418, 0, 37)
             label.Font = Enum.Font.Gotham
@@ -936,6 +946,7 @@ function lib:init(ti, dosplash, visiblekey, deleteprevious)
             textfield.Parent = workareamain
             textfield.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
             textfield.BackgroundTransparency = 1
+            textfield.BackgroundTransparency = 1
             textfield.BorderSizePixel = 2
             textfield.Size = UDim2.new(0, 418, 0, 37)
             textfield.Font = Enum.Font.Gotham
@@ -958,6 +969,7 @@ function lib:init(ti, dosplash, visiblekey, deleteprevious)
             local TextBox = Instance.new("TextBox")
             TextBox.Parent = Frame_2
             TextBox.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+            TextBox.BackgroundTransparency = 1
             TextBox.BackgroundTransparency = 1
             TextBox.BorderColor3 = Color3.fromRGB(27, 42, 53)
             TextBox.BorderSizePixel = 0
