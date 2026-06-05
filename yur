@@ -55,7 +55,7 @@ function lib:init(ti, dosplash, visiblekey, deleteprevious)
         splash.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
         splash.BackgroundTransparency = 1
         splash.Position = UDim2.new(0.5, 0, 2, 0)
-        splash.Size = UDim2.new(0, 340, 0, 340)
+        splash.Size = UDim2.new(1, 0, 1, 0)
         splash.Visible = true
         splash.ZIndex = 40
 
@@ -67,7 +67,7 @@ function lib:init(ti, dosplash, visiblekey, deleteprevious)
         sicon.AnchorPoint = Vector2.new(0.5, 0.5)
         sicon.BackgroundTransparency = 1
         sicon.Position = UDim2.new(0.5, 0, 0.5, 0)
-        sicon.Size = UDim2.new(1, 0, 1, 0)
+        sicon.Size = UDim2.new(0, 340, 0, 340)
         sicon.ZIndex = 41
         sicon.Image = "rbxassetid://70371889839183"
         sicon.ScaleType = Enum.ScaleType.Fit
@@ -94,6 +94,21 @@ function lib:init(ti, dosplash, visiblekey, deleteprevious)
     local uc = Instance.new("UICorner")
     uc.CornerRadius = UDim.new(0, 18)
     uc.Parent = main
+
+    local bg = Instance.new("ImageLabel")
+    bg.Name = "bg"
+    bg.Parent = main
+    bg.AnchorPoint = Vector2.new(0.5, 0.5)
+    bg.Position = UDim2.new(0.5, 0, 0.5, 0)
+    bg.Size = UDim2.new(1, 0, 1, 0)
+    bg.BackgroundTransparency = 1
+    bg.Image = "rbxassetid://70371889839183"
+    bg.ScaleType = Enum.ScaleType.Crop
+    bg.ImageTransparency = 0.4
+    bg.ZIndex = 1
+    local bgc = Instance.new("UICorner")
+    bgc.CornerRadius = UDim.new(0, 18)
+    bgc.Parent = bg
 
     local UserInputService = game:GetService("UserInputService") --- skidded ik
     local dragging
