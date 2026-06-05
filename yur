@@ -754,7 +754,7 @@ function lib:init(ti, dosplash, visiblekey, deleteprevious)
         workareamain.Name = "workareamain"
         workareamain.Parent = workarea
         workareamain.Active = true
-        workareamain.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+        workareamain.BackgroundTransparency = 1
         workareamain.BackgroundTransparency = 1
         workareamain.BorderSizePixel = 0
         workareamain.Position = UDim2.new(0.0393013097, 0, 0.0958904102, 0)
