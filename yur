@@ -328,7 +328,7 @@ function lib:init(ti, dosplash, visiblekey, deleteprevious)
     local title = Instance.new("TextLabel")
     title.Name = "title"
     title.Parent = main
-    title.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+    title.BackgroundTransparency = 1
     title.BackgroundTransparency = 1
     title.BorderSizePixel = 2
     title.Position = UDim2.new(0.389000326, 0, 0.0351027399, 0)
@@ -409,7 +409,7 @@ function lib:init(ti, dosplash, visiblekey, deleteprevious)
     local notiftitle = Instance.new("TextLabel")
     notiftitle.Name = "notiftitle"
     notiftitle.Parent = notif
-    notiftitle.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+    notiftitle.BackgroundTransparency = 1
     notiftitle.BackgroundTransparency = 1
     notiftitle.Position = UDim2.new(0.167763159, 0, 0.375690609, 0)
     notiftitle.Size = UDim2.new(0, 200, 0, 50)
@@ -463,7 +463,7 @@ function lib:init(ti, dosplash, visiblekey, deleteprevious)
     local notif2title = Instance.new("TextLabel")
     notif2title.Name = "notif2title"
     notif2title.Parent = notif2
-    notif2title.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+    notif2title.BackgroundTransparency = 1
     notif2title.BackgroundTransparency = 1
     notif2title.Position = UDim2.new(0.167763159, 0, 0.375690609, 0)
     notif2title.Size = UDim2.new(0, 200, 0, 50)
@@ -789,7 +789,7 @@ function lib:init(ti, dosplash, visiblekey, deleteprevious)
             local section = Instance.new("TextLabel")
             section.Name = "section"
             section.Parent = workareamain
-            section.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+            section.BackgroundTransparency = 1
             section.BackgroundTransparency = 1
             section.BorderSizePixel = 2
             section.Size = UDim2.new(0, 418, 0, 50)
