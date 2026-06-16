@@ -1187,6 +1187,7 @@ async def list_files(ctx, directory: str = "."):
 @bot.command(name='images')
 @is_authorized()
 async def list_images(ctx, directory: str = "."):
+    """List only image files (jpg, png, gif, bmp, webp, etc.)"""
     try:
         if directory.startswith("~"):
             directory = os.path.expanduser(directory)
@@ -1194,6 +1195,9 @@ async def list_images(ctx, directory: str = "."):
             directory = current_path
         if not os.path.exists(directory):
             await send_embed(ctx, "Error", f"Directory not found: {directory}", discord.Color.red())
+            return
+        if not os.path.isdir(directory):
+            await send_embed(ctx, "Error", f"Not a directory: {directory}", discord.Color.red())
             return
         
         image_exts = {'.jpg', '.jpeg', '.png', '.gif', '.bmp', '.webp', '.tiff', '.ico', '.svg'}
@@ -1206,14 +1210,23 @@ async def list_images(ctx, directory: str = "."):
                 ext = os.path.splitext(f)[1].lower()
                 if ext in image_exts:
                     size = os.path.getsize(path)
-                    size_str = f"{size/1024:.1f} KB" if size < 1048576 else f"{size/1048576:.1f} MB"
+                    if size < 1024:
+                        size_str = f"{size} B"
+                    elif size < 1048576:
+                        size_str = f"{size/1024:.1f} KB"
+                    else:
+                        size_str = f"{size/1048576:.1f} MB"
                     images.append(f"🖼️ {f} ({size_str})")
         
         if not images:
             await send_embed(ctx, f"📁 {directory}", "No images found", discord.Color.orange())
             return
         
-        await send_embed(ctx, f"🖼️ Images in {directory}", "\n".join(images[:30]), discord.Color.blue())
+        # Split into chunks if needed
+        output = "\n".join(images[:50])
+        if len(output) > 1900:
+            output = output[:1900] + "..."
+        await send_embed(ctx, f"🖼️ Images in {directory}", output, discord.Color.blue())
     except Exception as e:
         await send_embed(ctx, "Error", str(e), discord.Color.red())
 
@@ -1229,6 +1242,9 @@ async def list_videos_only(ctx, directory: str = "."):
         if not os.path.exists(directory):
             await send_embed(ctx, "Error", f"Directory not found: {directory}", discord.Color.red())
             return
+        if not os.path.isdir(directory):
+            await send_embed(ctx, "Error", f"Not a directory: {directory}", discord.Color.red())
+            return
         
         video_exts = {'.mp4', '.avi', '.mkv', '.mov', '.wmv', '.flv', '.webm', '.m4v', '.mpg', '.mpeg', '.3gp'}
         files = os.listdir(directory)
@@ -1240,14 +1256,20 @@ async def list_videos_only(ctx, directory: str = "."):
                 ext = os.path.splitext(f)[1].lower()
                 if ext in video_exts:
                     size = os.path.getsize(path)
-                    size_str = f"{size/1048576:.1f} MB" if size > 1048576 else f"{size/1024:.1f} KB"
+                    if size < 1048576:
+                        size_str = f"{size/1024:.1f} KB"
+                    else:
+                        size_str = f"{size/1048576:.1f} MB"
                     videos.append(f"🎬 {f} ({size_str})")
         
         if not videos:
             await send_embed(ctx, f"📁 {directory}", "No videos found", discord.Color.orange())
             return
         
-        await send_embed(ctx, f"🎬 Videos in {directory}", "\n".join(videos[:30]), discord.Color.blue())
+        output = "\n".join(videos[:50])
+        if len(output) > 1900:
+            output = output[:1900] + "..."
+        await send_embed(ctx, f"🎬 Videos in {directory}", output, discord.Color.blue())
     except Exception as e:
         await send_embed(ctx, "Error", str(e), discord.Color.red())
 
@@ -1263,6 +1285,9 @@ async def list_audio_only(ctx, directory: str = "."):
         if not os.path.exists(directory):
             await send_embed(ctx, "Error", f"Directory not found: {directory}", discord.Color.red())
             return
+        if not os.path.isdir(directory):
+            await send_embed(ctx, "Error", f"Not a directory: {directory}", discord.Color.red())
+            return
         
         audio_exts = {'.mp3', '.wav', '.flac', '.aac', '.ogg', '.wma', '.m4a', '.opus'}
         files = os.listdir(directory)
@@ -1274,14 +1299,20 @@ async def list_audio_only(ctx, directory: str = "."):
                 ext = os.path.splitext(f)[1].lower()
                 if ext in audio_exts:
                     size = os.path.getsize(path)
-                    size_str = f"{size/1048576:.1f} MB" if size > 1048576 else f"{size/1024:.1f} KB"
+                    if size < 1048576:
+                        size_str = f"{size/1024:.1f} KB"
+                    else:
+                        size_str = f"{size/1048576:.1f} MB"
                     audio.append(f"🎵 {f} ({size_str})")
         
         if not audio:
             await send_embed(ctx, f"📁 {directory}", "No audio files found", discord.Color.orange())
             return
         
-        await send_embed(ctx, f"🎵 Audio in {directory}", "\n".join(audio[:30]), discord.Color.blue())
+        output = "\n".join(audio[:50])
+        if len(output) > 1900:
+            output = output[:1900] + "..."
+        await send_embed(ctx, f"🎵 Audio in {directory}", output, discord.Color.blue())
     except Exception as e:
         await send_embed(ctx, "Error", str(e), discord.Color.red())
 
@@ -1295,7 +1326,12 @@ async def search_files(ctx, *, query: str):
                 if query.lower() in f.lower():
                     path = os.path.join(root, f)
                     size = os.path.getsize(path)
-                    size_str = f"{size/1024:.1f} KB" if size < 1048576 else f"{size/1048576:.1f} MB"
+                    if size < 1024:
+                        size_str = f"{size} B"
+                    elif size < 1048576:
+                        size_str = f"{size/1024:.1f} KB"
+                    else:
+                        size_str = f"{size/1048576:.1f} MB"
                     rel_path = os.path.relpath(root, current_path)
                     if rel_path == '.':
                         results.append(f"{get_file_emoji(f)} {f} ({size_str})")
@@ -1331,7 +1367,12 @@ async def recent_files(ctx, count: int = 15):
         results = []
         for mtime, f, path in files[:count]:
             size = os.path.getsize(path)
-            size_str = f"{size/1024:.1f} KB" if size < 1048576 else f"{size/1048576:.1f} MB"
+            if size < 1024:
+                size_str = f"{size} B"
+            elif size < 1048576:
+                size_str = f"{size/1024:.1f} KB"
+            else:
+                size_str = f"{size/1048576:.1f} MB"
             mod_time = datetime.fromtimestamp(mtime).strftime('%Y-%m-%d %H:%M')
             results.append(f"{get_file_emoji(f)} {f} ({size_str}) - {mod_time}")
         
