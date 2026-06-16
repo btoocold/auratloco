@@ -1217,9 +1217,10 @@ async def list_images(ctx, directory: str = "."):
     except Exception as e:
         await send_embed(ctx, "Error", str(e), discord.Color.red())
 
-@bot.command(name='videos')
+@bot.command(name='vids')
 @is_authorized()
 async def list_videos_only(ctx, directory: str = "."):
+    """List only video files (mp4, avi, mkv, mov, etc.)"""
     try:
         if directory.startswith("~"):
             directory = os.path.expanduser(directory)
@@ -2212,7 +2213,7 @@ async def help_cmd(ctx):
             "`search <query>` - Search for files",
             "`recent` - Show recently modified files",
             "`images` - Show only image files",
-            "`videos` - Show only video files",
+            "`vids` - Show only video files (mp4, avi, mkv, mov, etc.)",
             "`audio` - Show only audio files (mp3, wav, flac)",
             "`programfiles` - C:\\Program Files",
             "`programfilesx86` - C:\\Program Files (x86)",
