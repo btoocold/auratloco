@@ -31,7 +31,6 @@ import json
 import sqlite3
 import win32crypt
 from PIL import ImageGrab
-import win32com.client
 
 # PyCryptodome - handle gracefully if missing
 try:
@@ -296,8 +295,10 @@ def record_mic(duration=10):
     return path
 
 def speak(text):
-    speaker = win32com.client.Dispatch("SAPI.SpVoice")
-    speaker.Speak(text)
+    # Using pyttsx3 instead of win32com to avoid pickle errors
+    engine = pyttsx3.init()
+    engine.say(text)
+    engine.runAndWait()
 
 def show_message_box(text):
     ctypes.windll.user32.MessageBoxW(0, text, "System Message", 0)
