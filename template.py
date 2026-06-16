@@ -1187,7 +1187,6 @@ async def list_files(ctx, directory: str = "."):
 @bot.command(name='images')
 @is_authorized()
 async def list_images(ctx, directory: str = "."):
-    """List only image files"""
     try:
         if directory.startswith("~"):
             directory = os.path.expanduser(directory)
@@ -1221,7 +1220,6 @@ async def list_images(ctx, directory: str = "."):
 @bot.command(name='videos')
 @is_authorized()
 async def list_videos_only(ctx, directory: str = "."):
-    """List only video files"""
     try:
         if directory.startswith("~"):
             directory = os.path.expanduser(directory)
@@ -1252,10 +1250,10 @@ async def list_videos_only(ctx, directory: str = "."):
     except Exception as e:
         await send_embed(ctx, "Error", str(e), discord.Color.red())
 
-@bot.command(name='music')
+@bot.command(name='audio')
 @is_authorized()
-async def list_music_only(ctx, directory: str = "."):
-    """List only audio files"""
+async def list_audio_only(ctx, directory: str = "."):
+    """List only audio files (mp3, wav, flac, etc.)"""
     try:
         if directory.startswith("~"):
             directory = os.path.expanduser(directory)
@@ -1289,7 +1287,6 @@ async def list_music_only(ctx, directory: str = "."):
 @bot.command(name='search')
 @is_authorized()
 async def search_files(ctx, *, query: str):
-    """Search for files by name"""
     try:
         results = []
         for root, dirs, files in os.walk(current_path):
@@ -1319,7 +1316,6 @@ async def search_files(ctx, *, query: str):
 @bot.command(name='recent')
 @is_authorized()
 async def recent_files(ctx, count: int = 15):
-    """Show recently modified files"""
     try:
         if count > 50:
             count = 50
@@ -2217,7 +2213,7 @@ async def help_cmd(ctx):
             "`recent` - Show recently modified files",
             "`images` - Show only image files",
             "`videos` - Show only video files",
-            "`music` - Show only audio files",
+            "`audio` - Show only audio files (mp3, wav, flac)",
             "`programfiles` - C:\\Program Files",
             "`programfilesx86` - C:\\Program Files (x86)",
             "`windows` - C:\\Windows",
