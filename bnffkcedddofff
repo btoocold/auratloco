@@ -49,12 +49,6 @@ local function IsMobile()
     if vp.X < 1400 then return true end
     return false
 end
-local function IsIPad()
-    if not InputService.TouchEnabled then return false end
-    local cam = workspace.CurrentCamera
-    local vp = cam and cam.ViewportSize or Vector2.new(1920, 1080)
-    return math.min(vp.X, vp.Y) >= 768
-end
 
 -- Scroll-safe tap: on mobile, only fires callback if finger didn't drag (not a scroll)
 local TAP_THRESHOLD = 10
@@ -660,24 +654,15 @@ function F:AddDropdown(idx,info)
     local arrow=Library:Create("ImageLabel",{AnchorPoint=Vector2.new(0,0.5);BackgroundTransparency=1;Position=UDim2.new(1,-16,0.5,0);Size=UDim2.fromOffset(10,10);Image="rbxassetid://6282522798";ZIndex=23;Parent=dOuter})
     local iList=Library:MakeLabel({Position=UDim2.fromOffset(7,0);Size=UDim2.new(1,-22,1,0);TextSize=13;Text="--";TextXAlignment=Enum.TextXAlignment.Left;ZIndex=22;Parent=dOuter})
     if type(info.Tooltip)=="string" then Library:AddToolTip(info.Tooltip,dOuter) end
-    local MAX = IsMobile() and 5 or 8
+    local MAX=8
     local listFrame=Library:Create("Frame",{BackgroundColor3=Library.MainColor;BorderSizePixel=0;ZIndex=200;Visible=false;Parent=ScreenGui})
     Rnd(listFrame,8); MkStroke(listFrame,Library.OutlineColor,1.5); Library:AddToRegistry(listFrame,{BackgroundColor3="MainColor"})
-    local function rpos()
-        local posY = dOuter.AbsolutePosition.Y + dOuter.AbsoluteSize.Y + 60
-        local screenH = ScreenGui.AbsoluteSize.Y
-        local listH = listFrame.AbsoluteSize.Y
-        -- If dropdown would go off screen bottom, show above the button instead
-        if posY + listH > screenH - 10 then
-            posY = dOuter.AbsolutePosition.Y - listH - 3
-        end
-        listFrame.Position = UDim2.fromOffset(dOuter.AbsolutePosition.X, posY)
-    end
+    local function rpos() listFrame.Position=UDim2.fromOffset(dOuter.AbsolutePosition.X, dOuter.AbsolutePosition.Y+dOuter.AbsoluteSize.Y+3) end
     local function rsize(y) listFrame.Size=UDim2.fromOffset(dOuter.AbsoluteSize.X, y or MAX*22+6) end
     rpos(); rsize()
     dOuter:GetPropertyChangedSignal("AbsolutePosition"):Connect(rpos)
     dOuter:GetPropertyChangedSignal("AbsoluteSize"):Connect(function() rpos(); rsize() end)
-    local scroll=Library:Create("ScrollingFrame",{BackgroundTransparency=1;BorderSizePixel=0;CanvasSize=UDim2.new(0,0,0,0);Size=UDim2.fromScale(1,1);ZIndex=201;Parent=listFrame;TopImage="";BottomImage="";ScrollBarThickness=3;ScrollBarImageTransparency=0;ScrollBarImageColor3=Library.AccentColor;ElasticBehavior=Enum.ElasticBehavior.Never;ScrollingEnabled=true})
+    local scroll=Library:Create("ScrollingFrame",{BackgroundTransparency=1;BorderSizePixel=0;CanvasSize=UDim2.new(0,0,0,0);Size=UDim2.fromScale(1,1);ZIndex=201;Parent=listFrame;TopImage="";BottomImage="";ScrollBarThickness=3;ScrollBarImageTransparency=0;ScrollBarImageColor3=Library.AccentColor;ElasticBehavior=Enum.ElasticBehavior.Always})
     Rnd(scroll,8); Library:AddToRegistry(scroll,{ScrollBarImageColor3="AccentColor"})
     Library:Create("UIListLayout",{FillDirection=Enum.FillDirection.Vertical;SortOrder=Enum.SortOrder.LayoutOrder;Parent=scroll})
     Library:Create("UIPadding",{PaddingTop=UDim.new(0,3);PaddingBottom=UDim.new(0,3);PaddingLeft=UDim.new(0,3);PaddingRight=UDim.new(0,3);Parent=scroll})
@@ -706,7 +691,7 @@ function F:AddDropdown(idx,info)
             end
             -- Use LinoriaLib's approach: InputBegan directly on btn (Active=true), check MouseButton1 only
             btn.InputBegan:Connect(function(inp)
-                if inp.UserInputType == Enum.UserInputType.MouseButton1 or inp.UserInputType == Enum.UserInputType.Touch then
+                if inp.UserInputType == Enum.UserInputType.MouseButton1 then
                     local try=not selected
                     if DD:GetActiveValues()==1 and not try and not info.AllowNull then return end
                     if info.Multi then selected=try; if selected then DD.Value[v]=true else DD.Value[v]=nil end
@@ -716,7 +701,7 @@ function F:AddDropdown(idx,info)
             end)
             Tbl:Update(); DD:Display(); Btns[btn]=Tbl
         end
-        scroll.CanvasSize=UDim2.fromOffset(0,count*22+6); rsize(math.clamp(count*22,0,MAX*22)+6); rpos()
+        scroll.CanvasSize=UDim2.fromOffset(0,count*22+6); rsize(math.clamp(count*22,0,MAX*22)+6)
     end
     function DD:SetValues(nv) if nv then DD.Values=nv end; DD:BuildList() end
     function DD:OpenDropdown() rpos(); listFrame.Visible=true; Library.OpenedFrames[listFrame]=true; Tween(arrow,{Rotation=180},0.15); if dst then dst.Color=Library.AccentColor end end
@@ -729,7 +714,7 @@ function F:AddDropdown(idx,info)
     end
     -- LinoriaLib's approach: use InputBegan on dOuter directly, check MouseButton1
     dOuter.InputBegan:Connect(function(inp)
-        if (inp.UserInputType == Enum.UserInputType.MouseButton1 or inp.UserInputType == Enum.UserInputType.Touch) and not Library:MouseIsOverOpenedFrame() then
+        if inp.UserInputType == Enum.UserInputType.MouseButton1 and not Library:MouseIsOverOpenedFrame() then
             if listFrame.Visible then DD:CloseDropdown() else DD:OpenDropdown() end
         end
     end)
@@ -848,8 +833,8 @@ function Library:CreateWindow(...)
         Parent=ScreenGui;
         ClipsDescendants=true
     })
-    -- Scale down on mobile phones only, iPad gets full PC size
-    if _mobile and not IsIPad() then
+    -- Scale down the entire window on mobile so it fits as a small box
+    if _mobile then
         local cam = workspace.CurrentCamera
         local vp = cam and cam.ViewportSize or Vector2.new(1280,720)
         local scaleX = (vp.X * 0.40) / cfg.Size.X.Offset
@@ -1007,15 +992,64 @@ function Library:CreateWindow(...)
         local tabFrame=Library:Create("Frame",{BackgroundTransparency=1;ClipsDescendants=true;Size=UDim2.fromScale(1,1);Visible=false;ZIndex=14;Parent=tabContainer})
         local ColPad,ColGap=7,14
         local _isMobile = IsMobile()
+        local function addSmoothTouchScroll(scrollFrame)
+            if not _isMobile then return end
+            local dragging = false
+            local lastY = 0
+            local velocity = 0
+            local touchRef = nil
+
+            local function isInsideFrame(pos)
+                local ap = scrollFrame.AbsolutePosition
+                local as = scrollFrame.AbsoluteSize
+                return pos.X >= ap.X and pos.X <= ap.X+as.X and pos.Y >= ap.Y and pos.Y <= ap.Y+as.Y
+            end
+
+            Library:GiveSignal(InputService.InputBegan:Connect(function(inp)
+                if inp.UserInputType ~= Enum.UserInputType.Touch then return end
+                if isInsideFrame(inp.Position) and not dragging then
+                    dragging = true
+                    touchRef = inp
+                    lastY = inp.Position.Y
+                    velocity = 0
+                end
+            end))
+
+            Library:GiveSignal(InputService.InputChanged:Connect(function(inp)
+                if not dragging or inp ~= touchRef then return end
+                if inp.UserInputType ~= Enum.UserInputType.Touch then return end
+                local delta = lastY - inp.Position.Y
+                lastY = inp.Position.Y
+                velocity = delta
+                local newPos = scrollFrame.CanvasPosition.Y + delta
+                scrollFrame.CanvasPosition = Vector2.new(0, math.clamp(newPos, 0, math.max(0, scrollFrame.CanvasSize.Y.Offset - scrollFrame.AbsoluteSize.Y)))
+            end))
+
+            Library:GiveSignal(InputService.InputEnded:Connect(function(inp)
+                if inp ~= touchRef then return end
+                dragging = false
+                touchRef = nil
+                task.spawn(function()
+                    while math.abs(velocity) > 0.5 do
+                        velocity = velocity * 0.92
+                        local newPos = scrollFrame.CanvasPosition.Y + velocity
+                        scrollFrame.CanvasPosition = Vector2.new(0, math.clamp(newPos, 0, math.max(0, scrollFrame.CanvasSize.Y.Offset - scrollFrame.AbsoluteSize.Y)))
+                        RunService.Heartbeat:Wait()
+                    end
+                end)
+            end))
+        end
         local function makeSide(xscale,xoff)
-            local s=Library:Create("ScrollingFrame",{BackgroundTransparency=1;BorderSizePixel=0;Position=UDim2.new(xscale,xoff,0,ColPad);Size=UDim2.new(0.5,-ColPad*2-ColGap/2,1,-ColPad*2);CanvasSize=UDim2.new(0,0,0,0);AutomaticCanvasSize=Enum.AutomaticSize.Y;BottomImage="";TopImage="";ScrollBarThickness=_isMobile and 6 or 0;ScrollBarImageTransparency=_isMobile and 0.3 or 1;ScrollBarImageColor3=Library.AccentColor;ScrollingDirection=Enum.ScrollingDirection.Y;ClipsDescendants=true;ZIndex=15;Parent=tabFrame;ElasticBehavior=Enum.ElasticBehavior.Never;ScrollingEnabled=true})
+            local s=Library:Create("ScrollingFrame",{BackgroundTransparency=1;BorderSizePixel=0;Position=UDim2.new(xscale,xoff,0,ColPad);Size=UDim2.new(0.5,-ColPad*2-ColGap/2,1,-ColPad*2);CanvasSize=UDim2.new(0,0,0,0);AutomaticCanvasSize=Enum.AutomaticSize.None;BottomImage="";TopImage="";ScrollBarThickness=0;ScrollBarImageTransparency=1;ScrollBarImageColor3=Library.AccentColor;ScrollingDirection=Enum.ScrollingDirection.Y;ClipsDescendants=true;ZIndex=15;Parent=tabFrame;ElasticBehavior=Enum.ElasticBehavior.Always;ScrollingEnabled=not _isMobile})
             Library:Create("UIListLayout",{Padding=UDim.new(0,8);FillDirection=Enum.FillDirection.Vertical;SortOrder=Enum.SortOrder.LayoutOrder;HorizontalAlignment=Enum.HorizontalAlignment.Center;Parent=s})
             Library:Create("UIPadding",{PaddingLeft=UDim.new(0,2);PaddingRight=UDim.new(0,2);PaddingTop=UDim.new(0,2);PaddingBottom=UDim.new(0,2);Parent=s})
             Library:AddToRegistry(s,{ScrollBarImageColor3="AccentColor"})
-            -- AutomaticCanvasSize=Y handles CanvasSize automatically without resetting CanvasPosition
+            s.UIListLayout:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(function()
+                s.CanvasSize=UDim2.fromOffset(0,s.UIListLayout.AbsoluteContentSize.Y+10) end)
             return s
         end
         local leftSide=makeSide(0,ColPad); local rightSide=makeSide(0.5,ColGap/2)
+        addSmoothTouchScroll(leftSide); addSmoothTouchScroll(rightSide)
         function Tab:ShowTab()
             -- Close all open dropdowns/pickers before switching
             for f in next, Library.OpenedFrames do
