@@ -2568,6 +2568,7 @@ function Luna:CreateWindow(WindowSettings)
 		end)
 
 
+		HomeTabPage.icon.Visible = true
 		HomeTabPage.icon.ImageLabel.Image = Players:GetUserThumbnailAsync(Players.LocalPlayer.UserId, Enum.ThumbnailType.HeadShot, Enum.ThumbnailSize.Size420x420)
 		HomeTabPage.player.Text.Text = "Welcome to the multi loader"
 		HomeTabPage.player.user.Text = ""
