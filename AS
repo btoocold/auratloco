@@ -2297,6 +2297,8 @@ function Luna:CreateWindow(WindowSettings)
 			v.Visible = false
 		end
 	end
+	Main.Controls.Close.Visible = false
+	Main.Controls.ToggleSize.Visible = false
 	Main.Visible = true
 	Main.BackgroundTransparency = 1
 	Main.Size = MainSize
