@@ -1,7 +1,5 @@
 --[[
-    Hub In One (HIO)
     Stripped Luna Source — Loading Screen + Home Tab Only
-    discord.gg/hio
 ]]
 
 local Release = "Prerelease Beta 6.1"
@@ -2156,7 +2154,8 @@ local function Unhide(Window, currentTab)
 	tween(Window.Title.Title, {TextTransparency = 1})
 	tween(Window.Title.subtitle, {TextTransparency = 1})
 	tween(Window.Logo, {ImageTransparency = 1})
-	tween(Window.Navigation.Line, {BackgroundTransparency = 0})
+	Window.Navigation.Visible = false
+	Window.Elements.Parent.Size = UDim2.new(1, 0, Window.Elements.Parent.Size.Y.Scale, Window.Elements.Parent.Size.Y.Offset)
 
 	-- topbar buttons hidden intentionally
 	for _, tabbtn in ipairs(Window.Navigation.Tabs:GetChildren()) do
@@ -2186,7 +2185,7 @@ local function Maximise(Window)
 	Window.Controls.ToggleSize.ImageLabel.Image = "rbxassetid://10137941941"
 	tween(Window, {Size = MainSize})
 	Window.Elements.Visible = true
-	Window.Navigation.Visible = true
+	Window.Navigation.Visible = false
 end
 
 local function Minimize(Window)
@@ -2271,7 +2270,7 @@ function Luna:CreateWindow(WindowSettings)
 
 	LoadingFrame.Frame.Frame.Title.Text = WindowSettings.LoadingTitle
 	LoadingFrame.Frame.Frame.Subtitle.Text = WindowSettings.LoadingSubtitle
-	LoadingFrame.Version.Text = LoadingFrame.Frame.Frame.Title.Text == "Luna Interface Suite" and Release or "Luna UI"
+	LoadingFrame.Version.Text = ""
 
 	Navigation.Player.icon.ImageLabel.Image = Players:GetUserThumbnailAsync(Players.LocalPlayer.UserId, Enum.ThumbnailType.HeadShot, Enum.ThumbnailSize.Size48x48)
 	Navigation.Player.Namez.Text = Players.LocalPlayer.DisplayName
@@ -2664,8 +2663,9 @@ function Luna:CreateWindow(WindowSettings)
 	end
 	Elements.Parent.Visible = true
 	tween(Elements.Parent, {BackgroundTransparency = 0.1})
-	Navigation.Visible = true
-	tween(Navigation.Line, {BackgroundTransparency = 0})
+	Navigation.Visible = false
+	-- Expand content to fill full window width (no nav sidebar)
+	Elements.Parent.Size = UDim2.new(1, 0, Elements.Parent.Size.Y.Scale, Elements.Parent.Size.Y.Offset)
 
 	-- topbar buttons hidden intentionally
 
@@ -2695,15 +2695,7 @@ function Luna:CreateWindow(WindowSettings)
 		end
 	end)
 
-	Main.Logo.MouseButton1Click:Connect(function()
-		if Navigation.Size.X.Offset == 205 then
-			tween(Elements.Parent, {Size = UDim2.new(1, -55, Elements.Parent.Size.Y.Scale, Elements.Parent.Size.Y.Offset)})
-			tween(Navigation, {Size = UDim2.new(Navigation.Size.X.Scale, 55, Navigation.Size.Y.Scale, Navigation.Size.Y.Offset)})
-		else
-			tween(Elements.Parent, {Size = UDim2.new(1, -205, Elements.Parent.Size.Y.Scale, Elements.Parent.Size.Y.Offset)})
-			tween(Navigation, {Size = UDim2.new(Navigation.Size.X.Scale, 205, Navigation.Size.Y.Scale, Navigation.Size.Y.Offset)})
-		end
-	end)
+	-- Logo click disabled (no nav sidebar)
 
 	Main.Controls.ToggleSize.ImageLabel.MouseButton1Click:Connect(function()
 		Window.Size = not Window.Size
