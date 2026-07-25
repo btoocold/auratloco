@@ -2243,8 +2243,8 @@ function Luna:CreateWindow(WindowSettings)
 	if WindowSettings.LogoID then
 		Main.Logo.Image = "rbxassetid://" .. WindowSettings.LogoID
 	end
-	Main.Title.Visible = true
-	Main.Logo.Visible = true
+	Main.Title.Visible = false
+	Main.Logo.Visible = false
 	Main.Controls.Close.Visible = false
 	Main.Controls.ToggleSize.Visible = false
 	Dragger.Visible = false
@@ -2485,8 +2485,6 @@ function Luna:CreateWindow(WindowSettings)
 	TweenService:Create(Main.Title.Title, TweenInfo.new(0.35, Enum.EasingStyle.Exponential, Enum.EasingDirection.Out), {TextTransparency = 0}):Play()
 	TweenService:Create(Main.Title.subtitle, TweenInfo.new(0.35, Enum.EasingStyle.Exponential, Enum.EasingDirection.Out), {TextTransparency = 0}):Play()
 	TweenService:Create(Main.Logo, TweenInfo.new(0.35, Enum.EasingStyle.Exponential, Enum.EasingDirection.Out), {ImageTransparency = 0}):Play()
-	-- Make the top title bar solid so it fills the previously-transparent strip
-	Main.Title.BackgroundTransparency = 0
 	TweenService:Create(Navigation.Player.icon.ImageLabel, TweenInfo.new(0.35, Enum.EasingStyle.Exponential, Enum.EasingDirection.Out), {ImageTransparency = 0}):Play()
 	TweenService:Create(Navigation.Player.icon.UIStroke, TweenInfo.new(0.35, Enum.EasingStyle.Exponential, Enum.EasingDirection.Out), {Transparency = 0}):Play()
 	TweenService:Create(Main.Line, TweenInfo.new(0.35, Enum.EasingStyle.Exponential, Enum.EasingDirection.Out), {BackgroundTransparency = 0}):Play()
@@ -2556,26 +2554,40 @@ function Luna:CreateWindow(WindowSettings)
 		HomeTabPage.player.Text.Text = "Welcome to the multi loader"
 		HomeTabPage.player.user.Text = ""
 
-		-- Restore header card background (was transparent)
+		-- Restore header card background
 		HomeTabPage.player.BackgroundTransparency = 0
 
-		-- Access badge in the TOP TITLE BAR (fills the transparent strip at top)
-		-- Remove old badge if it exists (in case CreateHomeTab is called again)
-		local existingBadge = Main.Title:FindFirstChild("AccessBadge")
-		if existingBadge then existingBadge:Destroy() end
+		-- Clean top strip bar — fills the transparent area at the very top of the window
+		local existingTopBar = Main:FindFirstChild("HIOTopBar")
+		if existingTopBar then existingTopBar:Destroy() end
 
+		local topBar = Instance.new("Frame")
+		topBar.Name = "HIOTopBar"
+		topBar.Parent = Main
+		topBar.BackgroundColor3 = Color3.fromRGB(22, 22, 28)
+		topBar.BackgroundTransparency = 0
+		topBar.Size = UDim2.new(1, 0, 0, 36)
+		topBar.Position = UDim2.new(0, 0, 0, 0)
+		topBar.ZIndex = 10
+		topBar.BorderSizePixel = 0
+
+		local topBarCorner = Instance.new("UICorner")
+		topBarCorner.CornerRadius = UDim.new(0, 8)
+		topBarCorner.Parent = topBar
+
+		-- ACCESS badge inside the top strip, aligned right
 		local accessBadge = Instance.new("Frame")
 		accessBadge.Name = "AccessBadge"
-		accessBadge.Parent = Main.Title
-		accessBadge.BackgroundColor3 = Color3.fromRGB(20, 20, 30)
+		accessBadge.Parent = topBar
+		accessBadge.BackgroundColor3 = Color3.fromRGB(30, 30, 40)
 		accessBadge.BackgroundTransparency = 0.3
-		accessBadge.Size = UDim2.new(0, 155, 0, 26)
+		accessBadge.Size = UDim2.new(0, 148, 0, 22)
 		accessBadge.AnchorPoint = Vector2.new(1, 0.5)
-		accessBadge.Position = UDim2.new(1, -12, 0.5, 0)
-		accessBadge.ZIndex = 5
+		accessBadge.Position = UDim2.new(1, -10, 0.5, 0)
+		accessBadge.ZIndex = 11
 
 		local badgeCorner = Instance.new("UICorner")
-		badgeCorner.CornerRadius = UDim.new(0, 6)
+		badgeCorner.CornerRadius = UDim.new(0, 5)
 		badgeCorner.Parent = accessBadge
 
 		local badgeStroke = Instance.new("UIStroke")
@@ -2583,7 +2595,6 @@ function Luna:CreateWindow(WindowSettings)
 		badgeStroke.Parent = accessBadge
 
 		local badgeLabel = Instance.new("TextLabel")
-		badgeLabel.Name = "AccessLabel"
 		badgeLabel.Parent = accessBadge
 		badgeLabel.BackgroundTransparency = 1
 		badgeLabel.Size = UDim2.new(1, 0, 1, 0)
@@ -2591,7 +2602,7 @@ function Luna:CreateWindow(WindowSettings)
 		badgeLabel.TextSize = 11
 		badgeLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
 		badgeLabel.TextXAlignment = Enum.TextXAlignment.Center
-		badgeLabel.ZIndex = 6
+		badgeLabel.ZIndex = 12
 
 		if PlayerAccessType == "lifetime" then
 			badgeLabel.Text = "ACCESS : LIFETIME"
