@@ -3076,14 +3076,7 @@ function Luna:CreateWindow(WindowSettings)
 			cardStroke.Transparency = 0.91
 			cardStroke.Parent = card
 
-			-- Left color accent bar
-			local accentBar = Instance.new("Frame")
-			accentBar.Parent = card
-			accentBar.BackgroundColor3 = s.color
-			accentBar.Size = UDim2.new(0, 3, 1, 0)
-			accentBar.Position = UDim2.new(0, 0, 0, 0)
-			accentBar.BorderSizePixel = 0
-			accentBar.ZIndex = 4
+
 
 			-- ── Thumbnail ──
 			local thumbContainer = Instance.new("Frame")
@@ -3180,17 +3173,7 @@ function Luna:CreateWindow(WindowSettings)
 			loadBtnCorner.CornerRadius = UDim.new(0, 6)
 			loadBtnCorner.Parent = loadBtn
 
-			-- Top highlight shimmer
-			local shimmer = Instance.new("Frame")
-			shimmer.Parent = loadBtn
-			shimmer.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
-			shimmer.BackgroundTransparency = 0.82
-			shimmer.Size = UDim2.new(1, 0, 0.5, 0)
-			shimmer.BorderSizePixel = 0
-			shimmer.ZIndex = 3
-			local shimmerCorner = Instance.new("UICorner")
-			shimmerCorner.CornerRadius = UDim.new(0, 6)
-			shimmerCorner.Parent = shimmer
+
 
 			local loadBtnLabel = Instance.new("TextLabel")
 			loadBtnLabel.Parent = loadBtn
@@ -3199,7 +3182,7 @@ function Luna:CreateWindow(WindowSettings)
 			loadBtnLabel.Font = Enum.Font.GothamBold
 			loadBtnLabel.TextSize = 11
 			loadBtnLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
-			loadBtnLabel.Text = "Run"
+			loadBtnLabel.Text = "Load"
 			loadBtnLabel.ZIndex = 4
 
 			local loadBtnInteract = Instance.new("TextButton")
@@ -3210,7 +3193,7 @@ function Luna:CreateWindow(WindowSettings)
 			loadBtnInteract.ZIndex = 5
 
 			loadBtnInteract.MouseButton1Click:Connect(function()
-				loadBtnLabel.Text = "Running..."
+				loadBtnLabel.Text = "Loading..."
 				TweenService:Create(loadBtn, TweenInfo.new(0.15), {BackgroundColor3 = Color3.fromRGB(40, 40, 55)}):Play()
 				task.spawn(function()
 					pcall(function()
