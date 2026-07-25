@@ -2198,14 +2198,7 @@ local function Unhide(Window, currentTab)
 	tween(Window.Logo, {ImageTransparency = 0})
 	tween(Window.Navigation.Line, {BackgroundTransparency = 0})
 
-	for _, TopbarButton in ipairs(Window.Controls:GetChildren()) do
-		if TopbarButton.ClassName == "Frame" and TopbarButton.Name ~= "Theme" then
-			TopbarButton.Visible = true
-			tween(TopbarButton, {BackgroundTransparency = 0.25})
-			tween(TopbarButton.UIStroke, {Transparency = 0.5})
-			tween(TopbarButton.ImageLabel, {ImageTransparency = 0.25})
-		end
-	end
+	-- topbar buttons hidden intentionally
 	for _, tabbtn in ipairs(Window.Navigation.Tabs:GetChildren()) do
 		if tabbtn.ClassName == "Frame" and tabbtn.Name ~= "InActive Template" then
 			if tabbtn.Name == currentTab then
@@ -6663,14 +6656,7 @@ function Luna:CreateWindow(WindowSettings)
 	Navigation.Visible = true
 	tween(Navigation.Line, {BackgroundTransparency = 0})
 
-	for _, TopbarButton in ipairs(Main.Controls:GetChildren()) do
-		if TopbarButton.ClassName == "Frame" and TopbarButton.Name ~= "Theme" then
-			TopbarButton.Visible = true
-			tween(TopbarButton, {BackgroundTransparency = 0.25})
-			tween(TopbarButton.UIStroke, {Transparency = 0.5})
-			tween(TopbarButton.ImageLabel, {ImageTransparency = 0.25})
-		end
-	end
+	-- topbar buttons hidden intentionally
 
 	Main.Controls.Close.ImageLabel.MouseButton1Click:Connect(function()
 		Hide(Main, Window.Bind, true)
