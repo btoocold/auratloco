@@ -2151,7 +2151,7 @@ local function Unhide(Window, currentTab)
 	Window.Visible = true
 	task.wait()
 	tween(Window, {BackgroundTransparency = 1})
-	tween(Window.Elements, {BackgroundTransparency = 0.08})
+	tween(Window.Elements, {BackgroundTransparency = 1})
 	tween(Window.Line, {BackgroundTransparency = 1})
 	tween(Window.Title.Title, {TextTransparency = 1})
 	tween(Window.Title.subtitle, {TextTransparency = 1})
@@ -2668,8 +2668,11 @@ function Luna:CreateWindow(WindowSettings)
 
 	end
 	Elements.Parent.Visible = true
-	tween(Elements.Parent, {BackgroundTransparency = 0.1})
+	tween(Elements.Parent, {BackgroundTransparency = 1})
 	Navigation.Visible = false
+	-- Kill the window border stroke
+	pcall(function() Main.UIStroke.Thickness = 0 end)
+	pcall(function() for _, v in pairs(Main:GetChildren()) do if v:IsA("UIStroke") then v.Thickness = 0 end end end)
 	-- Fill full window — no nav sidebar, no topbar
 	Elements.Parent.Size = UDim2.new(1, 0, Elements.Parent.Size.Y.Scale, Elements.Parent.Size.Y.Offset)
 
