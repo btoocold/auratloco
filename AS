@@ -2568,7 +2568,9 @@ function Luna:CreateWindow(WindowSettings)
 		end)
 
 
-		-- LocalPlayer user info removed from home tab
+		-- Hide LocalPlayer user info on home tab
+		HomeTabPage.icon.Visible = false
+		HomeTabPage.player.Visible = false
 
 		HomeTabPage.detailsholder.dashboard.Client.Title.Text = (isStudio and "Debugging (Studio)" or identifyexecutor()) or "Your Executor Does Not Support identifyexecutor."
 		for i,v in pairs(HomeTabSettings.SupportedExecutors) do
