@@ -2287,10 +2287,16 @@ function Luna:CreateWindow(WindowSettings)
 
 	Main.Title.Title.Text = WindowSettings.Name
 	Main.Title.subtitle.Text = WindowSettings.Subtitle
-	Main.Logo.Image = "rbxassetid://" .. WindowSettings.LogoID
+	if WindowSettings.LogoID then
+		Main.Logo.Image = "rbxassetid://" .. WindowSettings.LogoID
+	end
 	Main.Title.Visible = false
 	Main.Logo.Visible = false
-	Main.Controls.Visible = false
+	for _, v in pairs(Main.Controls:GetChildren()) do
+		if v.ClassName == "Frame" then
+			v.Visible = false
+		end
+	end
 	Main.Visible = true
 	Main.BackgroundTransparency = 1
 	Main.Size = MainSize
