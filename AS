@@ -2289,6 +2289,7 @@ function Luna:CreateWindow(WindowSettings)
 	Main.Controls.Close.Visible = false
 	Main.Controls.ToggleSize.Visible = false
 	Dragger.Visible = false
+	dragBar.Visible = false
 	Navigation.Position = UDim2.new(0, 0, 0, 0)
 	Main.Elements.Position = UDim2.new(Navigation.Position.X.Scale, Navigation.Size.X.Offset, 0, 0)
 	for _, v in pairs(Main.Controls:GetChildren()) do
