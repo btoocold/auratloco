@@ -1,5 +1,7 @@
 --[[
+    Hub In One (HIO)
     Stripped Luna Source — Loading Screen + Home Tab Only
+    discord.gg/hio
 ]]
 
 local Release = "Prerelease Beta 6.1"
