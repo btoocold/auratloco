@@ -2288,6 +2288,9 @@ function Luna:CreateWindow(WindowSettings)
 	Main.Title.Size = UDim2.fromOffset(0, 0)
 	Main.Controls.Close.Visible = false
 	Main.Controls.ToggleSize.Visible = false
+	Dragger.Visible = false
+	Navigation.Position = UDim2.new(0, 0, 0, 0)
+	Main.Elements.Position = UDim2.new(Navigation.Position.X.Scale, Navigation.Size.X.Offset, 0, 0)
 	for _, v in pairs(Main.Controls:GetChildren()) do
 		if v.ClassName == "Frame" then
 			v.Visible = false
