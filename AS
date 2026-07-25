@@ -1,7 +1,5 @@
 --[[
-    Hub In One (HIO)
     Stripped Luna Source — Loading Screen + Home Tab Only
-    discord.gg/hio
 ]]
 
 local Release = "Prerelease Beta 6.1"
@@ -2157,7 +2155,11 @@ local function Unhide(Window, currentTab)
 	tween(Window.Title.subtitle, {TextTransparency = 1})
 	tween(Window.Logo, {ImageTransparency = 1})
 	Window.Navigation.Visible = false
-	Window.Elements.Parent.Size = UDim2.new(1, 0, Window.Elements.Parent.Size.Y.Scale, Window.Elements.Parent.Size.Y.Offset)
+	Window.Elements.Parent.Size = UDim2.new(1, 0, 1, 0)
+	Window.Elements.Parent.Position = UDim2.new(0, 0, 0, 0)
+	Window.Title.Visible = false
+	Window.Logo.Visible = false
+	Window.Controls.Visible = false
 
 	-- topbar buttons hidden intentionally
 	for _, tabbtn in ipairs(Window.Navigation.Tabs:GetChildren()) do
@@ -2474,12 +2476,10 @@ function Luna:CreateWindow(WindowSettings)
 	Main.Line.Visible = false
 	dragBar.Visible = false
 	Navigation.Visible = false
-	TweenService:Create(Main.Title.Title, TweenInfo.new(0.35, Enum.EasingStyle.Exponential, Enum.EasingDirection.Out), {TextTransparency = 0}):Play()
-	TweenService:Create(Main.Title.subtitle, TweenInfo.new(0.35, Enum.EasingStyle.Exponential, Enum.EasingDirection.Out), {TextTransparency = 0}):Play()
-	TweenService:Create(Main.Logo, TweenInfo.new(0.35, Enum.EasingStyle.Exponential, Enum.EasingDirection.Out), {ImageTransparency = 0}):Play()
-	TweenService:Create(Navigation.Player.icon.ImageLabel, TweenInfo.new(0.35, Enum.EasingStyle.Exponential, Enum.EasingDirection.Out), {ImageTransparency = 0}):Play()
-	TweenService:Create(Navigation.Player.icon.UIStroke, TweenInfo.new(0.35, Enum.EasingStyle.Exponential, Enum.EasingDirection.Out), {Transparency = 0}):Play()
-	TweenService:Create(Main.Line, TweenInfo.new(0.35, Enum.EasingStyle.Exponential, Enum.EasingDirection.Out), {BackgroundTransparency = 0}):Play()
+	-- Hide topbar entirely so it takes zero space
+	Main.Title.Visible = false
+	Main.Logo.Visible = false
+	Main.Controls.Visible = false
 	wait(0.4)
 	LoadingFrame.Visible = false
 
@@ -2666,8 +2666,9 @@ function Luna:CreateWindow(WindowSettings)
 	Elements.Parent.Visible = true
 	tween(Elements.Parent, {BackgroundTransparency = 0.1})
 	Navigation.Visible = false
-	-- Expand content to fill full window width (no nav sidebar)
-	Elements.Parent.Size = UDim2.new(1, 0, Elements.Parent.Size.Y.Scale, Elements.Parent.Size.Y.Offset)
+	-- Fill full window — no nav sidebar, no topbar
+	Elements.Parent.Size = UDim2.new(1, 0, 1, 0)
+	Elements.Parent.Position = UDim2.new(0, 0, 0, 0)
 
 	-- topbar buttons hidden intentionally
 
