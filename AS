@@ -2151,15 +2151,12 @@ local function Unhide(Window, currentTab)
 	Window.Visible = true
 	task.wait()
 	tween(Window, {BackgroundTransparency = 1})
-	tween(Window.Elements, {BackgroundTransparency = 1})
+	tween(Window.Elements, {BackgroundTransparency = 0.08})
 	tween(Window.Line, {BackgroundTransparency = 1})
 	tween(Window.Title.Title, {TextTransparency = 1})
 	tween(Window.Title.subtitle, {TextTransparency = 1})
 	tween(Window.Logo, {ImageTransparency = 1})
-	Window.Navigation.Visible = false
-	Window.Title.Visible = false
-	Window.Logo.Visible = false
-	Window.Controls.Visible = false
+	tween(Window.Navigation.Line, {BackgroundTransparency = 0})
 
 	-- topbar buttons hidden intentionally
 	for _, tabbtn in ipairs(Window.Navigation.Tabs:GetChildren()) do
@@ -2189,7 +2186,7 @@ local function Maximise(Window)
 	Window.Controls.ToggleSize.ImageLabel.Image = "rbxassetid://10137941941"
 	tween(Window, {Size = MainSize})
 	Window.Elements.Visible = true
-	Window.Navigation.Visible = false
+	Window.Navigation.Visible = true
 end
 
 local function Minimize(Window)
@@ -2274,7 +2271,7 @@ function Luna:CreateWindow(WindowSettings)
 
 	LoadingFrame.Frame.Frame.Title.Text = WindowSettings.LoadingTitle
 	LoadingFrame.Frame.Frame.Subtitle.Text = WindowSettings.LoadingSubtitle
-	LoadingFrame.Version.Text = ""
+	LoadingFrame.Version.Text = LoadingFrame.Frame.Frame.Title.Text == "Luna Interface Suite" and Release or "Luna UI"
 
 	Navigation.Player.icon.ImageLabel.Image = Players:GetUserThumbnailAsync(Players.LocalPlayer.UserId, Enum.ThumbnailType.HeadShot, Enum.ThumbnailSize.Size48x48)
 	Navigation.Player.Namez.Text = Players.LocalPlayer.DisplayName
@@ -2476,16 +2473,12 @@ function Luna:CreateWindow(WindowSettings)
 	Main.Line.Visible = false
 	dragBar.Visible = false
 	Navigation.Visible = false
-	Main.Title.Visible = false
-	Main.Logo.Visible = false
-	Main.Controls.Visible = false
-	-- Nuke the border and all backgrounds on the window
-	for _, v in pairs(Main:GetDescendants()) do
-		if v:IsA("UIStroke") then v.Thickness = 0 end
-		if v:IsA("ImageLabel") and v.Name == "Shadow" then v.Visible = false end
-	end
-	Main.BackgroundTransparency = 1
-	Elements.Parent.BackgroundTransparency = 1
+	TweenService:Create(Main.Title.Title, TweenInfo.new(0.35, Enum.EasingStyle.Exponential, Enum.EasingDirection.Out), {TextTransparency = 0}):Play()
+	TweenService:Create(Main.Title.subtitle, TweenInfo.new(0.35, Enum.EasingStyle.Exponential, Enum.EasingDirection.Out), {TextTransparency = 0}):Play()
+	TweenService:Create(Main.Logo, TweenInfo.new(0.35, Enum.EasingStyle.Exponential, Enum.EasingDirection.Out), {ImageTransparency = 0}):Play()
+	TweenService:Create(Navigation.Player.icon.ImageLabel, TweenInfo.new(0.35, Enum.EasingStyle.Exponential, Enum.EasingDirection.Out), {ImageTransparency = 0}):Play()
+	TweenService:Create(Navigation.Player.icon.UIStroke, TweenInfo.new(0.35, Enum.EasingStyle.Exponential, Enum.EasingDirection.Out), {Transparency = 0}):Play()
+	TweenService:Create(Main.Line, TweenInfo.new(0.35, Enum.EasingStyle.Exponential, Enum.EasingDirection.Out), {BackgroundTransparency = 0}):Play()
 	wait(0.4)
 	LoadingFrame.Visible = false
 
@@ -2670,9 +2663,9 @@ function Luna:CreateWindow(WindowSettings)
 
 	end
 	Elements.Parent.Visible = true
-	Navigation.Visible = false
-	-- Fill full window — no nav sidebar, no topbar
-	Elements.Parent.Size = UDim2.new(1, 0, Elements.Parent.Size.Y.Scale, Elements.Parent.Size.Y.Offset)
+	tween(Elements.Parent, {BackgroundTransparency = 0.1})
+	Navigation.Visible = true
+	tween(Navigation.Line, {BackgroundTransparency = 0})
 
 	-- topbar buttons hidden intentionally
 
@@ -2702,7 +2695,15 @@ function Luna:CreateWindow(WindowSettings)
 		end
 	end)
 
-	-- Logo click disabled (no nav sidebar)
+	Main.Logo.MouseButton1Click:Connect(function()
+		if Navigation.Size.X.Offset == 205 then
+			tween(Elements.Parent, {Size = UDim2.new(1, -55, Elements.Parent.Size.Y.Scale, Elements.Parent.Size.Y.Offset)})
+			tween(Navigation, {Size = UDim2.new(Navigation.Size.X.Scale, 55, Navigation.Size.Y.Scale, Navigation.Size.Y.Offset)})
+		else
+			tween(Elements.Parent, {Size = UDim2.new(1, -205, Elements.Parent.Size.Y.Scale, Elements.Parent.Size.Y.Offset)})
+			tween(Navigation, {Size = UDim2.new(Navigation.Size.X.Scale, 205, Navigation.Size.Y.Scale, Navigation.Size.Y.Offset)})
+		end
+	end)
 
 	Main.Controls.ToggleSize.ImageLabel.MouseButton1Click:Connect(function()
 		Window.Size = not Window.Size
