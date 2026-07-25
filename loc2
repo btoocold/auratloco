@@ -3478,17 +3478,22 @@ function Luna:CreateWindow(WindowSettings)
 			return format(Hours)..":"..format(Minutes)..":"..format(Seconds)
 		end
 
-		-- Repurpose Join Script tile to show current game name
-		local _joinTile = HomeTabPage.detailsholder.dashboard.Server:FindFirstChild("JoinScript")
-		if _joinTile then
-			local _titleLabel = _joinTile:FindFirstChild("Title") or _joinTile:FindFirstChildWhichIsA("TextLabel")
-			local _valueLabel = _joinTile:FindFirstChild("Value") or _joinTile:FindFirstChild("Subtitle")
-			if _titleLabel then _titleLabel.Text = "Game" end
-			local ok, gameInfo = pcall(function()
-				return game:GetService("MarketplaceService"):GetProductInfo(game.PlaceId)
-			end)
-			if _valueLabel then
-				_valueLabel.Text = (ok and gameInfo and gameInfo.Name) or game.Name or "Unknown"
+		-- Repurpose the unknown extra tile (Join Script) to show current game name
+		-- Target any child of Server that isn't one of the 5 known tiles
+		local _serverFrame = HomeTabPage.detailsholder.dashboard.Server
+		local _knownTiles = {Players = true, MaxPlayers = true, Latency = true, Time = true, Region = true}
+		for _, child in ipairs(_serverFrame:GetChildren()) do
+			if child:IsA("Frame") and not _knownTiles[child.Name] then
+				local _titleLabel = child:FindFirstChild("Title")
+				local _valueLabel = child:FindFirstChild("Value")
+				if _titleLabel then _titleLabel.Text = "Game" end
+				if _valueLabel then
+					local ok, gameInfo = pcall(function()
+						return game:GetService("MarketplaceService"):GetProductInfo(game.PlaceId)
+					end)
+					_valueLabel.Text = (ok and gameInfo and gameInfo.Name) or game.Name or "Unknown"
+				end
+				break
 			end
 		end
 
