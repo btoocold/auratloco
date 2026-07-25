@@ -44,7 +44,7 @@ by Nebula Softworks
 
 ]]
 
-local Release = "gg/hio"
+local Release = "Prerelease Beta 6.1"
 
 local Luna = { 
 	Folder = "Luna", 
