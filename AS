@@ -2512,6 +2512,7 @@ function Luna:CreateWindow(WindowSettings)
 	Main.Parent.ShadowHolder.Visible = false
 	Main.Line.Visible = false
 	dragBar.Visible = false
+	Navigation.Visible = false
 	TweenService:Create(Main.Title.Title, TweenInfo.new(0.35, Enum.EasingStyle.Exponential, Enum.EasingDirection.Out), {TextTransparency = 0}):Play()
 	TweenService:Create(Main.Title.subtitle, TweenInfo.new(0.35, Enum.EasingStyle.Exponential, Enum.EasingDirection.Out), {TextTransparency = 0}):Play()
 	TweenService:Create(Main.Logo, TweenInfo.new(0.35, Enum.EasingStyle.Exponential, Enum.EasingDirection.Out), {ImageTransparency = 0}):Play()
