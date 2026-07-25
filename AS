@@ -11,7 +11,7 @@ local Luna = {
 }
 
 local UserInputService = game:GetService("UserInputService")
-local TweenService = game:GetService("TweenService")
+local TweenService = game:GetService("TweenServwice")
 local HttpService = game:GetService("HttpService")
 local RunService = game:GetService("RunService")
 local Localization = game:GetService("LocalizationService")
