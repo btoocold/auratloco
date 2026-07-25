@@ -2213,12 +2213,7 @@ function Luna:CreateWindow(WindowSettings)
 		ConfigSettings = {},
 
 		KeySystem = false,
-		KeySettings = {},
-
-		-- "lifetime" → "ACCESS : LIFETIME"
-		-- "month"    → "ACCESS : 31 DAYS"
-		-- nil/other  → hidden
-		AccessType = nil
+		KeySettings = {}
 	}, WindowSettings or {})
 
 	WindowSettings.ConfigSettings = Kwargify({
@@ -2475,7 +2470,7 @@ function Luna:CreateWindow(WindowSettings)
 		TweenService:Create(LoadingFrame, TweenInfo.new(0.5, Enum.EasingStyle.Exponential, Enum.EasingDirection.Out), {BackgroundTransparency = 1}):Play()
 	end
 
-	TweenService:Create(Main, TweenInfo.new(0.5, Enum.EasingStyle.Exponential, Enum.EasingDirection.Out), {BackgroundTransparency = 0, Size = MainSize}):Play()
+	TweenService:Create(Main, TweenInfo.new(0.5, Enum.EasingStyle.Exponential, Enum.EasingDirection.Out), {BackgroundTransparency = 1, Size = MainSize}):Play()
 	TweenService:Create(Main.Parent.ShadowHolder, TweenInfo.new(0.5, Enum.EasingStyle.Exponential, Enum.EasingDirection.Out), {Size = MainSize}):Play()
 	Main.Parent.ShadowHolder.Visible = false
 	Main.Line.Visible = false
@@ -2504,8 +2499,7 @@ function Luna:CreateWindow(WindowSettings)
 		HomeTabSettings = Kwargify({
 			Icon = 1,
 			SupportedExecutors = {"Vega X", "Delta", "Nihon", "Xeno"}, -- THESE DEFAULTS ARE PLACEHOLDERS!! I DO NOT ADVERTISE THESE, THEY ARE JUS THE FIRST THAT CAME TO MIND. I HAVE NO IDEA WHETHER THEYA RE RATS (they prob are) AND IM NOT RESPONSIBLE IF U GET VIRUSES FROM INSTALLING AFTER SEEING THIS LIST
-			DiscordInvite = "hio", -- The discord invite link. Do not include the link so for example if my invite was discord.gg/nebula I would put nebula
-			AccessType = WindowSettings.AccessType -- inherit from CreateWindow settings
+			DiscordInvite = "hio" -- The discord invite link. Do not include the link so for example if my invite was discord.gg/nebula I would put nebula
 		}, HomeTabSettings or {})
 
 		local HomeTab = {}
@@ -2550,18 +2544,7 @@ function Luna:CreateWindow(WindowSettings)
 		HomeTabPage.icon.Visible = true
 		HomeTabPage.icon.ImageLabel.Image = Players:GetUserThumbnailAsync(Players.LocalPlayer.UserId, Enum.ThumbnailType.HeadShot, Enum.ThumbnailSize.Size420x420)
 		HomeTabPage.player.Text.Text = "Welcome to the multi loader"
-
-		-- Access type badge
-		local accessLabel = ""
-		if HomeTabSettings.AccessType then
-			local t = string.lower(HomeTabSettings.AccessType)
-			if t == "lifetime" then
-				accessLabel = "ACCESS : LIFETIME"
-			elseif t == "month" then
-				accessLabel = "ACCESS : 31 DAYS"
-			end
-		end
-		HomeTabPage.player.user.Text = accessLabel
+		HomeTabPage.player.user.Text = ""
 
 		HomeTabPage.detailsholder.dashboard.Client.Title.Text = (isStudio and "Debugging (Studio)" or identifyexecutor()) or "Your Executor Does Not Support identifyexecutor."
 		for i,v in pairs(HomeTabSettings.SupportedExecutors) do
@@ -2782,8 +2765,6 @@ local Window = Luna:CreateWindow({
 	LoadingEnabled = true,
 	LoadingTitle = "Hub In One",
 	LoadingSubtitle = "Loading...",
-	-- Set to "lifetime" for ACCESS : LIFETIME, or "month" for ACCESS : 31 DAYS, or nil to hide
-	AccessType = "lifetime",
 })
 
 Window:CreateHomeTab({
