@@ -2285,13 +2285,10 @@ function Luna:CreateWindow(WindowSettings)
 	end
 	Main.Title.Visible = false
 	Main.Logo.Visible = false
-	Main.Title.Size = UDim2.fromOffset(0, 0)
 	Main.Controls.Close.Visible = false
 	Main.Controls.ToggleSize.Visible = false
 	Dragger.Visible = false
 	dragBar.Visible = false
-	Navigation.Position = UDim2.new(0, 0, 0, 0)
-	Main.Elements.Position = UDim2.new(Navigation.Position.X.Scale, Navigation.Size.X.Offset, 0, 0)
 	for _, v in pairs(Main.Controls:GetChildren()) do
 		if v.ClassName == "Frame" then
 			v.Visible = false
@@ -2302,7 +2299,7 @@ function Luna:CreateWindow(WindowSettings)
 	Main.Visible = true
 	Main.BackgroundTransparency = 1
 	Main.Size = MainSize
-	Main.Size = UDim2.fromOffset(Main.Size.X.Offset - 70, Main.Size.Y.Offset - 55 - 40)
+	Main.Size = UDim2.fromOffset(Main.Size.X.Offset - 70, Main.Size.Y.Offset - 55)
 	Main.Parent.ShadowHolder.Size = Main.Size
 	LoadingFrame.Frame.Frame.Title.TextTransparency = 1
 	LoadingFrame.Frame.Frame.Subtitle.TextTransparency = 1
