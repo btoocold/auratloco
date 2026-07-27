@@ -1,0 +1,1148 @@
+local Library = loadstring(game:HttpGet("https://raw.githubusercontent.com/btoocold/auratloco/refs/heads/main/br"))()
+
+-- ──────────────────────────────────────────────
+--  SERVICES & CORE REFS
+-- ──────────────────────────────────────────────
+local Players          = game:GetService("Players")
+local RunService       = game:GetService("RunService")
+local Workspace        = game:GetService("Workspace")
+local Lighting         = game:GetService("Lighting")
+local ContextActionService = game:GetService("ContextActionService")
+local CoreGui          = cloneref and cloneref(game:GetService("CoreGui")) or game:GetService("CoreGui")
+local UserInputService = game:GetService("UserInputService")
+
+local lplayer = Players.LocalPlayer
+local Cam     = Workspace.CurrentCamera
+
+local function safeParent(inst)
+    local ok = pcall(function() inst.Parent = CoreGui end)
+    if not ok then pcall(function() inst.Parent = lplayer.PlayerGui end) end
+end
+
+-- ──────────────────────────────────────────────
+--  AIM ASSIST CONFIG
+-- ──────────────────────────────────────────────
+local AimConfig = {
+    Enabled          = false,
+    AimPart          = "Head",
+    FOV              = 250,
+    Smoothness       = 0.35,
+    TeamCheck        = false,
+    WallCheck        = false,
+    FOVCircleVisible = false,
+}
+
+-- ──────────────────────────────────────────────
+--  ESP CONFIG
+-- ──────────────────────────────────────────────
+local ESPConfig = {
+    FontSize = 12,
+    TeamCheck = false,
+    Drawing = {
+        Chams     = { Enabled=false, Thermal=false, FillRGB=Color3.fromRGB(119,120,255), Fill_Transparency=0, OutlineRGB=Color3.fromRGB(255,255,255), Outline_Transparency=0 },
+        Names     = { Enabled=false, Transparency=0, RGB=Color3.fromRGB(255,255,255) },
+        Distances = { Enabled=false, Transparency=0, RGB=Color3.fromRGB(255,255,255) },
+        Weapons   = { Enabled=false, WeaponTextRGB=Color3.fromRGB(255,255,255), Transparency=0 },
+
+    },
+}
+
+-- ──────────────────────────────────────────────
+--  SELF CONFIG
+-- ──────────────────────────────────────────────
+local SelfConfig = {
+    WalkSpeed    = 16,
+    WalkSpeedOn  = false,
+    FlyEnabled   = false,
+    FlySpeed     = 50,
+    InfiniteJump = true,
+    NoClip       = false,
+    CameraFOV    = 70,
+    CameraFOVOn  = false,
+    StrafeEnabled = false,
+}
+
+-- ──────────────────────────────────────────────
+--  GUN MODS CONFIG
+-- ──────────────────────────────────────────────
+local GunModsConfig = {
+    InfiniteAmmo = false,
+    RapidFire    = false,
+    AlwaysAuto   = false,
+    NoSpread     = false,
+    NoRecoil     = false,
+    NoReload     = false,
+    InstantEquip = false,
+}
+
+-- Arsenal stores weapon values in ReplicatedStorage.Weapons — poll and patch them
+local RepStorage = game:GetService("ReplicatedStorage")
+local function PatchArsenalWeapons()
+    pcall(function()
+        local weapons = RepStorage:FindFirstChild("Weapons")
+        if not weapons then return end
+        for _, v in ipairs(weapons:GetDescendants()) do
+            local n = v.Name
+            if GunModsConfig.InfiniteAmmo then
+                if n=="Ammo" or n=="MaxAmmo" or n=="StoredAmmo" or n=="MagSize" or n=="ammocount" or n=="ammocount2" then
+                    pcall(function() v.Value = math.min(v.Value > 0 and 300 or v.Value, 300) end)
+                end
+            end
+            if GunModsConfig.RapidFire then
+                if n=="FireRate" or n=="fire_rate" or n=="Cooldown" then
+                    pcall(function() v.Value = 0.02 end)
+                end
+                if n=="Auto" then pcall(function() v.Value = true end) end
+            end
+            if GunModsConfig.NoRecoil then
+                if n=="RecoilControl" then pcall(function() v.Value = 0 end) end
+                if n=="MaxSpread" or n=="Spread" then pcall(function() v.Value = 0 end) end
+            end
+            if GunModsConfig.NoReload then
+                if n=="ReloadTime" then pcall(function() v.Value = 0 end) end
+                if n=="ReloadSpeed" then pcall(function() v.Value = 999 end) end
+            end
+            if GunModsConfig.InstantEquip then
+                if n=="EquipTime" then pcall(function() v.Value = 0 end) end
+            end
+        end
+    end)
+    -- Also patch PlayerGui ammo counters (Arsenal-specific)
+    pcall(function()
+        local gui = lplayer.PlayerGui:FindFirstChild("GUI")
+        if gui then
+            local vars = gui:FindFirstChild("Client") and gui.Client:FindFirstChild("Variables")
+            if vars then
+                if GunModsConfig.InfiniteAmmo then
+                    if vars:FindFirstChild("ammocount") then vars.ammocount.Value = 300 end
+                    if vars:FindFirstChild("ammocount2") then vars.ammocount2.Value = 300 end
+                end
+            end
+        end
+    end)
+end
+
+-- Run Arsenal patcher every 2 seconds when any gun mod is active
+task.spawn(function()
+    while true do
+        task.wait(2)
+        if GunModsConfig.InfiniteAmmo or GunModsConfig.RapidFire or GunModsConfig.NoRecoil
+           or GunModsConfig.NoReload or GunModsConfig.InstantEquip then
+            PatchArsenalWeapons()
+        end
+    end
+end)
+
+-- ──────────────────────────────────────────────
+--  WORLD / LIGHTING CONFIG
+-- ──────────────────────────────────────────────
+local WorldConfig = {
+    AmbientEnabled   = false,
+    AmbientColor     = Color3.fromRGB(128,128,128),
+    FogEnabled       = false,
+    FogColor         = Color3.fromRGB(192,192,192),
+    FogStart         = 0,
+    FogEnd           = 100000,
+    BrightnessEnabled = false,
+    Brightness       = 2,
+    TimeEnabled      = false,
+    TimeOfDay        = 14,
+}
+
+local WorldOriginal = {}
+local function SaveWorldOriginals()
+    if WorldOriginal.saved then return end
+    WorldOriginal.saved         = true
+    WorldOriginal.Ambient       = Lighting.Ambient
+    WorldOriginal.OutdoorAmbient= Lighting.OutdoorAmbient
+    WorldOriginal.FogColor      = Lighting.FogColor
+    WorldOriginal.FogStart      = Lighting.FogStart
+    WorldOriginal.FogEnd        = Lighting.FogEnd
+    WorldOriginal.Brightness    = Lighting.Brightness
+    WorldOriginal.ClockTime     = Lighting.ClockTime
+end
+
+local function ApplyWorld()
+    SaveWorldOriginals()
+    if WorldConfig.AmbientEnabled then
+        Lighting.Ambient        = WorldConfig.AmbientColor
+        Lighting.OutdoorAmbient = WorldConfig.AmbientColor
+    else
+        Lighting.Ambient        = WorldOriginal.Ambient
+        Lighting.OutdoorAmbient = WorldOriginal.OutdoorAmbient
+    end
+    if WorldConfig.FogEnabled then
+        Lighting.FogColor = WorldConfig.FogColor
+        Lighting.FogStart = WorldConfig.FogStart
+        Lighting.FogEnd   = WorldConfig.FogEnd
+    else
+        Lighting.FogColor = WorldOriginal.FogColor
+        Lighting.FogStart = WorldOriginal.FogStart
+        Lighting.FogEnd   = WorldOriginal.FogEnd
+    end
+    if WorldConfig.BrightnessEnabled then
+        Lighting.Brightness = WorldConfig.Brightness
+    else
+        Lighting.Brightness = WorldOriginal.Brightness
+    end
+    if WorldConfig.TimeEnabled then
+        Lighting.ClockTime = WorldConfig.TimeOfDay
+    else
+        Lighting.ClockTime = WorldOriginal.ClockTime
+    end
+end
+
+-- ──────────────────────────────────────────────
+--  SKYBOX CONFIG & DATA
+-- ──────────────────────────────────────────────
+local SkyboxConfig = { Enabled=false, Current="Default" }
+
+local Skyboxes = {
+    Default          = { SkyboxBk="rbxassetid://91458024",    SkyboxDn="rbxassetid://91457980",    SkyboxFt="rbxassetid://91458024",    SkyboxLf="rbxassetid://91458024",    SkyboxRt="rbxassetid://91458024",    SkyboxUp="rbxassetid://91458002" },
+    Neptune          = { SkyboxBk="rbxassetid://218955819",   SkyboxDn="rbxassetid://218953419",   SkyboxFt="rbxassetid://218954524",   SkyboxLf="rbxassetid://218958493",   SkyboxRt="rbxassetid://218957134",   SkyboxUp="rbxassetid://218950090" },
+    ["Among Us"]     = { SkyboxBk="rbxassetid://5752463190",  SkyboxDn="rbxassetid://5752463190",  SkyboxFt="rbxassetid://5752463190",  SkyboxLf="rbxassetid://5752463190",  SkyboxRt="rbxassetid://5752463190",  SkyboxUp="rbxassetid://5752463190" },
+    Nebula           = { SkyboxBk="rbxassetid://159454299",   SkyboxDn="rbxassetid://159454296",   SkyboxFt="rbxassetid://159454293",   SkyboxLf="rbxassetid://159454286",   SkyboxRt="rbxassetid://159454300",   SkyboxUp="rbxassetid://159454288" },
+    Vaporwave        = { SkyboxBk="rbxassetid://1417494030",  SkyboxDn="rbxassetid://1417494146",  SkyboxFt="rbxassetid://1417494253",  SkyboxLf="rbxassetid://1417494402",  SkyboxRt="rbxassetid://1417494499",  SkyboxUp="rbxassetid://1417494643" },
+    Clouds           = { SkyboxBk="rbxassetid://570557514",   SkyboxDn="rbxassetid://570557775",   SkyboxFt="rbxassetid://570557559",   SkyboxLf="rbxassetid://570557620",   SkyboxRt="rbxassetid://570557672",   SkyboxUp="rbxassetid://570557727" },
+    Twilight         = { SkyboxBk="rbxassetid://264908339",   SkyboxDn="rbxassetid://264907909",   SkyboxFt="rbxassetid://264909420",   SkyboxLf="rbxassetid://264909758",   SkyboxRt="rbxassetid://264908886",   SkyboxUp="rbxassetid://264907379" },
+    DaBaby           = { SkyboxBk="rbxassetid://7245418472",  SkyboxDn="rbxassetid://7245418472",  SkyboxFt="rbxassetid://7245418472",  SkyboxLf="rbxassetid://7245418472",  SkyboxRt="rbxassetid://7245418472",  SkyboxUp="rbxassetid://7245418472" },
+    Minecraft        = { SkyboxBk="rbxassetid://1876545003",  SkyboxDn="rbxassetid://1876544331",  SkyboxFt="rbxassetid://1876542941",  SkyboxLf="rbxassetid://1876543392",  SkyboxRt="rbxassetid://1876543764",  SkyboxUp="rbxassetid://1876544642" },
+    Chill            = { SkyboxBk="rbxassetid://5084575798",  SkyboxDn="rbxassetid://5084575916",  SkyboxFt="rbxassetid://5103949679",  SkyboxLf="rbxassetid://5103948542",  SkyboxRt="rbxassetid://5103948784",  SkyboxUp="rbxassetid://5084576400" },
+    Redshift         = { SkyboxBk="rbxassetid://401664839",   SkyboxDn="rbxassetid://401664862",   SkyboxFt="rbxassetid://401664960",   SkyboxLf="rbxassetid://401664881",   SkyboxRt="rbxassetid://401664901",   SkyboxUp="rbxassetid://401664936" },
+    ["Blue Stars"]   = { SkyboxBk="rbxassetid://149397684",   SkyboxDn="rbxassetid://149397686",   SkyboxFt="rbxassetid://149397688",   SkyboxLf="rbxassetid://149397692",   SkyboxRt="rbxassetid://149397697",   SkyboxUp="rbxassetid://149397702" },
+    ["Blue Aurora"]  = { SkyboxBk="rbxassetid://12063984",    SkyboxDn="rbxassetid://12064107",    SkyboxFt="rbxassetid://12064152",    SkyboxLf="rbxassetid://12064121",    SkyboxRt="rbxassetid://12064115",    SkyboxUp="rbxassetid://12064131" },
+    Realistic        = { SkyboxBk="rbxassetid://144933338",   SkyboxDn="rbxassetid://144931530",   SkyboxFt="rbxassetid://144933262",   SkyboxLf="rbxassetid://144933244",   SkyboxRt="rbxassetid://144933299",   SkyboxUp="rbxassetid://144931564" },
+    StarsShader      = { SkyboxBk="rbxassetid://169210090",   SkyboxDn="rbxassetid://169210108",   SkyboxFt="rbxassetid://169210121",   SkyboxLf="rbxassetid://169210133",   SkyboxRt="rbxassetid://169210143",   SkyboxUp="rbxassetid://169210149" },
+    Gloomy           = { SkyboxBk="rbxassetid://5346760450",  SkyboxDn="rbxassetid://5346760689",  SkyboxFt="rbxassetid://5346760919",  SkyboxLf="rbxassetid://5346761102",  SkyboxRt="rbxassetid://5346761335",  SkyboxUp="rbxassetid://5346761509" },
+    ["Nebula Purple"]= { SkyboxBk="rbxassetid://129876530632297", SkyboxDn="rbxassetid://108406529909981", SkyboxFt="rbxassetid://104400530594543", SkyboxLf="rbxassetid://73372229972523", SkyboxRt="rbxassetid://87408857415924", SkyboxUp="rbxassetid://13781740568136" },
+    Jungle           = { SkyboxBk="rbxassetid://214399891",   SkyboxDn="rbxassetid://214399887",   SkyboxFt="rbxassetid://214399894",   SkyboxLf="rbxassetid://214405668",   SkyboxRt="rbxassetid://214399899",   SkyboxUp="rbxassetid://214399889" },
+    Spongebob        = { SkyboxBk="rbxassetid://15962101128", SkyboxDn="rbxassetid://15970246218", SkyboxFt="rbxassetid://15962101128", SkyboxLf="rbxassetid://15962101128", SkyboxRt="rbxassetid://15962101128", SkyboxUp="rbxassetid://15962901054" },
+    ["Mountain Scape"]={ SkyboxBk="rbxassetid://12474836637", SkyboxDn="rbxassetid://12474837052", SkyboxFt="rbxassetid://12474836748", SkyboxLf="rbxassetid://12474836935", SkyboxRt="rbxassetid://12474836446", SkyboxUp="rbxassetid://12474835757" },
+    ["Yellowy Cloud"] = { SkyboxBk="rbxassetid://252760981",  SkyboxDn="rbxassetid://252763035",   SkyboxFt="rbxassetid://252761439",   SkyboxLf="rbxassetid://252760980",   SkyboxRt="rbxassetid://252760986",   SkyboxUp="rbxassetid://252762652" },
+    Aurora           = { SkyboxBk="rbxassetid://340908398",   SkyboxDn="rbxassetid://340908450",   SkyboxFt="rbxassetid://340908468",   SkyboxLf="rbxassetid://340908504",   SkyboxRt="rbxassetid://340908530",   SkyboxUp="rbxassetid://340908586" },
+    ["Winter Mountain"]={ SkyboxBk="rbxassetid://402229526",  SkyboxDn="rbxassetid://402229596",   SkyboxFt="rbxassetid://402229293",   SkyboxLf="rbxassetid://402229368",   SkyboxRt="rbxassetid://402229417",   SkyboxUp="rbxassetid://402229564" },
+    Stormy           = { SkyboxBk="rbxassetid://255027929",   SkyboxDn="rbxassetid://255027967",   SkyboxFt="rbxassetid://255027923",   SkyboxLf="rbxassetid://255027938",   SkyboxRt="rbxassetid://255027946",   SkyboxUp="rbxassetid://255027960" },
+}
+
+local SkyboxNames = {}
+for k in pairs(Skyboxes) do table.insert(SkyboxNames, k) end
+table.sort(SkyboxNames)
+
+local originalSky = nil
+local function ApplySkybox()
+    local sky = Lighting:FindFirstChildOfClass("Sky")
+    if SkyboxConfig.Enabled then
+        if not sky then sky = Instance.new("Sky"); sky.Parent = Lighting end
+        if not originalSky then
+            originalSky = { SkyboxBk=sky.SkyboxBk, SkyboxDn=sky.SkyboxDn, SkyboxFt=sky.SkyboxFt,
+                            SkyboxLf=sky.SkyboxLf, SkyboxRt=sky.SkyboxRt, SkyboxUp=sky.SkyboxUp }
+        end
+        local d = Skyboxes[SkyboxConfig.Current]
+        if d then
+            sky.SkyboxBk=d.SkyboxBk; sky.SkyboxDn=d.SkyboxDn; sky.SkyboxFt=d.SkyboxFt
+            sky.SkyboxLf=d.SkyboxLf; sky.SkyboxRt=d.SkyboxRt; sky.SkyboxUp=d.SkyboxUp
+        end
+    else
+        if sky and originalSky then
+            sky.SkyboxBk=originalSky.SkyboxBk; sky.SkyboxDn=originalSky.SkyboxDn
+            sky.SkyboxFt=originalSky.SkyboxFt; sky.SkyboxLf=originalSky.SkyboxLf
+            sky.SkyboxRt=originalSky.SkyboxRt; sky.SkyboxUp=originalSky.SkyboxUp
+        end
+    end
+end
+
+-- ──────────────────────────────────────────────
+--  RTX MODE
+-- ──────────────────────────────────────────────
+local RTXConfig   = { Enabled=false }
+local RTXOriginal = {}
+local RTXEffects  = {}
+
+local function ApplyRTX()
+    if RTXConfig.Enabled then
+        if not RTXOriginal.saved then
+            RTXOriginal.saved=true
+            RTXOriginal.Ambient=Lighting.Ambient
+            RTXOriginal.OutdoorAmbient=Lighting.OutdoorAmbient
+            RTXOriginal.ClockTime=Lighting.ClockTime
+            RTXOriginal.FogEnd=Lighting.FogEnd
+            RTXOriginal.GlobalShadows=Lighting.GlobalShadows
+            RTXOriginal.EnvDiff=Lighting.EnvironmentDiffuseScale
+            RTXOriginal.EnvSpec=Lighting.EnvironmentSpecularScale
+        end
+        Lighting.Ambient=Color3.fromRGB(120,120,140)
+        Lighting.OutdoorAmbient=Color3.fromRGB(160,170,200); Lighting.ClockTime=14
+        Lighting.FogEnd=100000; Lighting.GlobalShadows=true
+        Lighting.EnvironmentDiffuseScale=1; Lighting.EnvironmentSpecularScale=1
+        if not RTXEffects.Bloom then
+            local b=Instance.new("BloomEffect"); b.Name="RTX_Bloom"
+            b.Intensity=1.2; b.Size=24; b.Threshold=0.85; b.Parent=Lighting
+            RTXEffects.Bloom=b
+        end
+        if not RTXEffects.SunRays then
+            local s=Instance.new("SunRaysEffect"); s.Name="RTX_SunRays"
+            s.Intensity=0.25; s.Spread=0.5; s.Parent=Lighting
+            RTXEffects.SunRays=s
+        end
+        if not RTXEffects.CC then
+            local c=Instance.new("ColorCorrectionEffect"); c.Name="RTX_CC"
+            -- No brightness boost, no tint — pure 100% saturation only
+            c.Brightness=0; c.Contrast=0.15; c.Saturation=1
+            c.TintColor=Color3.fromRGB(255,255,255); c.Parent=Lighting
+            RTXEffects.CC=c
+        end
+        if not RTXEffects.DOF then
+            local d=Instance.new("DepthOfFieldEffect"); d.Name="RTX_DOF"
+            d.FarIntensity=0.35; d.NearIntensity=0; d.FocusDistance=50
+            d.InFocusRadius=30; d.Parent=Lighting
+            RTXEffects.DOF=d
+        end
+        if not RTXEffects.Atmo then
+            local a=Lighting:FindFirstChildOfClass("Atmosphere") or Instance.new("Atmosphere")
+            a.Name="RTX_Atmo"; a.Density=0.35; a.Offset=0.25
+            a.Color=Color3.fromRGB(199,199,199); a.Decay=Color3.fromRGB(100,120,130)
+            a.Glare=0.1; a.Haze=1.5; a.Parent=Lighting
+            RTXEffects.Atmo=a
+        end
+    else
+        for _,e in pairs(RTXEffects) do pcall(function() e:Destroy() end) end
+        RTXEffects={}
+        if RTXOriginal.saved then
+            Lighting.Ambient=RTXOriginal.Ambient
+            Lighting.OutdoorAmbient=RTXOriginal.OutdoorAmbient; Lighting.ClockTime=RTXOriginal.ClockTime
+            Lighting.FogEnd=RTXOriginal.FogEnd; Lighting.GlobalShadows=RTXOriginal.GlobalShadows
+            Lighting.EnvironmentDiffuseScale=RTXOriginal.EnvDiff
+            Lighting.EnvironmentSpecularScale=RTXOriginal.EnvSpec
+        end
+    end
+end
+
+-- ──────────────────────────────────────────────
+--  HELPERS
+-- ──────────────────────────────────────────────
+local function isSameTeam(plr)
+    if lplayer.Team==nil or plr.Team==nil then return true end
+    return lplayer.Team==plr.Team
+end
+local function isEnemy(plr)
+    if plr==lplayer then return false end
+    if AimConfig.TeamCheck and isSameTeam(plr) then return false end
+    return true
+end
+local function isVisible(targetPos, targetChar)
+    if not AimConfig.WallCheck then return true end
+    local origin=Cam.CFrame.Position
+    local rayParams=RaycastParams.new()
+    rayParams.FilterType=Enum.RaycastFilterType.Exclude
+    local ex={lplayer.Character}
+    if targetChar then table.insert(ex,targetChar) end
+    rayParams.FilterDescendantsInstances=ex
+    return Workspace:Raycast(origin,(targetPos-origin),rayParams)==nil
+end
+
+-- ──────────────────────────────────────────────
+--  FOV CIRCLE
+-- ──────────────────────────────────────────────
+local FOVScreenGui = Instance.new("ScreenGui")
+FOVScreenGui.Name="FOVScreenGui"; FOVScreenGui.ResetOnSpawn=false
+FOVScreenGui.IgnoreGuiInset=true
+safeParent(FOVScreenGui)
+
+local FOVCircle = Instance.new("Frame")
+FOVCircle.Name="FOVCircle"; FOVCircle.Parent=FOVScreenGui
+FOVCircle.Size=UDim2.new(0,AimConfig.FOV*2,0,AimConfig.FOV*2)
+FOVCircle.Position=UDim2.new(0.5,-AimConfig.FOV,0.5,-AimConfig.FOV)
+FOVCircle.BackgroundColor3=Color3.fromRGB(255,50,50)
+FOVCircle.BackgroundTransparency=0.85; FOVCircle.BorderSizePixel=0
+FOVCircle.Visible=false; FOVCircle.ZIndex=999
+local fovCorner=Instance.new("UICorner"); fovCorner.CornerRadius=UDim.new(1,0); fovCorner.Parent=FOVCircle
+local fovStroke=Instance.new("UIStroke"); fovStroke.Thickness=2
+fovStroke.Color=Color3.fromRGB(255,50,50); fovStroke.Parent=FOVCircle
+
+local function UpdateFOVCircle()
+    FOVCircle.Size=UDim2.new(0,AimConfig.FOV*2,0,AimConfig.FOV*2)
+    FOVCircle.Position=UDim2.new(0.5,-AimConfig.FOV,0.5,-AimConfig.FOV)
+    FOVCircle.Visible=AimConfig.FOVCircleVisible
+end
+
+-- ──────────────────────────────────────────────
+--  ESP ENGINE
+-- ──────────────────────────────────────────────
+local Players_ESP = {}
+local function RefreshAllElements()
+    for _,v in pairs(Players_ESP) do if v and v.RefreshElements then v.RefreshElements() end end
+end
+
+do
+    local ScreenGui=Instance.new("ScreenGui")
+    ScreenGui.Name="WapsESP"; ScreenGui.ResetOnSpawn=false
+    ScreenGui.ZIndexBehavior=Enum.ZIndexBehavior.Sibling
+    safeParent(ScreenGui)
+    ScreenGui.AncestryChanged:Connect(function()
+        if not ScreenGui.Parent then task.delay(0.5,function() safeParent(ScreenGui) end) end
+    end)
+
+    local function ESP(plr)
+        if plr==lplayer then return end
+        if not plr.Character then plr.CharacterAdded:Wait() end
+        local char=plr.Character
+        local Humanoid=char:WaitForChild("Humanoid")
+        local HRP=char:WaitForChild("HumanoidRootPart")
+
+        local Name=Instance.new("TextLabel"); Name.Parent=ScreenGui
+        Name.Size=UDim2.new(0,140,0,20); Name.AnchorPoint=Vector2.new(0.5,1)
+        Name.BackgroundTransparency=1; Name.TextColor3=ESPConfig.Drawing.Names.RGB
+        Name.Font=Enum.Font.GothamBold; Name.TextSize=12
+        Name.TextStrokeTransparency=0; Name.TextStrokeColor3=Color3.new(0,0,0)
+        Name.Visible=false
+
+        local Distance=Instance.new("TextLabel"); Distance.Parent=ScreenGui
+        Distance.Size=UDim2.new(0,140,0,20); Distance.AnchorPoint=Vector2.new(0.5,0)
+        Distance.BackgroundTransparency=1; Distance.TextColor3=ESPConfig.Drawing.Distances.RGB
+        Distance.Font=Enum.Font.GothamBold; Distance.TextSize=12
+        Distance.TextStrokeTransparency=0; Distance.TextStrokeColor3=Color3.new(0,0,0)
+        Distance.Visible=false
+
+        local Weapon=Instance.new("TextLabel"); Weapon.Parent=ScreenGui
+        Weapon.Size=UDim2.new(0,140,0,20); Weapon.AnchorPoint=Vector2.new(0.5,0)
+        Weapon.BackgroundTransparency=1; Weapon.TextColor3=ESPConfig.Drawing.Weapons.WeaponTextRGB
+        Weapon.Font=Enum.Font.GothamBold; Weapon.TextSize=12
+        Weapon.TextStrokeTransparency=0; Weapon.TextStrokeColor3=Color3.new(0,0,0)
+        Weapon.Text="None"; Weapon.Visible=false
+
+        local Chams=Instance.new("Highlight"); Chams.Parent=char
+        Chams.FillColor=ESPConfig.Drawing.Chams.FillRGB
+        Chams.OutlineColor=ESPConfig.Drawing.Chams.OutlineRGB
+        Chams.FillTransparency=0; Chams.OutlineTransparency=0
+        Chams.DepthMode=Enum.HighlightDepthMode.AlwaysOnTop; Chams.Enabled=false
+
+        local function HideESP()
+            Name.Visible=false; Distance.Visible=false; Weapon.Visible=false; Chams.Enabled=false
+        end
+
+        local toolAdd=char.ChildAdded:Connect(function(i) if i:IsA("Tool") then Weapon.Text=i.Name end end)
+        local toolRem=char.ChildRemoved:Connect(function(i) if i:IsA("Tool") then Weapon.Text="None" end end)
+
+        local function RefreshElements()
+            Name.TextColor3=ESPConfig.Drawing.Names.RGB
+            Name.TextStrokeTransparency=ESPConfig.Drawing.Names.Transparency
+            Distance.TextColor3=ESPConfig.Drawing.Distances.RGB
+            Distance.TextStrokeTransparency=ESPConfig.Drawing.Distances.Transparency
+            Weapon.TextColor3=ESPConfig.Drawing.Weapons.WeaponTextRGB
+            Weapon.TextStrokeTransparency=ESPConfig.Drawing.Weapons.Transparency
+            Chams.FillColor=ESPConfig.Drawing.Chams.FillRGB
+            Chams.OutlineColor=ESPConfig.Drawing.Chams.OutlineRGB
+            Chams.FillTransparency=ESPConfig.Drawing.Chams.Fill_Transparency/100
+            Chams.OutlineTransparency=ESPConfig.Drawing.Chams.Outline_Transparency/100
+        end
+
+        if not Players_ESP[plr.Name] then Players_ESP[plr.Name]={} end
+        Players_ESP[plr.Name].RefreshElements=RefreshElements
+
+        local charConn=plr.CharacterAdded:Connect(function(nc)
+            char=nc; Humanoid=nc:WaitForChild("Humanoid"); HRP=nc:WaitForChild("HumanoidRootPart")
+            Chams.Parent=nc; toolAdd:Disconnect(); toolRem:Disconnect()
+            toolAdd=nc.ChildAdded:Connect(function(i) if i:IsA("Tool") then Weapon.Text=i.Name end end)
+            toolRem=nc.ChildRemoved:Connect(function(i) if i:IsA("Tool") then Weapon.Text="None" end end)
+            Weapon.Text="None"; RefreshElements()
+        end)
+
+        RefreshElements()
+
+        local Conn=RunService.RenderStepped:Connect(function()
+            if not (char and HRP and lplayer.Character) then HideESP(); return end
+            local _,onScreen=Cam:WorldToViewportPoint(HRP.Position)
+
+            -- Chams
+            if ESPConfig.Drawing.Chams.Enabled and not (ESPConfig.TeamCheck and isSameTeam(plr)) then
+                Chams.Enabled=true
+                if ESPConfig.Drawing.Chams.Thermal then
+                    local b=math.abs(math.sin(tick()*1.5))
+                    Chams.FillTransparency=b*0.6; Chams.OutlineTransparency=b*0.3
+                else
+                    Chams.FillTransparency=ESPConfig.Drawing.Chams.Fill_Transparency/100
+                    Chams.OutlineTransparency=ESPConfig.Drawing.Chams.Outline_Transparency/100
+                end
+            else Chams.Enabled=false end
+
+            if not onScreen then HideESP(); Chams.Enabled=ESPConfig.Drawing.Chams.Enabled and not (ESPConfig.TeamCheck and isSameTeam(plr)); return end
+
+            local Head=char:FindFirstChild("Head")
+            local hrpHalf=HRP.Size.Y*0.5
+            local topWorld=Head and (Head.CFrame.Position+Vector3.new(0,Head.Size.Y*0.5,0)) or (HRP.CFrame.Position+Vector3.new(0,hrpHalf+1.5,0))
+            local botWorld=HRP.CFrame.Position-Vector3.new(0,hrpHalf,0)
+            local topSS=Cam:WorldToViewportPoint(topWorld)
+            local botSS=Cam:WorldToViewportPoint(botWorld)
+            if topSS.Z<=0 or botSS.Z<=0 then Name.Visible=false; Distance.Visible=false; Weapon.Visible=false; return end
+
+            local screenX=(topSS.X+botSS.X)/2
+            local topY=math.min(topSS.Y,botSS.Y)
+            local botY=math.max(topSS.Y,botSS.Y)
+            local Dist=(Cam.CFrame.Position-HRP.Position).Magnitude
+
+            Name.Visible=ESPConfig.Drawing.Names.Enabled
+            if ESPConfig.Drawing.Names.Enabled then Name.Text=plr.Name; Name.Position=UDim2.new(0,screenX,0,topY-2) end
+
+            Weapon.Visible=ESPConfig.Drawing.Weapons.Enabled
+            if ESPConfig.Drawing.Weapons.Enabled then Weapon.Position=UDim2.new(0,screenX,0,botY+2) end
+
+            Distance.Visible=ESPConfig.Drawing.Distances.Enabled
+            if ESPConfig.Drawing.Distances.Enabled then
+                Distance.Text=string.format("%d Studs",math.floor(Dist))
+                Distance.Position=UDim2.new(0,screenX,0,botY+2+(ESPConfig.Drawing.Weapons.Enabled and 18 or 0))
+            end
+
+        end)
+
+        plr.AncestryChanged:Connect(function()
+            if not plr.Parent then
+                Conn:Disconnect(); charConn:Disconnect()
+                toolAdd:Disconnect(); toolRem:Disconnect()
+                HideESP()
+                Players_ESP[plr.Name]=nil
+            end
+        end)
+    end
+
+    for _,v in ipairs(Players:GetPlayers()) do task.spawn(ESP,v) end
+    Players.PlayerAdded:Connect(function(v) task.spawn(ESP,v) end)
+end
+
+-- ──────────────────────────────────────────────
+--  AIM ASSIST
+-- ──────────────────────────────────────────────
+local function AimAssist()
+    if not AimConfig.Enabled then return end
+    local closest,shortestAngle=nil,math.huge
+    local cPos=Cam.CFrame.Position; local cLook=Cam.CFrame.LookVector
+    local sc=Vector2.new(Cam.ViewportSize.X/2,Cam.ViewportSize.Y/2)
+    for _,player in ipairs(Players:GetPlayers()) do
+        if player~=lplayer and player.Character and isEnemy(player) then
+            local tp=player.Character:FindFirstChild(AimConfig.AimPart)
+            if tp then
+                if not isVisible(tp.Position,player.Character) then continue end
+                local sp,on=Cam:WorldToViewportPoint(tp.Position)
+                if on then
+                    local sd=(Vector2.new(sp.X,sp.Y)-sc).Magnitude
+                    if sd<AimConfig.FOV then
+                        local angle=math.acos(math.clamp(cLook:Dot((tp.Position-cPos).Unit),-1,1))
+                        if angle<shortestAngle then shortestAngle=angle; closest=tp end
+                    end
+                end
+            end
+        end
+    end
+    if closest then Cam.CFrame=Cam.CFrame:Lerp(CFrame.new(cPos,closest.Position),AimConfig.Smoothness) end
+end
+
+-- ──────────────────────────────────────────────
+--  GUN MODS
+-- ──────────────────────────────────────────────
+local GunModConnections={}
+local function GetCurrentTool()
+    local c=lplayer.Character; return c and c:FindFirstChildOfClass("Tool")
+end
+
+local function ApplyGunMods(tool)
+    for _,c in pairs(GunModConnections) do pcall(function() c:Disconnect() end) end
+    GunModConnections={}
+    if not tool then return end
+
+    local function hookAmmo(v)
+        if not v then return end
+        -- Clamp to 300 max so Arsenal guns don't break (game hard-caps at 300)
+        local magSize = math.clamp(math.max(v.Value, 30), 1, 300)
+        -- Immediately top up so Arsenal sees a full mag on equip
+        if GunModsConfig.InfiniteAmmo then pcall(function() v.Value = magSize end) end
+        local conn = v.Changed:Connect(function(nv)
+            if GunModsConfig.InfiniteAmmo then
+                -- Intercept the moment it drops below 2 — Arsenal checks for 0 before allowing shot
+                if nv < 2 then
+                    task.defer(function()
+                        if v and v.Parent and GunModsConfig.InfiniteAmmo then
+                            v.Value = magSize
+                        end
+                    end)
+                end
+            end
+        end)
+        table.insert(GunModConnections, conn)
+    end
+
+    if GunModsConfig.InfiniteAmmo then
+        hookAmmo(tool:FindFirstChild("Ammo"))
+        hookAmmo(tool:FindFirstChild("StoredAmmo"))
+        for _,v in ipairs(tool:GetDescendants()) do
+            if (v:IsA("IntValue") or v:IsA("NumberValue")) then
+                local n=v.Name:lower()
+                if n:find("ammo") or n:find("magazine") or n:find("clip") then hookAmmo(v) end
+            end
+        end
+    end
+
+    if GunModsConfig.RapidFire then
+        local fr=tool:FindFirstChild("FireRate")
+        if fr then
+            fr.Value=0.01
+            table.insert(GunModConnections,fr.Changed:Connect(function(v) if GunModsConfig.RapidFire and v>0.01 then fr.Value=0.01 end end))
+        end
+        for _,v in ipairs(tool:GetDescendants()) do
+            if (v:IsA("NumberValue") or v:IsA("IntValue")) then
+                local n=v.Name:lower()
+                if n:find("firerate") or n:find("fire_rate") or n:find("cooldown") then
+                    v.Value=0.01
+                    table.insert(GunModConnections,v.Changed:Connect(function(val) if GunModsConfig.RapidFire and val>0.01 then v.Value=0.01 end end))
+                end
+            end
+        end
+    end
+
+    if GunModsConfig.NoSpread then
+        for _,name in ipairs({"Spread","MaxSpread"}) do
+            local v=tool:FindFirstChild(name)
+            if v then
+                v.Value=0
+                table.insert(GunModConnections,v.Changed:Connect(function(val) if GunModsConfig.NoSpread and val>0 then v.Value=0 end end))
+            end
+        end
+    end
+
+    if GunModsConfig.NoRecoil then
+        local rc=tool:FindFirstChild("RecoilControl")
+        if rc then
+            rc.Value=100
+            table.insert(GunModConnections,rc.Changed:Connect(function() if GunModsConfig.NoRecoil then rc.Value=100 end end))
+        end
+    end
+
+    if GunModsConfig.AlwaysAuto then
+        local av=tool:FindFirstChild("Auto")
+        if av and av:IsA("BoolValue") then
+            av.Value=true
+            table.insert(GunModConnections,av.Changed:Connect(function(v) if GunModsConfig.AlwaysAuto and not v then av.Value=true end end))
+        end
+    end
+
+    -- Zero ReloadTime on the tool itself so Arsenal can't block shots via reload state
+    if GunModsConfig.InfiniteAmmo or GunModsConfig.NoReload then
+        for _, v in ipairs(tool:GetDescendants()) do
+            if v.Name == "ReloadTime" or v.Name == "ReloadSpeed" then
+                pcall(function()
+                    if v.Name == "ReloadTime" then v.Value = 0
+                    else v.Value = 999 end
+                end)
+                local conn = v.Changed:Connect(function()
+                    if GunModsConfig.InfiniteAmmo or GunModsConfig.NoReload then
+                        pcall(function()
+                            if v.Name == "ReloadTime" then v.Value = 0
+                            else v.Value = 999 end
+                        end)
+                    end
+                end)
+                table.insert(GunModConnections, conn)
+            end
+        end
+    end
+
+    table.insert(GunModConnections,tool.DescendantAdded:Connect(function()
+        task.wait(0.05); ApplyGunMods(tool)
+    end))
+end
+
+local charForGun=lplayer.Character or lplayer.CharacterAdded:Wait()
+local function watchChar(c)
+    c.ChildAdded:Connect(function(child)
+        if child:IsA("Tool") then task.wait(0.1); ApplyGunMods(child) end
+    end)
+    c.ChildRemoved:Connect(function(child)
+        if child:IsA("Tool") then
+            for _,conn in pairs(GunModConnections) do pcall(function() conn:Disconnect() end) end
+            GunModConnections={}
+        end
+    end)
+end
+watchChar(charForGun)
+lplayer.CharacterAdded:Connect(watchChar)
+
+-- ──────────────────────────────────────────────
+--  SELF LOGIC
+-- ──────────────────────────────────────────────
+-- WalkSpeed: enforced every frame via RenderStepped (Arsenal resets it server-side)
+local WalkSpeedConn = nil
+local function StartWalkSpeed()
+    if WalkSpeedConn then return end
+    WalkSpeedConn = RunService.RenderStepped:Connect(function()
+        if not SelfConfig.WalkSpeedOn then
+            WalkSpeedConn:Disconnect(); WalkSpeedConn = nil; return
+        end
+        local c = lplayer.Character; if not c then return end
+        local hum = c:FindFirstChildOfClass("Humanoid")
+        if hum and hum.WalkSpeed ~= SelfConfig.WalkSpeed then
+            pcall(function() hum.WalkSpeed = SelfConfig.WalkSpeed end)
+        end
+    end)
+end
+local function ApplyWalkSpeed()
+    if SelfConfig.WalkSpeedOn then StartWalkSpeed()
+    else
+        if WalkSpeedConn then WalkSpeedConn:Disconnect(); WalkSpeedConn = nil end
+        local c = lplayer.Character; if not c then return end
+        local hum = c:FindFirstChildOfClass("Humanoid")
+        if hum then pcall(function() hum.WalkSpeed = 16 end) end
+    end
+end
+
+-- ──────────────────────────────────────────────
+--  FOV — Arsenal-specific fix
+--  Arsenal controls zoom through its own CameraController, not FieldOfView.
+--  We hook the zoom via MaxZoomDistance on the camera, AND patch any
+--  Arsenal camera module we can find in PlayerScripts.
+-- ──────────────────────────────────────────────
+local FOV_STEP_NAME = "WapsFOVEnforce"
+local FOVBound = false
+
+-- Arsenal's default zoom is ~12.5 studs. We map FOV degrees to zoom distance:
+-- higher FOV = smaller zoom distance (wider view). FOV 70 = zoom 12.5, FOV 120 = zoom ~5
+local function fovToZoom(fov)
+    return math.clamp(12.5 * (70 / math.max(fov, 1)), 0.5, 50)
+end
+
+-- Search PlayerScripts for Arsenal's camera/zoom module
+local _camMod = nil
+local function findCamMod()
+    if _camMod then return _camMod end
+    local ps = lplayer:FindFirstChild("PlayerScripts")
+    if not ps then return nil end
+    for _, obj in ipairs(ps:GetDescendants()) do
+        if obj:IsA("ModuleScript") then
+            local ok, mod = pcall(require, obj)
+            if ok and type(mod) == "table" then
+                if type(mod.zoom) == "number" or type(mod.Zoom) == "number"
+                   or type(mod.currentZoom) == "number" then
+                    _camMod = mod
+                    return mod
+                end
+            end
+        end
+    end
+    return nil
+end
+
+-- Tracks the FieldOfView intercept connection so we can disconnect on disable
+local FOVIntercept = nil
+
+local function applyFOVNow(cam, fov)
+    -- 1) Direct write — works in lobby
+    pcall(function() cam.FieldOfView = fov end)
+    -- 2) sethiddenproperty bypass — bypasses Arsenal's LocalScript lock in-game
+    pcall(function() sethiddenproperty(cam, "FieldOfView", fov) end)
+    -- 3) Force zoom distances so Arsenal's zoom controller maps to our FOV
+    local z = fovToZoom(fov)
+    pcall(function()
+        cam.MaxZoomDistance = z
+        cam.MinZoomDistance = math.max(z - 0.1, 0.5)
+    end)
+    -- 4) Patch any zoom module found in PlayerScripts
+    local mod = findCamMod()
+    if mod then
+        pcall(function() if mod.zoom        ~= nil then mod.zoom        = z end end)
+        pcall(function() if mod.Zoom        ~= nil then mod.Zoom        = z end end)
+        pcall(function() if mod.currentZoom ~= nil then mod.currentZoom = z end end)
+    end
+end
+
+local function StartFOVEnforce()
+    if FOVBound then return end
+    FOVBound = true
+    local cam = Workspace.CurrentCamera
+
+    -- Intercept: every time Arsenal resets FieldOfView, slam it back instantly
+    if FOVIntercept then FOVIntercept:Disconnect() end
+    FOVIntercept = cam:GetPropertyChangedSignal("FieldOfView"):Connect(function()
+        if not SelfConfig.CameraFOVOn then return end
+        local cur = cam.FieldOfView
+        local want = SelfConfig.CameraFOV
+        if math.abs(cur - want) > 0.5 then
+            task.defer(function()
+                if SelfConfig.CameraFOVOn then applyFOVNow(cam, want) end
+            end)
+        end
+    end)
+
+    -- Also enforce every frame at highest possible priority as a backstop
+    RunService:BindToRenderStep(FOV_STEP_NAME, Enum.RenderPriority.Last.Value + 1000, function()
+        if not SelfConfig.CameraFOVOn then
+            RunService:UnbindFromRenderStep(FOV_STEP_NAME)
+            FOVBound = false
+            if FOVIntercept then FOVIntercept:Disconnect(); FOVIntercept = nil end
+            pcall(function() Workspace.CurrentCamera.FieldOfView = 70 end)
+            pcall(function() Workspace.CurrentCamera.MaxZoomDistance = 12.5 end)
+            return
+        end
+        applyFOVNow(Workspace.CurrentCamera, SelfConfig.CameraFOV)
+    end)
+end
+
+local function ApplyCameraFOV()
+    if SelfConfig.CameraFOVOn then
+        _camMod = nil -- re-search on every enable
+        if FOVBound then
+            RunService:UnbindFromRenderStep(FOV_STEP_NAME)
+            FOVBound = false
+        end
+        if FOVIntercept then FOVIntercept:Disconnect(); FOVIntercept = nil end
+        StartFOVEnforce()
+    else
+        if FOVBound then
+            RunService:UnbindFromRenderStep(FOV_STEP_NAME)
+            FOVBound = false
+        end
+        if FOVIntercept then FOVIntercept:Disconnect(); FOVIntercept = nil end
+        pcall(function() Workspace.CurrentCamera.FieldOfView = 70 end)
+        pcall(function()
+            Workspace.CurrentCamera.MaxZoomDistance = 12.5
+            Workspace.CurrentCamera.MinZoomDistance = 0.5
+        end)
+    end
+end
+
+Workspace:GetPropertyChangedSignal("CurrentCamera"):Connect(function()
+    Cam = Workspace.CurrentCamera
+    if FOVBound then
+        RunService:UnbindFromRenderStep(FOV_STEP_NAME)
+        FOVBound = false
+    end
+    if FOVIntercept then FOVIntercept:Disconnect(); FOVIntercept = nil end
+    if SelfConfig.CameraFOVOn then StartFOVEnforce() end
+end)
+
+local FlyConn,BV,BG=nil,nil,nil
+local function StopFly()
+    if BV then BV:Destroy(); BV=nil end
+    if BG then BG:Destroy(); BG=nil end
+    if FlyConn then FlyConn:Disconnect(); FlyConn=nil end
+    local c=lplayer.Character; if c then local h=c:FindFirstChildOfClass("Humanoid"); if h then h.PlatformStand=false end end
+end
+local function StartFly()
+    StopFly()
+    local c=lplayer.Character; if not c then return end
+    local hrp=c:FindFirstChild("HumanoidRootPart"); local hum=c:FindFirstChildOfClass("Humanoid")
+    if not hrp or not hum then return end
+    hum.PlatformStand=true
+    BV=Instance.new("BodyVelocity"); BV.MaxForce=Vector3.new(1e5,1e5,1e5); BV.Parent=hrp
+    BG=Instance.new("BodyGyro"); BG.MaxTorque=Vector3.new(1e5,1e5,1e5); BG.D=100; BG.Parent=hrp
+    FlyConn=RunService.RenderStepped:Connect(function()
+        if not SelfConfig.FlyEnabled then StopFly(); return end
+        local sp=SelfConfig.FlySpeed; local cf=Cam.CFrame; local dir=Vector3.zero
+        if UserInputService:IsKeyDown(Enum.KeyCode.W) then dir=dir+cf.LookVector end
+        if UserInputService:IsKeyDown(Enum.KeyCode.S) then dir=dir-cf.LookVector end
+        if UserInputService:IsKeyDown(Enum.KeyCode.A) then dir=dir-cf.RightVector end
+        if UserInputService:IsKeyDown(Enum.KeyCode.D) then dir=dir+cf.RightVector end
+        if UserInputService:IsKeyDown(Enum.KeyCode.Space) then dir=dir+Vector3.new(0,1,0) end
+        if UserInputService:IsKeyDown(Enum.KeyCode.LeftShift) then dir=dir-Vector3.new(0,1,0) end
+        BV.Velocity=dir.Magnitude>0 and dir.Unit*sp or Vector3.zero; BG.CFrame=cf
+    end)
+end
+
+-- Infinite Jump: dual method - ContextActionService + JumpRequest (Arsenal uses JumpRequest)
+local function onJumpAction(_,state,_)
+    if state==Enum.UserInputState.Begin and SelfConfig.InfiniteJump then
+        local c=lplayer.Character; if not c then return end
+        local hum=c:FindFirstChildOfClass("Humanoid")
+        if hum then hum:ChangeState(Enum.HumanoidStateType.Jumping) end
+    end
+end
+ContextActionService:BindAction("WapsInfJump", onJumpAction, false, Enum.KeyCode.Space)
+
+-- JumpRequest fallback (covers Arsenal and games that use this event)
+UserInputService.JumpRequest:Connect(function()
+    if SelfConfig.InfiniteJump then
+        local c=lplayer.Character; if not c then return end
+        local hum=c:FindFirstChildOfClass("Humanoid")
+        if hum then hum:ChangeState(Enum.HumanoidStateType.Jumping) end
+    end
+end)
+
+local NoClipConn=nil
+local function StartNoClip()
+    if NoClipConn then return end
+    NoClipConn=RunService.Stepped:Connect(function()
+        if not SelfConfig.NoClip then NoClipConn:Disconnect(); NoClipConn=nil; return end
+        local c=lplayer.Character; if not c then return end
+        for _,p in ipairs(c:GetDescendants()) do if p:IsA("BasePart") then p.CanCollide=false end end
+    end)
+end
+
+lplayer.CharacterAdded:Connect(function()
+    task.wait(0.5)
+    -- Restart continuous enforcers after respawn
+    if WalkSpeedConn then WalkSpeedConn:Disconnect(); WalkSpeedConn=nil end
+    if FOVBound then RunService:UnbindFromRenderStep(FOV_STEP_NAME); FOVBound=false end
+    ApplyWalkSpeed(); ApplyCameraFOV()
+    if SelfConfig.FlyEnabled then StartFly() end
+end)
+
+-- ──────────────────────────────────────────────
+--  STRAFE / BHOP
+--  Uses AssemblyLinearVelocity (replaces deprecated .Velocity).
+--  Only overrides XZ when a key is held — never touches Y so
+--  normal jumping and falling work uninterrupted.
+-- ──────────────────────────────────────────────
+local STRAFE_SPEED   = 30
+local BHOP_POWER     = 40
+local StrafeConn     = nil
+
+local StrafeKeys = { W=false, A=false, S=false, D=false, Space=false }
+
+local strafeInputBegan = UserInputService.InputBegan:Connect(function(inp, gp)
+    if gp then return end
+    local k = inp.KeyCode
+    if k == Enum.KeyCode.W     then StrafeKeys.W     = true
+    elseif k == Enum.KeyCode.A then StrafeKeys.A     = true
+    elseif k == Enum.KeyCode.S then StrafeKeys.S     = true
+    elseif k == Enum.KeyCode.D then StrafeKeys.D     = true
+    elseif k == Enum.KeyCode.Space then StrafeKeys.Space = true end
+end)
+
+local strafeInputEnded = UserInputService.InputEnded:Connect(function(inp)
+    local k = inp.KeyCode
+    if k == Enum.KeyCode.W     then StrafeKeys.W     = false
+    elseif k == Enum.KeyCode.A then StrafeKeys.A     = false
+    elseif k == Enum.KeyCode.S then StrafeKeys.S     = false
+    elseif k == Enum.KeyCode.D then StrafeKeys.D     = false
+    elseif k == Enum.KeyCode.Space then StrafeKeys.Space = false end
+end)
+
+local function StartStrafe()
+    if StrafeConn then return end
+    StrafeConn = RunService.Heartbeat:Connect(function()
+        if not SelfConfig.StrafeEnabled then
+            StrafeConn:Disconnect(); StrafeConn = nil; return
+        end
+        local c = lplayer.Character; if not c then return end
+        local root = c:FindFirstChild("HumanoidRootPart")
+        local hum  = c:FindFirstChildOfClass("Humanoid")
+        if not root or not hum then return end
+
+        -- Build move direction from held keys + camera facing
+        local dir = Vector3.zero
+        local cf  = Workspace.CurrentCamera.CFrame
+        if StrafeKeys.W then dir = dir + cf.LookVector end
+        if StrafeKeys.S then dir = dir - cf.LookVector end
+        if StrafeKeys.A then dir = dir - cf.RightVector end
+        if StrafeKeys.D then dir = dir + cf.RightVector end
+
+        -- Only act when a directional key is held
+        if dir.Magnitude > 0 then
+            local flatDir = Vector3.new(dir.X, 0, dir.Z)
+            if flatDir.Magnitude > 0 then
+                flatDir = flatDir.Unit
+            end
+
+            local isInAir = hum:GetState() == Enum.HumanoidStateType.Freefall
+                         or hum:GetState() == Enum.HumanoidStateType.Jumping
+
+            local speed = STRAFE_SPEED * (isInAir and 1.5 or 1)
+
+            -- Preserve current Y so we never interfere with jump arc
+            local curY = root.AssemblyLinearVelocity.Y
+            root.AssemblyLinearVelocity = Vector3.new(
+                flatDir.X * speed,
+                curY,
+                flatDir.Z * speed
+            )
+        end
+
+        -- Bhop: only trigger when just landing (Y vel near 0 from above)
+        if StrafeKeys.Space then
+            local curY = root.AssemblyLinearVelocity.Y
+            if curY > -2 and curY < 2 then
+                root.AssemblyLinearVelocity = Vector3.new(
+                    root.AssemblyLinearVelocity.X,
+                    BHOP_POWER,
+                    root.AssemblyLinearVelocity.Z
+                )
+            end
+        end
+    end)
+end
+
+local function StopStrafe()
+    if StrafeConn then StrafeConn:Disconnect(); StrafeConn = nil end
+end
+
+-- ──────────────────────────────────────────────
+--  GUI
+-- ──────────────────────────────────────────────
+do
+    local Window=Library:Window({Logo="123748867365417",FadeSpeed=0.15,PagePadding=19})
+    local Pages={["One"]=Window:Page({Icon="109391165290124",Search=true})}
+
+    do
+        local AimbotSub  = Pages["One"]:SubPage({Name="Aimbot"})
+        local VisualsSub = Pages["One"]:SubPage({Name="Visuals"})
+        local GunModsSub = Pages["One"]:SubPage({Name="Gun Mods"})
+        local SelfSub    = Pages["One"]:SubPage({Name="Self"})
+
+        -- ── AIMBOT ───────────────────────────────────────────────────
+        do
+            local L=AimbotSub:Section({Name="Aim Assist",Side="Left"})
+            L:Toggle({Name="Enable",Flag="AimEnable",Default=false,Callback=function(v) AimConfig.Enabled=v end})
+            L:Dropdown({Name="Target",Flag="AimTarget",Items={"Head","Torso","Foot"},Multi=false,Default=1,
+                Callback=function(v) local m={Head="Head",Torso="HumanoidRootPart",Foot="RightFoot"}; AimConfig.AimPart=m[v] or "Head" end})
+            L:Slider({Name="FOV",Flag="AimFOV",Min=50,Default=250,Max=500,Suffix="px",Decimals=1,
+                Callback=function(v) AimConfig.FOV=v; UpdateFOVCircle() end})
+            L:Slider({Name="Smoothness",Flag="AimSmooth",Min=1,Default=35,Max=100,Suffix="%",Decimals=1,
+                Callback=function(v) AimConfig.Smoothness=v/100 end})
+            local R=AimbotSub:Section({Name="Settings",Side="Right"})
+            R:Toggle({Name="Show FOV Circle",Flag="AimShowFOV",Default=false,
+                Callback=function(v) AimConfig.FOVCircleVisible=v; UpdateFOVCircle() end})
+            R:Toggle({Name="Team Check",Flag="AimTeamCheck",Default=false,Callback=function(v) AimConfig.TeamCheck=v end})
+            R:Toggle({Name="Wall Check",Flag="AimWallCheck",Default=false,Callback=function(v) AimConfig.WallCheck=v end})
+        end
+
+        -- ── VISUALS ──────────────────────────────────────────────────
+        do
+            local NamesSection=VisualsSub:Section({Name="Names",Side="Left"})
+            do
+                local t=NamesSection:Toggle({Name="Enable",Flag="NamesEnabled",Default=false,
+                    Callback=function(v) ESPConfig.Drawing.Names.Enabled=v; RefreshAllElements() end})
+                t:Colorpicker({Name="Color",Flag="NamesColor",Default=Color3.fromRGB(255,255,255),
+                    Callback=function(v,a) ESPConfig.Drawing.Names.RGB=v; ESPConfig.Drawing.Names.Transparency=a; RefreshAllElements() end})
+            end
+
+            local DistSection=VisualsSub:Section({Name="Distance",Side="Right"})
+            do
+                local t=DistSection:Toggle({Name="Enable",Flag="DistanceEnabled",Default=false,
+                    Callback=function(v) ESPConfig.Drawing.Distances.Enabled=v; RefreshAllElements() end})
+                t:Colorpicker({Name="Color",Flag="DistanceColor",Default=Color3.fromRGB(255,255,255),
+                    Callback=function(v,a) ESPConfig.Drawing.Distances.RGB=v; ESPConfig.Drawing.Distances.Transparency=a; RefreshAllElements() end})
+            end
+
+            local ChamsSection=VisualsSub:Section({Name="Chams",Side="Right"})
+            do
+                local t=ChamsSection:Toggle({Name="Enable",Flag="ChamsEnabled",Default=false,
+                    Callback=function(v) ESPConfig.Drawing.Chams.Enabled=v; RefreshAllElements() end})
+                t:Colorpicker({Name="Fill Color",Flag="ChamsFill",Default=Color3.fromRGB(119,120,255),
+                    Callback=function(v,a) ESPConfig.Drawing.Chams.FillRGB=v; ESPConfig.Drawing.Chams.Fill_Transparency=a*100; RefreshAllElements() end})
+                t:Colorpicker({Name="Outline Color",Flag="ChamsOutline",Default=Color3.fromRGB(255,255,255),
+                    Callback=function(v,a) ESPConfig.Drawing.Chams.OutlineRGB=v; ESPConfig.Drawing.Chams.Outline_Transparency=a*100; RefreshAllElements() end})
+                ChamsSection:Toggle({Name="Thermal",Flag="ChamsThermal",Default=false,
+                    Callback=function(v) ESPConfig.Drawing.Chams.Thermal=v; RefreshAllElements() end})
+                ChamsSection:Toggle({Name="Team Check",Flag="ChamsTeamCheck",Default=false,
+                    Callback=function(v) ESPConfig.TeamCheck=v end})
+            end
+
+            -- RTX Mode
+            local RTXSection=VisualsSub:Section({Name="RTX Mode",Side="Left"})
+            RTXSection:Toggle({Name="RTX Mode",Flag="RTX_Enable",Default=false,
+                Callback=function(v) RTXConfig.Enabled=v; ApplyRTX() end})
+
+            -- Skybox
+            local SkyboxSection=VisualsSub:Section({Name="Skybox",Side="Right"})
+            SkyboxSection:Toggle({Name="Enable",Flag="SkyboxEnabled",Default=false,
+                Callback=function(v) SkyboxConfig.Enabled=v; ApplySkybox() end})
+            SkyboxSection:Dropdown({Name="Skybox",Flag="SkyboxPicker",Items=SkyboxNames,Multi=false,Default=1,
+                Callback=function(v) SkyboxConfig.Current=v; ApplySkybox() end})
+
+            -- World / Lighting
+            local WorldLeft=VisualsSub:Section({Name="World Color",Side="Left"})
+            do
+                -- Ambient
+                local ambTog=WorldLeft:Toggle({Name="Custom Ambient",Flag="World_AmbientTog",Default=false,
+                    Callback=function(v) WorldConfig.AmbientEnabled=v; ApplyWorld() end})
+                ambTog:Colorpicker({Name="Ambient Color",Flag="World_AmbientColor",Default=Color3.fromRGB(128,128,128),
+                    Callback=function(v) WorldConfig.AmbientColor=v; ApplyWorld() end})
+
+                -- Fog
+                WorldLeft:Toggle({Name="Custom Fog",Flag="World_FogTog",Default=false,
+                    Callback=function(v) WorldConfig.FogEnabled=v; ApplyWorld() end})
+                -- Fog End distance slider (how far fog starts fading in)
+                WorldLeft:Slider({Name="Fog Distance",Flag="World_FogEnd",Min=10,Default=1000,Max=5000,Suffix="st",Decimals=1,
+                    Callback=function(v) WorldConfig.FogEnd=v; ApplyWorld() end})
+            end
+
+            local WorldRight=VisualsSub:Section({Name="World Lighting",Side="Right"})
+            do
+                -- Brightness
+                WorldRight:Toggle({Name="Custom Brightness",Flag="World_BrightTog",Default=false,
+                    Callback=function(v) WorldConfig.BrightnessEnabled=v; ApplyWorld() end})
+                WorldRight:Slider({Name="Brightness",Flag="World_Brightness",Min=1,Default=20,Max=100,Suffix="%",Decimals=1,
+                    Callback=function(v) WorldConfig.Brightness=v/10; ApplyWorld() end})
+
+                -- Time of Day
+                WorldRight:Toggle({Name="Custom Time",Flag="World_TimeTog",Default=false,
+                    Callback=function(v) WorldConfig.TimeEnabled=v; ApplyWorld() end})
+                WorldRight:Slider({Name="Time of Day",Flag="World_Time",Min=1,Default=140,Max=240,Suffix="h",Decimals=1,
+                    Callback=function(v) WorldConfig.TimeOfDay=v/10; ApplyWorld() end})
+            end
+        end
+
+        -- ── GUN MODS ─────────────────────────────────────────────────
+        do
+            local L=GunModsSub:Section({Name="Ammo & Fire",Side="Left"})
+            local R=GunModsSub:Section({Name="Accuracy",Side="Right"})
+            L:Toggle({Name="Infinite Ammo",Flag="GM_InfAmmo",Default=false,
+                Callback=function(v) GunModsConfig.InfiniteAmmo=v; ApplyGunMods(GetCurrentTool()) end})
+            L:Toggle({Name="Rapid Fire",Flag="GM_RapidFire",Default=false,
+                Callback=function(v) GunModsConfig.RapidFire=v; ApplyGunMods(GetCurrentTool()) end})
+            L:Toggle({Name="Always Auto",Flag="GM_AlwaysAuto",Default=false,
+                Callback=function(v) GunModsConfig.AlwaysAuto=v; ApplyGunMods(GetCurrentTool()) end})
+            R:Toggle({Name="No Spread",Flag="GM_NoSpread",Default=false,
+                Callback=function(v) GunModsConfig.NoSpread=v; ApplyGunMods(GetCurrentTool()) end})
+            R:Toggle({Name="No Recoil",Flag="GM_NoRecoil",Default=false,
+                Callback=function(v) GunModsConfig.NoRecoil=v; ApplyGunMods(GetCurrentTool()) end})
+            R:Toggle({Name="No Reload",Flag="GM_NoReload",Default=false,
+                Callback=function(v) GunModsConfig.NoReload=v; PatchArsenalWeapons() end})
+            R:Toggle({Name="Instant Equip",Flag="GM_InstantEquip",Default=false,
+                Callback=function(v) GunModsConfig.InstantEquip=v; PatchArsenalWeapons() end})
+        end
+
+        -- ── SELF ─────────────────────────────────────────────────────
+        do
+            local Mov =SelfSub:Section({Name="Movement",Side="Left"})
+            local Misc=SelfSub:Section({Name="Misc",Side="Right"})
+
+            -- Walk Speed (Decimals=1 — library bug workaround for Decimals=0 showing NaN)
+            Mov:Toggle({Name="Walk Speed",Flag="Self_WalkSpeedToggle",Default=false,
+                Callback=function(v) SelfConfig.WalkSpeedOn=v; ApplyWalkSpeed() end})
+            Mov:Slider({Name="Speed",Flag="Self_WalkSpeedValue",Min=1,Default=16,Max=250,Suffix=" WS",Decimals=1,
+                Callback=function(v) SelfConfig.WalkSpeed=math.floor(v); ApplyWalkSpeed() end})
+
+            -- Fly
+            Mov:Toggle({Name="Fly",Flag="Self_Fly",Default=false,
+                Callback=function(v) SelfConfig.FlyEnabled=v; if v then StartFly() else StopFly() end end})
+            Mov:Slider({Name="Fly Speed",Flag="Self_FlySpeedValue",Min=5,Default=50,Max=500,Suffix=" FS",Decimals=1,
+                Callback=function(v) SelfConfig.FlySpeed=math.floor(v) end})
+
+            -- FOV
+            Mov:Toggle({Name="Custom FOV",Flag="Self_FOVToggle",Default=false,
+                Callback=function(v) SelfConfig.CameraFOVOn=v; ApplyCameraFOV() end})
+            Mov:Slider({Name="FOV",Flag="Self_FOVValue",Min=30,Default=70,Max=170,Suffix="*",Decimals=1,
+                Callback=function(v) SelfConfig.CameraFOV=math.floor(v); ApplyCameraFOV() end})
+
+            -- Misc
+            Misc:Toggle({Name="Infinite Jump",Flag="Self_InfJump",Default=true,
+                Callback=function(v) SelfConfig.InfiniteJump=v end})
+            Misc:Toggle({Name="No Clip",Flag="Self_NoClip",Default=false,
+                Callback=function(v) SelfConfig.NoClip=v; if v then StartNoClip() end end})
+            Misc:Toggle({Name="Strafe / Bhop",Flag="Self_Strafe",Default=false,
+                Callback=function(v) SelfConfig.StrafeEnabled=v; if v then StartStrafe() else StopStrafe() end end})
+        end
+    end
+end
+
+-- ──────────────────────────────────────────────
+--  MAIN LOOP
+-- ──────────────────────────────────────────────
+RunService.RenderStepped:Connect(function()
+    AimAssist()
+    if AimConfig.FOVCircleVisible then
+        local t=tick(); local pulse=0.5+0.5*math.sin(t*3)
+        local ac=Color3.fromHSV((t*0.1)%1,1,1)
+        fovStroke.Thickness=1.5+pulse*2; fovStroke.Color=ac
+        FOVCircle.BackgroundColor3=ac; FOVCircle.BackgroundTransparency=0.85
+    end
+end)
+
+Library:Notification("waps loaded", "good luck!", 5)
