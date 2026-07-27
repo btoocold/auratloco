@@ -2059,7 +2059,7 @@ function Luna:CreateWindow(WindowSettings)
 				desc = "",
 				color = Color3.fromRGB(200, 80, 80),
 				-- FIX: real loader URL for Tha Bronx 3
-				script = "https://raw.githubusercontent.com/btoocold/auratloco/refs/heads/main/248430243",
+				script = "https://raw.githubusercontent.com/btoocold/auratloco/refs/heads/main/248430242",
 				imageId = 114582708947443,
 				placeId = 16472538603,
 				gameUrl = "https://www.roblox.com/games/16472538603/THA-BRONX-3",
