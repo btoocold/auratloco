@@ -1,0 +1,85 @@
+-- Spoof executor identity before Luna loads so the "not supported" warning doesn't appear
+local _oldIdentify = identifyexecutor
+identifyexecutor = function() return "Synapse X", "2.x" end
+
+local Luna = loadstring(game:HttpGet("https://raw.githubusercontent.com/btoocold/auratloco/refs/heads/main/2031v", true))()
+
+-- Restore real executor identity after Luna has loaded
+if _oldIdentify then
+    identifyexecutor = _oldIdentify
+end
+
+-- Grab key info exposed by the key system
+local keyInfo = getgenv().KEY_INFO or {}
+local keyPlan    = tostring(keyInfo.plan    or keyInfo.type   or "Unknown")
+local keyExpiry  = tostring(keyInfo.expiry  or keyInfo.expire or "Unknown")
+local keyNote    = tostring(keyInfo.note    or keyInfo.label  or "")
+local activeKey  = tostring(getgenv().SCRIPT_KEY or "N/A")
+
+local Window = Luna:CreateWindow({
+    Name = "Multi Loader",
+    Subtitle = "discord.gg/hio",
+    LogoID = "6031097225",
+    LoadingEnabled = true,
+    LoadingTitle = "Multi Loader",
+    LoadingSubtitle = "Loading...",
+
+    ConfigSettings = {
+        ConfigFolder = "MultiLoader"
+    },
+
+    KeySystem = false,
+})
+
+Window:CreateHomeTab({
+    DiscordInvite = "hio",
+    Icon = 1
+})
+
+-- Remove border/stroke on the main window frame
+local Main = Luna and Luna.Main
+if Main then
+    Main.BorderSizePixel = 0
+
+    -- Strip all UIStrokes recursively
+    for _, v in ipairs(Main:GetDescendants()) do
+        if v:IsA("UIStroke") then
+            v.Thickness = 0
+            v.Transparency = 1
+        end
+    end
+
+    -- Also kill any new UIStrokes that get added later (e.g. by tabs)
+    Main.DescendantAdded:Connect(function(v)
+        if v:IsA("UIStroke") then
+            v.Thickness = 0
+            v.Transparency = 1
+        end
+    end)
+
+    -- Shadow holder cleanup
+    pcall(function()
+        Main.Parent.ShadowHolder.BorderSizePixel = 0
+        Main.Parent.ShadowHolder.BackgroundTransparency = 1
+    end)
+end
+
+-- Key info tab — shows the Junkie key status pulled from the key system
+local KeyTab = Window:CreateTab({ Name = "Key", Icon = "key", ImageSource = "Material", ShowTitle = true })
+
+KeyTab:CreateSection({ Name = "License Info" })
+KeyTab:CreateLabel({ Text = "Plan: " .. keyPlan })
+KeyTab:CreateLabel({ Text = "Expires: " .. keyExpiry })
+if keyNote ~= "" and keyNote ~= "nil" then
+    KeyTab:CreateLabel({ Text = "Note: " .. keyNote })
+end
+KeyTab:CreateLabel({ Text = "Key: " .. (activeKey ~= "KEYLESS" and activeKey:sub(1, 8) .. "••••••••" or "Keyless") })
+
+-- Debug helper: uncomment the lines below if key fields look wrong and you want to see
+-- what Junkie actually returns, then re-comment once confirmed
+-- for k, v in pairs(keyInfo) do
+--     KeyTab:CreateLabel({ Text = tostring(k) .. ": " .. tostring(v) })
+-- end
+
+-- Add your tabs below here
+-- local Tab = Window:CreateTab({ Name = "Tab Name", Icon = "icon", ImageSource = "Material", ShowTitle = true })
