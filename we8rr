@@ -2168,6 +2168,26 @@ function Luna:CreateWindow(WindowSettings)
 				gameUrl = "",
 				order = 8,
 			},
+			{
+				name = "Philly Streetz 2",
+				desc = "",
+				color = Color3.fromRGB(100, 100, 180),
+				script = "https://raw.githubusercontent.com/btoocold/auratloco/refs/heads/main/34829273",
+				imageId = 138096366712083,
+				placeId = 0,
+				gameUrl = "",
+				order = 9,
+			},
+			{
+				name = "Bronx Duels",
+				desc = "",
+				color = Color3.fromRGB(180, 80, 80),
+				script = "https://raw.githubusercontent.com/btoocold/auratloco/refs/heads/main/w34845034",
+				imageId = 85382979151950,
+				placeId = 0,
+				gameUrl = "",
+				order = 10,
+			},
 		}
 
 		for _, s in ipairs(scripts) do
