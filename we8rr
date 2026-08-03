@@ -2137,6 +2137,7 @@ function Luna:CreateWindow(WindowSettings)
 				placeId = 76427445314955,
 				gameUrl = "https://www.roblox.com/games/76427445314955/Vice-City-2",
 				order = 5,
+				status = "semi",
 			},
 			{
 				name = "Arcade Basketball",
@@ -2233,9 +2234,12 @@ function Luna:CreateWindow(WindowSettings)
 			statusRowLayout.Padding = UDim.new(0, 5)
 			statusRowLayout.SortOrder = Enum.SortOrder.LayoutOrder
 
+			local _statusColor = s.status == "semi" and Color3.fromRGB(255, 165, 0) or Color3.fromRGB(52, 211, 98)
+			local _statusText = s.status == "semi" and "Semi Working" or "Online"
+
 			local statusDot = Instance.new("Frame")
 			statusDot.Parent = statusRow
-			statusDot.BackgroundColor3 = Color3.fromRGB(52, 211, 98)
+			statusDot.BackgroundColor3 = _statusColor
 			statusDot.Size = UDim2.new(0, 6, 0, 6)
 			statusDot.BorderSizePixel = 0
 			statusDot.ZIndex = 3
@@ -2245,12 +2249,12 @@ function Luna:CreateWindow(WindowSettings)
 			local statusLabel = Instance.new("TextLabel")
 			statusLabel.Parent = statusRow
 			statusLabel.BackgroundTransparency = 1
-			statusLabel.Size = UDim2.new(0, 50, 1, 0)
+			statusLabel.Size = UDim2.new(0, 80, 1, 0)
 			statusLabel.Font = Enum.Font.GothamMedium
 			statusLabel.TextSize = 10
-			statusLabel.TextColor3 = Color3.fromRGB(52, 211, 98)
+			statusLabel.TextColor3 = _statusColor
 			statusLabel.TextXAlignment = Enum.TextXAlignment.Left
-			statusLabel.Text = "Online"
+			statusLabel.Text = _statusText
 			statusLabel.ZIndex = 3
 			statusLabel.LayoutOrder = 2
 
