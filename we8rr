@@ -2190,7 +2190,7 @@ function Luna:CreateWindow(WindowSettings)
 				order = 10,
 			},
 			{
-				name = "bloxfruits",
+				name = "BloxFruits",
 				desc = "",
 				color = Color3.fromRGB(255, 165, 0),
 				script = "https://raw.githubusercontent.com/weyweow8eajfamdkau/orujfe/refs/heads/main/wejjw%5B34",
