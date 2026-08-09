@@ -2189,6 +2189,16 @@ function Luna:CreateWindow(WindowSettings)
 				gameUrl = "",
 				order = 10,
 			},
+			{
+				name = "bloxfruits",
+				desc = "",
+				color = Color3.fromRGB(255, 165, 0),
+				script = "https://raw.githubusercontent.com/weyweow8eajfamdkau/orujfe/refs/heads/main/wejjw%5B34",
+				imageId = 138324600377590,
+				placeId = 0,
+				gameUrl = "",
+				order = 11,
+			},
 		}
 
 		for _, s in ipairs(scripts) do
