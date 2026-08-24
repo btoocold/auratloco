@@ -1185,6 +1185,8 @@ local aimbot       = {
     lockedTarget = nil,
     smoothCF = nil,
     visibleOnly = false,
+    maxDist = 500,
+    fovOnly = false,
 }
 local backshoot    = { enabled=false, connection=nil, target=nil, origCFrame=nil }
 
@@ -2250,25 +2252,37 @@ local function getAimbotScreenPoint()
 end
 
 local function closesttocursor()
-    local best, bestDist = nil, aimbot.fovRadius
+    local fovLimit = aimbot.fovOnly and aimbot.fovRadius or math.huge
+    local best, bestDist = nil, fovLimit
     local mp = getAimbotScreenPoint()
     if not mp then
         return nil
     end
     local cam = workspace.CurrentCamera or Camera
+    local myChar = LocalPlayer.Character
+    local myRoot = myChar and myChar:FindFirstChild("HumanoidRootPart")
     for _, p in ipairs(Players:GetPlayers()) do
         if p ~= LocalPlayer and p.Character then
             local part = p.Character:FindFirstChild(aimbot.targetPart)
             if part and part:IsDescendantOf(workspace) then
+                -- Max world-space distance check
+                if myRoot then
+                    local worldDist = (part.Position - myRoot.Position).Magnitude
+                    if worldDist > aimbot.maxDist then
+                        continue
+                    end
+                end
                 local scr, on = worldToScreen(part.Position, cam)
                 if on then
                     local dx = scr.X - mp.X
                     local dy = scr.Y - mp.Y
                     local dist = math.sqrt(dx * dx + dy * dy)
+                    -- If fovOnly, reject targets outside the FOV circle
+                    if aimbot.fovOnly and dist > aimbot.fovRadius then
+                        continue
+                    end
                     if dist < bestDist then
                         if aimbot.visibleOnly then
-                            local myChar = LocalPlayer.Character
-                            local myRoot = myChar and myChar:FindFirstChild("HumanoidRootPart")
                             if myRoot then
                                 local params = RaycastParams.new()
                                 params.FilterDescendantsInstances = {myChar, p.Character}
@@ -2277,15 +2291,12 @@ local function closesttocursor()
                                 local distance = toTarget.Magnitude
                                 local result = workspace:Raycast(myRoot.Position, toTarget.Unit * distance, params)
                                 if not result then
-                                    -- No obstacle hit = target is visible
                                     bestDist = dist
                                     best = part
                                 elseif result.Instance and (result.Instance:IsDescendantOf(p.Character) or result.Instance == part) then
-                                    -- Hit the target itself = visible
                                     bestDist = dist
                                     best = part
                                 end
-                                -- else: hit a wall/obstacle, skip
                             else
                                 bestDist = dist
                                 best = part
@@ -2369,6 +2380,35 @@ local function stepAimbot(dt)
     if not myHead then
         clearAimbotLock()
         return
+    end
+
+    -- Drop lock if target exceeds max world-space distance
+    local myRoot = myChar:FindFirstChild("HumanoidRootPart")
+    if myRoot then
+        local worldDist = (aimbot.lockedTarget.Position - myRoot.Position).Magnitude
+        if worldDist > aimbot.maxDist then
+            clearAimbotLock()
+            return
+        end
+    end
+
+    -- Drop lock if fovOnly is enabled and target has left the FOV circle
+    if aimbot.fovOnly then
+        local mp = getAimbotScreenPoint()
+        if mp then
+            local scr, on = worldToScreen(aimbot.lockedTarget.Position, cam)
+            if not on then
+                clearAimbotLock()
+                return
+            end
+            local dx = scr.X - mp.X
+            local dy = scr.Y - mp.Y
+            local screenDist = math.sqrt(dx * dx + dy * dy)
+            if screenDist > aimbot.fovRadius then
+                clearAimbotLock()
+                return
+            end
+        end
     end
     if not camController then
         return
@@ -2843,6 +2883,43 @@ aimbotTab:AddToggle("AimbotVisibleOnly", {
     Default = false,
     Callback = function(val)
         aimbot.visibleOnly = val
+    end
+})
+
+aimbotTab:AddToggle("AimbotFOVOnly", {
+    Text = "FOV Only",
+    Default = false,
+    Tooltip = "Only lock onto and track targets inside the FOV circle",
+    Callback = function(val)
+        aimbot.fovOnly = val
+        if not val then return end
+        -- drop current lock if it's outside the circle now
+        if aimbot.lockedTarget then
+            local mp = getAimbotScreenPoint()
+            local cam = workspace.CurrentCamera
+            if mp and cam then
+                local scr, on = worldToScreen(aimbot.lockedTarget.Position, cam)
+                if not on then clearAimbotLock() return end
+                local dx = scr.X - mp.X
+                local dy = scr.Y - mp.Y
+                if math.sqrt(dx*dx + dy*dy) > aimbot.fovRadius then
+                    clearAimbotLock()
+                end
+            end
+        end
+    end
+})
+
+aimbotTab:AddSlider("AimbotMaxDist", {
+    Text = "Max Distance",
+    Default = 500,
+    Min = 10,
+    Max = 2000,
+    Rounding = 0,
+    Compact = true,
+    Tooltip = "Maximum world-space stud distance to lock onto a target",
+    Callback = function(val)
+        aimbot.maxDist = val
     end
 })
 
@@ -17490,7 +17567,7 @@ Library.ToggleKeybind = Options.MenuKeybind -- Allows you to have a custom keybi
 -- ThemeManager (Allows you to have a menu theme system)
 
 -- Hand the library over to our managers
-ThemeManager:SetLibrary(Library)
+-- ThemeManager:SetLibrary already called and patched above — do NOT call again
 SaveManager:SetLibrary(Library)
 
 -- Ignore keys that are used by ThemeManager.
