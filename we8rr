@@ -708,7 +708,7 @@ local function GetIcon(icon, source)
 			local sizedicons = icons['48px']
 			local r = sizedicons[icon]
 			if not r then
-				error("Lucide Icons: Failed to find icon by the name of \"" .. icon .. "\.", 2)
+				error("Lucide Icons: Failed to find icon by the name of \"" .. icon .. "\".", 2)
 			end
 			local rirs = r[2]
 			local riro = r[3]
@@ -2199,6 +2199,16 @@ function Luna:CreateWindow(WindowSettings)
 				gameUrl = "",
 				order = 11,
 			},
+			{
+				name = "Murder Mystery 2",
+				desc = "",
+				color = Color3.fromRGB(180, 40, 40),
+				script = "https://raw.githubusercontent.com/weyweow8eajfamdkau/orujfe/refs/heads/main/24wrjrwr",
+				imageId = 75422681452524,
+				placeId = 0,
+				gameUrl = "",
+				order = 12,
+			},
 		}
 
 		for _, s in ipairs(scripts) do
@@ -2556,8 +2566,7 @@ function Luna:CreateWindow(WindowSettings)
 			aLabel.Size = UDim2.new(1, 0, 0, 0)
 			aLabel.AutomaticSize = Enum.AutomaticSize.Y
 			aLabel.Font = Enum.Font.Gotham
-			aLabel.TextSize = 10
-			aLabel.TextColor3 = Color3.fromRGB(130, 130, 160)
+			aLabel.TextSize = 10			aLabel.TextColor3 = Color3.fromRGB(130, 130, 160)
 			aLabel.TextXAlignment = Enum.TextXAlignment.Left
 			aLabel.TextWrapped = true
 			aLabel.Text = faq.a
