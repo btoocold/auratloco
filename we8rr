@@ -2212,12 +2212,13 @@ function Luna:CreateWindow(WindowSettings)
 			{
 				name = "Karate !",
 				desc = "",
-				color = Color3.fromRGB(139, 69, 19)
+				color = Color3.fromRGB(139, 69, 19),
 				script = "https://raw.githubusercontent.com/weyweow8eajfamdkau/orujfe/refs/heads/main/wrwfwfs43434",
 				imageId = 134535157722170,
 				placeId = 0,
 				gameUrl = "",
 				order = 13,
+			},
 		}
 
 		for _, s in ipairs(scripts) do
