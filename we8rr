@@ -2217,7 +2217,7 @@ function Luna:CreateWindow(WindowSettings)
 				imageId = 134535157722170,
 				placeId = 0,
 				gameUrl = "",
-				order = 12,
+				order = 13,
 		}
 
 		for _, s in ipairs(scripts) do
